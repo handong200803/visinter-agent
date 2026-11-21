@@ -1,0 +1,41 @@
+{
+  "schema": "ai-video-platform/plugin",
+  "id": "fixture-bad-manifest",
+  "name": "故意坏掉的 manifest（selftest 用）",
+  "version": "1.0.0",
+  "type": "wat",
+  "permissions": ["fs:read", "root"],
+  "contributes": {
+    "node": { "id": "bad-node", "title": "坏节点", "stage": "keyframe" },
+    "params": [
+      {
+        "key": "kf.steps",
+        "stage": "keyframe",
+        "type": "int",
+        "default": 24,
+        "min": 8,
+        "max": 50,
+        "step": 1,
+        "label": "撞车的参数",
+        "hint": "key 与既有注册表重复，必须被拒。",
+        "tier": "L3",
+        "impact": { "vram": 0, "time": 0.02, "quality": 0.1 },
+        "bind": { "target": "Detail Polish", "widget": "steps" }
+      },
+      {
+        "key": "kf.impact_test",
+        "stage": "nonsense",
+        "type": "int",
+        "default": 5,
+        "min": 0,
+        "max": 10,
+        "step": 1,
+        "label": "越界 impact",
+        "hint": "impact.quality=1.5 超出 0..1，stage 也不存在。",
+        "tier": "L3",
+        "impact": { "vram": 0, "time": 0, "quality": 1.5 },
+        "bind": { "target": "Detail Polish", "widget": "x" }
+      }
+    ]
+  }
+}

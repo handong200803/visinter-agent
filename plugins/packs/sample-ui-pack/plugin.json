@@ -1,0 +1,90 @@
+{
+  "schema": "ai-video-platform/plugin",
+  "id": "sample-ui-pack",
+  "name": "示例 · 冷银主题 + 三块快捷面板",
+  "version": "1.0.0",
+  "type": "ui",
+  "description": "演示 ui 类插件：两个主题（冷银 / 暖灰）+ 三个面板分别挂到 stage-sidebar / inspector-right / toolbar。主题 token 由插件管理页真渲染（写 documentElement 的 CSS 变量）；跨模块宿主未接的部分在页面上标「登记不渲染」。",
+  "author": "ai-video-platform 示例",
+  "engines": {
+    "platform": ">=0.1.0"
+  },
+  "permissions": [],
+  "contributes": {
+    "ui": {
+      "themes": [
+        {
+          "id": "cool-silver",
+          "title": "冷银（示例）",
+          "tokens": {
+            "--acc": "#cdd6e4",
+            "--acc-hover": "#e8edf5",
+            "--acc-fill": "rgba(205, 214, 228, 0.14)",
+            "--bg": "#07080b",
+            "--line2": "rgba(205, 214, 228, 0.22)"
+          }
+        },
+        {
+          "id": "warm-graphite",
+          "title": "暖灰（示例）",
+          "tokens": {
+            "--acc": "#d2ccc0",
+            "--acc-hover": "#efe9df",
+            "--acc-fill": "rgba(210, 204, 192, 0.14)",
+            "--bg": "#090808",
+            "--line2": "rgba(210, 204, 192, 0.22)"
+          }
+        }
+      ],
+      "panels": [
+        {
+          "id": "ui-keyframe-quick",
+          "slot": "stage-sidebar",
+          "title": "关键帧速调",
+          "fields": [
+            {
+              "key": "kf.steps",
+              "label": "步数"
+            },
+            {
+              "key": "kf.cfg",
+              "label": "CFG"
+            }
+          ]
+        },
+        {
+          "id": "ui-quality-read",
+          "slot": "inspector-right",
+          "title": "画质读数",
+          "fields": [
+            {
+              "key": "lk.grain",
+              "label": "颗粒"
+            },
+            {
+              "key": "mo.fps",
+              "label": "帧率",
+              "readonly": true
+            }
+          ]
+        },
+        {
+          "id": "ui-export-chip",
+          "slot": "toolbar",
+          "title": "导出提醒",
+          "fields": [
+            {
+              "key": "ex.codec",
+              "label": "编码"
+            }
+          ]
+        }
+      ]
+    }
+  },
+  "signature": {
+    "key_id": "avp-dev-local",
+    "alg": "ed25519",
+    "sig": "aC6Tw3bDygsx+ebXAapI/6yHMKyIIorMJDKyAB7VeW2NFXTRWo9XejxvpmNIPiYmzxzGRddtRu90TH0p90SmBg=="
+  }
+}

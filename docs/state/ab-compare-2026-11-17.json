@@ -1,0 +1,188 @@
+{
+  "at": "2026-11-17T14:59:34.667Z",
+  "provenance": "measured",
+  "question": "同模型同提示词同规格下，平台参数管线相对直连模型基线带来什么差异",
+  "design": {
+    "model": "wan2.2-t2v-plus",
+    "controlled": [
+      "size 1920*1080",
+      "duration 5",
+      "prompt_extend true",
+      "watermark true",
+      "同一用户原文提示词"
+    ],
+    "singleVariable": "提示词构造：平台组=原文+258参数编译槽+负向词；基线组=仅原文散文，无负向词、无槽编译、无护栏",
+    "baselineBypass": "基线经 D:/缓存/avp/baseline-direct.mjs 直提交 DashScope API，绕过平台队列与编译器（脚本仅在缓存区，不入仓库）",
+    "qaTool": "tools/qa.mjs（avp-qc quality.json/1），两组同一阈值同一口径",
+    "caveat": "每组 n=1；云端排队耗时波动大（90.6s vs 310.3s），耗时差异归因于队列而非平台；结论限于本次样本"
+  },
+  "arms": {
+    "platform": {
+      "jobId": "job_mwkrgjsu_fa47ad",
+      "providerTaskId": "8c99b4bd-fc68-470f-bd74-939c031c6192",
+      "providerRequestId": "abb91bd4-c877-9a59-9b39-6fe4e6df1fdf",
+      "request": {
+        "model": "wan2.2-t2v-plus",
+        "input": {
+          "prompt": "一个温柔的夏日午后，一位身着素白宽松宋式汉服的年轻女子优雅地坐在一棵茂密树下，专注地弹奏着古筝。画面从略低角度拍摄，突显出她舒展的体态与柔和宁静的笑容。阳光透过浓密的树叶洒落下来，斑驳的光影在她飘逸的裙摆和乐器表面交织成细腻的纹路。缕缕黑发随夏风轻柔飘动，她优雅的棉麻衣裳以白色与翡翠绿相间，自然垂落，褶皱精致，质感真实。前景是翠绿的草地与模糊的树干，而浅淡的虚化光晕笼罩的树冠与远处被阳光照耀的公园，则营造出明亮前梦幻的背景。光自然温暖，对比度低且柔和扩散，凸显她面色如瓷般清润，面部轮廓清晰锐利。整体氛围宁静、诗意而浪漫，呈现出一种治愈人心的田园气息，通过精致真实的纹理与和谐轻盈的摄影风格，传递出一种和谐面空灵的艺术意境。，同一人物，写实摄影质感，面部轮廓清晰锐利，，约24岁，鹅蛋脸，标准体态，皮肤写实纹理，黑色长直发，自然黑发色，面部特征前后一致，不换脸，身穿白色与翡翠绿相间的棉麻衣裳；光线：暖钨丝灯，平光，几乎无阴影，侧逆光；镜头：中景，写实剧镜头，浅景深，背景奶油化；画风：东方暖调配色，厚涂，古风题材；质感：发丝分层清晰，瞳孔有清晰高光，织物纹理可辨，细颗粒；运动：视差运动，中等运动，拉，缓慢运镜，单格 3 秒，4 层视差，发丝随风微动，衣摆轻晃，薄雾缓慢流动，光斑浮动，空气尘埃可见，光点，粒子 120 个，运动模糊自然，胸腔随呼吸起伏。",
+          "negative_prompt": "画面静止，整帧漂移，主体形变，脸部溶解，边缘抖动，逐帧闪烁，纹理爬行，背景液化，多余的肢体出现，镜头穿模，粒子结块，噪点闪烁，手指数量逐帧变化，低质量，水印，文字，畸形手指，多余肢体，面部扭曲，塑料皮肤，过饱和，模糊，变形，塑料感"
+        },
+        "parameters": {
+          "duration": 5,
+          "watermark": true,
+          "size": "1920*1080",
+          "prompt_extend": true
+        }
+      },
+      "e2eMs": 94111,
+      "cloudTimes": {
+        "submit": "2026-11-17 22:01:31.012",
+        "end": "2026-11-17 22:03:01.593"
+      },
+      "cloudMs": 90581,
+      "file": "D:\\云盘\\02-视频\\成片\\avp-2026-11-17T14-03-03.mp4",
+      "bytes": 3209147,
+      "usage": {
+        "video_duration": 5,
+        "video_ratio": "1920*1080",
+        "video_count": 1
+      },
+      "actualPeakMib": null,
+      "qa": {
+        "summary": {
+          "frames": 150,
+          "problem_frames": 0,
+          "mean": 96.9,
+          "min": 93,
+          "max": 99,
+          "p5": 94,
+          "p95": 99,
+          "status": {
+            "ok": 150,
+            "warn": 0,
+            "bad": 0
+          }
+        },
+        "freeze": [],
+        "staticRuns": [],
+        "segments": [],
+        "generatedAt": "2026-11-17T14:03:39.129Z",
+        "bitrate": 5128668
+      },
+      "tuning": "guofeng_immortal（基线）+ 场景对齐覆写：ch.outfit_1 汉服 / ch.style 厚涂 / kf.color_temp 4100 / kf.light_ratio 1.4 / kf.dof 60"
+    },
+    "directBaseline": {
+      "taskId": "9f541b19-c5fd-41a3-af71-342c80131663",
+      "requestId": "fe17ab69-0c96-9e27-835c-4888f35f52ad",
+      "request": {
+        "model": "wan2.2-t2v-plus",
+        "input": {
+          "prompt": "一个温柔的夏日午后，一位身着素白宽松宋式汉服的年轻女子优雅地坐在一棵茂密树下，专注地弹奏着古筝。画面从略低角度拍摄，突显出她舒展的体态与柔和宁静的笑容。阳光透过浓密的树叶洒落下来，斑驳的光影在她飘逸的裙摆和乐器表面交织成细腻的纹路。缕缕黑发随夏风轻柔飘动，她优雅的棉麻衣裳以白色与翡翠绿相间，自然垂落，褶皱精致，质感真实。前景是翠绿的草地与模糊的树干，而浅淡的虚化光晕笼罩的树冠与远处被阳光照耀的公园，则营造出明亮前梦幻的背景。光自然温暖，对比度低且柔和扩散，凸显她面色如瓷般清润，面部轮廓清晰锐利。整体氛围宁静、诗意而浪漫，呈现出一种治愈人心的田园气息，通过精致真实的纹理与和谐轻盈的摄影风格，传递出一种和谐面空灵的艺术意境。"
+        },
+        "parameters": {
+          "size": "1920*1080",
+          "duration": 5,
+          "prompt_extend": true,
+          "watermark": true
+        }
+      },
+      "e2eMs": 316196,
+      "cloudTimes": {
+        "submit": "2026-11-17 22:40:17.768",
+        "end": "2026-11-17 22:45:28.027"
+      },
+      "cloudMs": 310259,
+      "file": "D:\\云盘\\02-视频\\成片\\baseline-direct-2026-11-17T14-45-32.mp4",
+      "bytes": 3747082,
+      "usage": {
+        "video_duration": 5,
+        "video_ratio": "1920*1080",
+        "video_count": 1
+      },
+      "qa": {
+        "summary": {
+          "frames": 150,
+          "problem_frames": 3,
+          "mean": 96.1,
+          "min": 30,
+          "max": 99,
+          "p5": 95,
+          "p95": 99,
+          "status": {
+            "ok": 147,
+            "warn": 0,
+            "bad": 3
+          }
+        },
+        "freeze": [
+          147,
+          148,
+          149
+        ],
+        "staticRuns": [
+          {
+            "start": 147,
+            "end": 149,
+            "frames": 3,
+            "anchor": 146
+          }
+        ],
+        "segments": [
+          {
+            "start": 147,
+            "end": 149,
+            "frames": 3,
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "score_avg": 30
+          }
+        ],
+        "generatedAt": "2026-11-17T14:46:10.507Z",
+        "bitrate": 5989505
+      }
+    }
+  },
+  "visual": {
+    "provenance": "observed-frames",
+    "frames": {
+      "platform": [
+        "D:/缓存/avp/frames-hanfu/f1.png",
+        "D:/缓存/avp/frames-hanfu/f2.png",
+        "D:/缓存/avp/frames-hanfu/f3.png"
+      ],
+      "baseline": [
+        "D:/缓存/avp/frames-baseline/b1.png",
+        "D:/缓存/avp/frames-baseline/b2.png",
+        "D:/缓存/avp/frames-baseline/b3.png"
+      ]
+    },
+    "findings": [
+      "平台组：长发随风飘动、正面柔和笑容、古筝雁柱清晰、暖调斑驳柔光、缓慢拉镜、全程运动",
+      "基线组：挽髻（非飘发）、侧脸、琴面无雁柱、光偏硬偏亮、机位近静止、尾 3 帧卡帧",
+      "两组单帧美感均高；差异在提示词忠实度与运动完整性，不在原始画质分数"
+    ]
+  },
+  "comparisonArtifact": {
+    "file": "D:/云盘/02-视频/成片/compare-platform-vs-direct-2026-11-17.mp4",
+    "bytes": 2583251,
+    "probe": {
+      "codec": "h264",
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "frames": 150,
+      "duration": 5,
+      "bitrate": 4133201
+    },
+    "method": "ffmpeg 9.0.2 左右各 960x540 叠于 1920x1080 底 + drawtext 中文标注（msyh/msyhbd，相对 fontfile 规避路径转义）；libx264 crf18 yuv420p faststart",
+    "filterFile": "D:/缓存/avp/compare-filter.txt",
+    "verifyFrame": "D:/缓存/avp/compare-check.png",
+    "opsNote": "云盘同步目录拒绝 ffmpeg/copyFile 新建 mp4（EPERM），改为缓存区编码后同盘 rename 交付"
+  },
+  "conclusion": {
+    "rawQa": "均分接近（96.9 vs 96.1），平台组不构成画质分数碾压",
+    "decisive": "运动完整性：平台 0 问题帧 vs 基线尾 3 帧完全相同（卡帧 0.1s，min 分 30）；提示词忠实度：飘发/正面笑容/雁柱/暖柔光/缓拉 五项原文要求平台组全中、基线组偏失",
+    "platformValue": "可控（258 参数落到请求槽）、可复现（值快照+任务记录+ledger）、护栏（负向词/一致性锁/时长夹取）、可检视（逐帧质检+记录归档）",
+    "honesty": "n=1 样本；不声称普遍 superiority；基线美感同样成立"
+  }
+}

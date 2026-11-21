@@ -1,0 +1,137 @@
+{
+  "at": "2026-11-17T04:06:42.403Z",
+  "source": "node server/ds.js compileDsRequest(defaults)",
+  "note": "卡② dashscope 编译覆盖快照（默认参数）",
+  "model": "wan2.2-t2v-plus",
+  "stats": {
+    "params": 258,
+    "bound_ds": 21,
+    "applied": 21,
+    "unbound": 237,
+    "model": "wan2.2-t2v-plus",
+    "protocol": "size",
+    "provenance": "measured(2026-11-16 仙宫仙境 ledger)"
+  },
+  "applied": [
+    {
+      "key": "ch.subject",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "ch.face_detail",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "ch.outfit_1",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "ch.palette",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "ch.style",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "ch.negative",
+      "path": "input.negative_prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "kf.composition",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "kf.color_temp",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "kf.key_light_dir",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "kf.dof",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "kf.seed",
+      "path": "parameters.seed",
+      "note": "random(-1 不传 seed)"
+    },
+    {
+      "key": "kf.grain",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "kf.negative",
+      "path": "input.negative_prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "mo.camera",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "mo.camera_speed",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "mo.duration",
+      "path": "parameters.duration",
+      "note": null
+    },
+    {
+      "key": "mo.fx_snow",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "mo.fx_fog",
+      "path": "input.prompt",
+      "note": "prompt-compile"
+    },
+    {
+      "key": "ex.ai_label",
+      "path": "parameters.watermark",
+      "note": null
+    },
+    {
+      "key": "ex.resolution",
+      "path": "parameters.size",
+      "note": "composed-with-ratio"
+    },
+    {
+      "key": "kf.ratio",
+      "path": "parameters.size",
+      "note": "composed-with-resolution"
+    }
+  ],
+  "warnings": [
+    {
+      "code": "DS_DURATION_CLAMPED",
+      "text": "mo.duration=1.5s 超出 wan2.2-t2v-plus 支持范围 [5,5]s，夹到 5s",
+      "key": "mo.duration"
+    },
+    {
+      "code": "DS_UNBOUND",
+      "text": "237 个参数没有落到 DashScope 请求（注册表缺 bind_ds），见 unbound[]"
+    }
+  ],
+  "unbound_count": 237,
+  "unbound_by_reason": {
+    "NO_BIND_DS": 237
+  }
+}

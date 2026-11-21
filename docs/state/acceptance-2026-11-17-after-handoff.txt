@@ -1,0 +1,206 @@
+### node v24.21.0 · 2026-11-17 11:24 · 交接文件写入后复跑
+--- selftest_all ---
+AI 视频平台 · 全模块总自检
+根目录 D:\云盘\01-代码\AI视频\ai-video-platform
+node v24.21.0 · 2026/11/17 11:24:27
+
+▸ 求解器内核        core/selftest.js … PASS 0.1s
+▸ 提示词编译层       prompt/selftest.js … PASS 0.2s
+▸ 质检管线         quality/selftest.js … PASS 1.3s
+▸ 模板市场         market/selftest.js … PASS 0.2s
+▸ 插件系统         plugins/selftest.js … PASS 0.1s
+▸ 后端服务         server/selftest.js … PASS 1.8s
+▸ 画布编辑器        canvas/selftest.mjs … PASS 0.1s
+▸ 平台外壳         app/selftest.mjs … PASS 0.1s
+▸ 端到端集成        tools/e2e.mjs … PASS 1.3s
+
+汇总  PASS 9 · FAIL 0 · SKIP 0 · 耗时 5.1s
+全部通过
+EXIT=0
+--- lint_ui ---
+界面视觉 lint  令牌源 ui/tokens.css（51 个变量）
+
+参数面板 web/params.html · 178.9KB
+  ✓ 令牌一致（51 个变量逐一比对）
+  ✓ 玻璃拟态模糊 0 处
+  ✓ 文字发光 0 处
+  ✓ 装饰渐变 0 处
+  ✓ AI 紫变量 0 处
+  ✓ 旧荧光色残留 0 处
+  ✓ 装饰性滤镜 0 处
+  ✓ 循环装饰动画 0 处
+  ✓ emoji 图标 0 处
+  ✓ 彩色阴影 0 处
+  ✓ 过大圆角 0 处
+  ✓ 数字等宽（tabular-nums）在场
+  ✓ 键盘焦点环在场（:focus-visible）
+  ✓ 回程链接在场（← 工作台）
+  → 全部通过
+
+三视图画布 canvas/canvas.html · 231.3KB
+  ✓ 令牌一致（51 个变量逐一比对）
+  ✓ 玻璃拟态模糊 0 处
+  ✓ 文字发光 0 处
+  ✓ 装饰渐变 0 处
+  ✓ AI 紫变量 0 处
+  ✓ 旧荧光色残留 0 处
+  ✓ 装饰性滤镜 0 处
+  ✓ 循环装饰动画 0 处
+  ✓ emoji 图标 0 处
+  ✓ 彩色阴影 0 处
+  ✓ 过大圆角 0 处
+  ✓ 数字等宽（tabular-nums）在场
+  ✓ 键盘焦点环在场（:focus-visible）
+  ✓ 回程链接在场（← 工作台）
+  → 全部通过
+
+平台外壳 app/index.html · 248.0KB
+  ✓ 令牌一致（51 个变量逐一比对）
+  ✓ 玻璃拟态模糊 0 处
+  ✓ 文字发光 0 处
+  ✓ 装饰渐变 0 处
+  ✓ AI 紫变量 0 处
+  ✓ 旧荧光色残留 0 处
+  ✓ 装饰性滤镜 0 处
+  ✓ 循环装饰动画 0 处
+  ✓ emoji 图标 0 处
+  ✓ 彩色阴影 0 处
+  ✓ 过大圆角 0 处
+  ✓ 数字等宽（tabular-nums）在场
+  ✓ 键盘焦点环在场（:focus-visible）
+  ✓ 平台外壳即工作台（不需要回程链接）
+  → 全部通过
+
+模板市场 market/index.html · 209.4KB
+  ✓ 令牌一致（51 个变量逐一比对）
+  ✓ 玻璃拟态模糊 0 处
+  ✓ 文字发光 0 处
+  ✓ 装饰渐变 0 处
+  ✓ AI 紫变量 0 处
+  ✓ 旧荧光色残留 0 处
+  ✓ 装饰性滤镜 0 处
+  ✓ 循环装饰动画 0 处
+  ✓ emoji 图标 0 处
+  ✓ 彩色阴影 0 处
+  ✓ 过大圆角 0 处
+  ✓ 数字等宽（tabular-nums）在场
+  ✓ 键盘焦点环在场（:focus-visible）
+  ✓ 回程链接在场（← 工作台）
+  → 全部通过
+
+插件管理 plugins/index.html · 96.0KB
+  ✓ 令牌一致（51 个变量逐一比对）
+  ✓ 玻璃拟态模糊 0 处
+  ✓ 文字发光 0 处
+  ✓ 装饰渐变 0 处
+  ✓ AI 紫变量 0 处
+  ✓ 旧荧光色残留 0 处
+  ✓ 装饰性滤镜 0 处
+  ✓ 循环装饰动画 0 处
+  ✓ emoji 图标 0 处
+  ✓ 彩色阴影 0 处
+  ✓ 过大圆角 0 处
+  ✓ 数字等宽（tabular-nums）在场
+  ✓ 键盘焦点环在场（:focus-visible）
+  ✓ 回程链接在场（← 工作台）
+  → 全部通过
+
+质检面板 quality/index.html · 95.2KB
+  ✓ 令牌一致（51 个变量逐一比对）
+  ✓ 玻璃拟态模糊 0 处
+  ✓ 文字发光 0 处
+  ✓ 装饰渐变 0 处
+  ✓ AI 紫变量 0 处
+  ✓ 旧荧光色残留 0 处
+  ✓ 装饰性滤镜 0 处
+  ✓ 循环装饰动画 0 处
+  ✓ emoji 图标 0 处
+  ✓ 彩色阴影 0 处
+  ✓ 过大圆角 0 处
+  ✓ 数字等宽（tabular-nums）在场
+  ✓ 键盘焦点环在场（:focus-visible）
+  ✓ 回程链接在场（← 工作台）
+  → 全部通过
+
+本地服务 server/index.html · 74.3KB
+  ✓ 令牌一致（51 个变量逐一比对）
+  ✓ 玻璃拟态模糊 0 处
+  ✓ 文字发光 0 处
+  ✓ 装饰渐变 0 处
+  ✓ AI 紫变量 0 处
+  ✓ 旧荧光色残留 0 处
+  ✓ 装饰性滤镜 0 处
+  ✓ 循环装饰动画 0 处
+  ✓ emoji 图标 0 处
+  ✓ 彩色阴影 0 处
+  ✓ 过大圆角 0 处
+  ✓ 数字等宽（tabular-nums）在场
+  ✓ 键盘焦点环在场（:focus-visible）
+  ✓ 回程链接在场（← 工作台）
+  → 全部通过
+
+全部通过
+EXIT=0
+--- e2e ---
+AI 视频平台 · 端到端集成验收
+根目录 D:\云盘\01-代码\AI视频\ai-video-platform
+
+== 1 · 外壳探测路径 vs 实际产物 ==
+  ✓ 外壳声明了 7 个可探测模块（含工作台自身）  params,canvas,inspector,market,plugins,quality,server
+  ✓ params → ../web/params.html
+  ✓ canvas → ../canvas/canvas.html
+  ✓ inspector → ../inspector/index.html
+  ✓ market → ../market/index.html
+  ✓ plugins → ../plugins/index.html
+  ✓ quality → ../quality/index.html
+  ✓ server → ../server/index.html
+
+== 2 · 服务发射七个入口，且都能回到工作台 ==
+  （临时端口 61947，任务目录 D:\缓存\avp\e2e-mwk4pesa）
+  ✓ 工作台 200 text/html  229795B
+  ✓ 工作台无「即将支持」类死文案
+  ✓ params 入口可达 ≥98KB  200 165KB
+  ✓ params 有「← 工作台」回程链接
+  ✓ params 回程目标 app/index.html 存在
+  ✓ params 无死按钮文案
+  ✓ params 有可交互控件  7 个按钮
+  ✓ canvas 入口可达 ≥98KB  200 212KB
+  ✓ canvas 有「← 工作台」回程链接
+  ✓ canvas 回程目标 app/index.html 存在
+  ✓ canvas 无死按钮文案
+  ✓ canvas 有可交互控件  18 个按钮
+  ✓ inspector 入口可达 ≥20KB  200 40KB
+  ✓ market 入口可达 ≥49KB  200 191KB
+  ✓ market 有「← 工作台」回程链接
+  ✓ market 回程目标 app/index.html 存在
+  ✓ market 无死按钮文案
+  ✓ market 有可交互控件  9 个按钮
+  ✓ plugins 入口可达 ≥49KB  200 83KB
+  ✓ plugins 有「← 工作台」回程链接
+  ✓ plugins 回程目标 app/index.html 存在
+  ✓ plugins 无死按钮文案
+  ✓ plugins 有可交互控件  6 个按钮
+  ✓ quality 入口可达 ≥49KB  200 80KB
+  ✓ quality 有「← 工作台」回程链接
+  ✓ quality 回程目标 app/index.html 存在
+  ✓ quality 无死按钮文案
+  ✓ quality 有可交互控件  4 个按钮
+  ✓ server 入口可达 ≥49KB  200 64KB
+  ✓ server 有「← 工作台」回程链接
+  ✓ server 回程目标 app/index.html 存在
+  ✓ server 无死按钮文案
+  ✓ server 有可交互控件  10 个按钮
+
+== 3 · 渲染桥（POST /api/jobs → 终态）==
+  ✓ GET /api/health 200  comfy mock
+  ✓ POST /api/jobs 受理  202
+  ✓ 返回任务 id  job_mwk4pf2g_c22383
+  ✓ 任务走到 succeeded（mock 后端）  succeeded · 617ms
+
+== 4 · 静态层的边界 ==
+  ✓ 白名单外后缀 403
+  ✓ 越界路径被拦  404
+
+结果  通过 47 · 失败 0
+全部通过
+EXIT=0

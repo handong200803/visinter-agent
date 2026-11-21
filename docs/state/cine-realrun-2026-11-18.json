@@ -1,0 +1,94 @@
+{
+  "schema": "ai-video-platform/cine-realrun",
+  "at": "2026-11-18T03:25:35.539Z",
+  "provenance": "measured",
+  "job": "job_mwlk1tr5_eb206c",
+  "kind": "cine",
+  "provider": "cine",
+  "mock": false,
+  "prompt": "轮渡上的女生侧脸",
+  "state": "succeeded",
+  "durationMs": 223437,
+  "startedAt": "2026-11-18T03:21:52.101Z",
+  "finishedAt": "2026-11-18T03:25:35.539Z",
+  "analysis": {
+    "source": "qwen",
+    "model": "qwen-plus",
+    "subject": "女生侧脸",
+    "scene": "轮渡甲板",
+    "light": "柔和自然光",
+    "mood": "宁静略带思绪",
+    "camera": "缓慢横移镜头",
+    "shot": "中景特写",
+    "style_id": "cinematic-real",
+    "usage": { "total_tokens": 168 }
+  },
+  "groups": [
+    { "id": 1, "name": "标准电影感", "total": 9.0, "passed": true, "attempts": 1 },
+    { "id": 2, "name": "伦勃朗侧光", "total": 9.2, "passed": true, "attempts": 1, "picked": true },
+    { "id": 3, "name": "逆光剪影", "total": 8.6, "passed": false, "attempts": 4, "belowTarget": true, "bestAttempt": 2 },
+    { "id": 4, "name": "浅景深特写", "total": 9.0, "passed": true, "attempts": 1 },
+    { "id": 5, "name": "广角环境人像", "total": 9.0, "passed": true, "attempts": 1 },
+    { "id": 6, "name": "冷暖对比最强", "total": 9.2, "passed": true, "attempts": 1 },
+    { "id": 7, "name": "雾气空气透视", "total": 9.0, "passed": true, "attempts": 1 },
+    { "id": 8, "name": "胶片复古质感", "total": 9.0, "passed": true, "attempts": 1 }
+  ],
+  "judge": { "model": "qwen3-vl-plus", "provenance": "model-opinion", "note": "五维均值，非像素实测" },
+  "pick": { "index": 1, "source": "model", "total": 9.2, "windowMs": 20000, "override": null },
+  "keyframeBaselineNote": {
+    "requested": { "sampler": "DPM++ 3M SDE Karras", "cfg": 6.0, "steps": 30, "size": "1024*1536" },
+    "applicable": false,
+    "reason": "本机无 ComfyUI（实测 ECONNREFUSED），云端 qwen-image 不暴露采样器/CFG/步数旋钮；尺寸 1024*1536 真生效",
+    "provenance": "measured"
+  },
+  "i2v": {
+    "model": "wan2.2-i2v-flash",
+    "taskId": "6bc8ce5b-6716-497d-8013-a0cc4b89b5b2",
+    "requestId": "2c442a51-ad97-9563-ba64-837499dc5bd0",
+    "ms": 36149,
+    "cloudTimes": { "submit": "2026-11-18 11:23:32.670", "end": "2026-11-18 11:24:05.486" },
+    "usage": { "duration": 5, "video_count": 1, "SR": 720 },
+    "measured": { "width": 784, "height": 1168, "fps": 30, "frames": "150" },
+    "motionPrompt": "almost static, barely perceptible movement, hair slowly drifting, dust particles floating in light, handheld micro shake for realism, no camera movement, calm atmosphere, 5 seconds",
+    "motionNegative": "fast motion, shaky camera, flickering, morphing, scene change, zoom, pan, head turning, walking"
+  },
+  "post": {
+    "engine": "ffmpeg",
+    "target": { "w": 1080, "h": 1608 },
+    "lut": "teal-orange.cube 33pt",
+    "measured": { "width": 1080, "height": 1608, "fps": 48, "frames": "237", "duration": "4.937500", "codec": "h264", "pix_fmt": "yuv420p" },
+    "substitutions": [
+      { "spec": "RIFE 插帧 48fps", "actual": "ffmpeg minterpolate(mi_mode=mci) 48fps", "is_rife": false },
+      { "spec": "Real-ESRGAN 超分 1080p", "actual": "ffmpeg scale lanczos（保 aspect 1080x1608）", "is_esrgan": false },
+      { "spec": "teal and orange 电影 LUT", "actual": "node 生成 33 点 .cube + ffmpeg lut3d", "is_lut": true },
+      { "spec": "35mm 胶片颗粒", "actual": "ffmpeg noise=alls=5:allf=t+u", "is_scan_grain": false },
+      { "spec": "1.5% 暗角", "actual": "ffmpeg vignette angle=0.113", "provenance": "estimate" },
+      { "spec": "轻微呼吸感手持抖动", "actual": "ffmpeg crop x/y 正弦振荡 ±2px", "is_handheld": true }
+    ]
+  },
+  "output": {
+    "file": "D:\\云盘\\02-视频\\成片\\cine-轮渡上的女生侧脸-2026-11-18T03-25-35.mp4",
+    "bytes": 4208551,
+    "fps": 48,
+    "width": 1080,
+    "height": 1608,
+    "verified": { "GET_200_video_mp4": true, "ftyp_valid": true, "Range_206": true, "browser_decode": "videoWidth=1080 videoHeight=1608 readyState=4 duration=4.9375 error=null" }
+  },
+  "warnings": [
+    { "code": "CINE_GROUP_BELOW_TARGET", "text": "第3组重试3次仍 8.6 分（<9），保留最高分 attempt 2，不谎报达标", "group": 3 },
+    { "code": "CINE_FPS_DEVIATION", "text": "规格基线 16fps，实测 i2v 输出 30fps（measured），后处理按实测源插帧到 48fps", "requested": 16, "measured": 30 }
+  ],
+  "gates": {
+    "build_all": "成功 7 · 失败 0",
+    "selftest_all": "PASS 9 · FAIL 0（server/selftest.js 116/0）",
+    "lint_ui": "7 页全绿",
+    "e2e": "通过 52 · 失败 0（含 §3b cine 契约 5 项，零计费桩）"
+  },
+  "uiTest": { "file": "D:/缓存/avp/cine-ui-test.json", "pass": 19, "fail": 0, "method": "browser-use evaluate_script DOM/解码断言" },
+  "artifacts": {
+    "candidatesDir": "D:\\缓存\\avp\\cine\\job_mwlk1tr5_eb206c\\g1..g8.png",
+    "rawI2V": "D:\\缓存\\avp\\cine\\job_mwlk1tr5_eb206c\\i2v-raw.mp4",
+    "finalCache": "D:\\缓存\\avp\\cine\\job_mwlk1tr5_eb206c\\cine-final.mp4",
+    "fullJobRecord": "D:\\缓存\\avp\\cine-real-result.json"
+  }
+}

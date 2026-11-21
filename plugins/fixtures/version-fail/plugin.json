@@ -1,0 +1,26 @@
+{
+  "schema": "ai-video-platform/plugin",
+  "id": "fixture-version-fail",
+  "name": "版本不满足的插件（selftest 用）",
+  "version": "1.0.0",
+  "type": "node",
+  "description": "要求平台 >=9.0.0，当前 0.1.0 必须拒绝加载并给出原因。",
+  "engines": { "platform": ">=9.0.0" },
+  "permissions": [],
+  "contributes": {
+    "node": { "id": "future-node", "title": "未来节点", "stage": "keyframe" },
+    "params": [
+      {
+        "key": "kf.future_marker",
+        "stage": "keyframe",
+        "type": "bool",
+        "default": false,
+        "label": "未来开关",
+        "hint": "只为验证版本门禁，正常环境永远不会被加载。",
+        "tier": "L4",
+        "impact": { "vram": 0, "time": 0, "quality": 0 },
+        "bind": { "target": "Future", "widget": "toggle" }
+      }
+    ]
+  }
+}

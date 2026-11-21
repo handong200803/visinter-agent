@@ -1,0 +1,330 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   module-ui.css —— 功能模块入口的共享骨架
+   ───────────────────────────────────────────────────────────────────────
+   定位：market / plugins / quality / server 四个入口共用同一套外壳结构
+   （顶栏 / 左列表 / 右详情 / 底部口径条），差异只在中间的「内容形态」。
+
+   视觉人格：暗黑玻璃拟态 · 冷银基调（ui/tokens.css 为唯一令牌源）。
+     - 顶栏 / 侧栏 / 详情区头 / 底部口径条：四块悬浮玻璃板，统一 margin 16 + 圆角 16 + blur 20
+     - 侧栏：#08080a 上的半透明白膜（.body > .aside，比 skin 的 .aside 高一级）
+     - 选中态：左侧 2px 冷银竖线 + 一圈冷银亮边，不做亮色填充、不引入彩色
+     - 按钮：玻璃底 rgba(255,255,255,.1) + 1px 亮边 + 冷白字，圆角 12；输入框圆角 16
+     - 卡片：.06 白膜 + 0 8px 32px rgba(0,0,0,.3) + inset 0 1px 0 rgba(255,255,255,.08)
+     - 凹槽：标签页与代码/日志块走 .glass-well 口径（bg-deep + 内描边，不铺毛玻璃）
+     - 卡片标题：碑铭衬线（--serif）宽字距；表格行 hover 只提亮、不位移
+
+   规矩（与 docs/09-design-system.md 一致，lint 会拦）：
+     - 只用 ui/tokens.css 的变量，不新增色值
+     - 圆角只走 --r / --r2 / --r3 / --r-pill（卡片上限 16px）
+     - 光晕只给冷色（--glow / --glow-soft / --glow-cool），投影只给中性黑
+   ═══════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: transparent; color: var(--text); font: var(--fz)/var(--lh) var(--sans); }
+a { color: var(--acc); text-decoration: none; }
+a:hover { color: var(--acc-hover); }
+
+/* ── 页面骨架：悬浮玻璃顶栏 + 主体 + 口径条 24 ───────────────────── */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) 24px; height: 100vh; }
+
+.topbar {
+  display: flex; align-items: center; gap: var(--sp3);
+  margin: var(--sp4) var(--sp4) 0; min-height: 38px;
+  padding: 0 var(--sp3);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  position: relative; z-index: 5;
+}
+.topbar .brand { display: flex; align-items: baseline; gap: var(--sp2); }
+.topbar .brand b {
+  font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.18em; color: var(--acc);
+}
+.topbar .brand span { font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: 0.08em; }
+.topbar .spacer { flex: 1; }
+.topbar .crumbs { font-size: var(--fz-s); color: var(--text-dim); }
+.topbar .crumbs i { color: var(--text-dim2); font-style: normal; padding: 0 var(--sp1); }
+
+.body { display: grid; grid-template-columns: var(--col, 320px) minmax(0, 1fr); min-height: 0; }
+.body.no-aside { grid-template-columns: minmax(0, 1fr); }
+
+/* 侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20 / 边框 rgba(255,255,255,.12)）。
+   选择器写在 .body > .aside：glass-skin.css 里 .aside 只留膜（background-color: transparent，
+   玻璃底色交给页面），这里比它高一级，底色与迎光面由骨架自己给，两边不互相覆盖。 */
+.body > .aside {
+  display: flex; flex-direction: column; min-height: 0;
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  overflow: hidden;   /* 内部滚到底也不露直角 */
+}
+.aside-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim);
+  letter-spacing: 0.12em; flex: 0 0 auto;
+}
+.aside-h .spacer { flex: 1; }
+.aside-b { flex: 1; min-height: 0; overflow: auto; }
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: transparent; }
+/* 详情区头：悬浮玻璃条，与左栏板同一条基线（左 16 / 上 16），下沿不画分隔线 */
+.main-h {
+  display: flex; align-items: center; gap: var(--sp2);
+  margin: var(--sp4) var(--sp4) 0;
+  padding: var(--sp2) var(--sp3); min-height: 34px; flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.main-h h2 {
+  margin: 0; font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.12em; color: var(--acc);
+}
+.main-h .sub { font-size: var(--fz-xs); color: var(--text-dim); }
+.main-h .spacer { flex: 1; }
+.main-b { flex: 1; min-height: 0; overflow: auto; padding: var(--sp3) var(--sp4); }
+/* 底部口径条：悬浮玻璃条（统计/说明常驻在这里），左右与主体内容同一列线 */
+.main-f {
+  flex: 0 0 auto; margin: var(--sp3) var(--sp4) var(--sp4);
+  padding: var(--sp2) var(--sp3); font-size: var(--fz-xs); color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 全平台口径条（最底一行）：细玻璃条，不做大圆角，只提亮到膜上 */
+.statusbar {
+  display: flex; align-items: center; gap: var(--sp3); padding: 0 var(--sp4);
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  border-top: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-size: var(--fz-xs); color: var(--text-dim2);
+}
+.statusbar .spacer { flex: 1; }
+.statusbar .num { color: var(--text-dim); }
+
+/* ── 列表行（左栏主力形态）───────────────────────────────────────── */
+.list { display: flex; flex-direction: column; }
+.list .row {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center; gap: var(--sp2);
+  padding: 0 var(--sp2); min-height: 28px; cursor: pointer;
+  border-bottom: 1px solid var(--line); color: var(--text);
+  transition: background var(--t-fast) var(--ease);
+}
+.list .row:hover { background: var(--panel3); }
+/* 选中 = 左 2px 冷银竖线 + 一圈冷银亮边 + 极淡银底；全程冷银，不用任何彩色 */
+.list .row[aria-selected="true"] {
+  background: var(--acc-fill);
+  box-shadow: inset 2px 0 0 var(--acc), inset 0 0 0 1px var(--glass-line-hover);
+  color: var(--acc-hover);
+}
+.list .row[aria-selected="true"]:hover { background: var(--panel3); }
+.list .row .t { font-size: var(--fz); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .row .s { font-size: var(--fz-xs); color: var(--text-dim2); }
+.list .row .ico { display: flex; align-items: center; justify-content: center; color: var(--text-dim); }
+.list .row[aria-selected="true"] .ico { color: var(--acc); }
+.list .sect {
+  padding: var(--sp2) var(--sp2) var(--sp1); font-size: var(--fz-xs); color: var(--text-dim2);
+  letter-spacing: 0.12em; border-bottom: 1px solid var(--line); background: transparent;
+}
+.list .empty-row { padding: var(--sp3); color: var(--text-dim2); font-size: var(--fz-s); }
+
+/* ── 徽标与状态点 ────────────────────────────────────────────────── */
+.dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--text-dim2); flex: 0 0 auto; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); }
+.dot.acc { background: var(--acc); }
+.dot.off { background: var(--line2); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 17px; padding: 0 6px;
+  border: 1px solid var(--line2); border-radius: var(--r); background: var(--panel2);
+  font-size: var(--fz-xs); color: var(--text-dim); white-space: nowrap;
+}
+.badge.ok { border-color: var(--ok); color: var(--ok); background: var(--ok-fill); }
+.badge.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-fill); }
+.badge.bad { border-color: var(--bad); color: var(--bad-ink); background: var(--bad-fill); }
+.badge.acc { border-color: var(--acc-dim); color: var(--acc); background: var(--acc-fill); }
+.badge.pill { border-radius: var(--r-pill); }
+
+/* ── 按钮：玻璃底 + 1px 亮边 + 冷白字；hover 提亮泛冷光 ───────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 26px; padding: 0 11px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: var(--r2); background: rgba(255, 255, 255, 0.10);
+  color: var(--text); font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+              box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.btn:hover { background: rgba(255, 255, 255, 0.14); border-color: var(--glass-line-hover); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+.btn:active { background: var(--panel4); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+/* 主操作：不是实心色块，而是亮边更亮一档的玻璃碑牌 */
+.btn.acc { background: var(--panel3); border-color: var(--acc-dim); color: var(--acc-hover); letter-spacing: 0.12em; }
+.btn.acc:hover { background: var(--panel4); border-color: var(--acc-hover); box-shadow: var(--glow); }
+.btn.mini { height: 21px; padding: 0 7px; font-size: var(--fz-xs); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-dim); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.btn.ghost:hover { background: var(--panel3); color: var(--text); box-shadow: none; }
+
+/* ── 表单：膜内凹槽 + 1px 亮边；圆角 16（按钮 12，两者别混）────────── */
+.input, .select, .textarea {
+  height: 26px; padding: 0 8px; color: var(--text);
+  background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r3);
+  font: var(--fz-s)/1 var(--sans); outline: none;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.textarea { height: auto; padding: 5px 6px; font-family: var(--mono); resize: vertical; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--acc-hover); box-shadow: var(--glow); }
+.input::placeholder { color: var(--text-dim2); }
+label.field { display: flex; flex-direction: column; gap: var(--sp1); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 键值对 / 表格 ───────────────────────────────────────────────── */
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--sp3); font-size: var(--fz-s); }
+.kv dt { color: var(--text-dim); }
+.kv dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.kv dd.num { color: var(--text); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--fz-s); }
+.tbl th, .tbl td { text-align: left; padding: 0 var(--sp2); height: 26px; border-bottom: 1px solid var(--line); }
+/* 行 hover 只提亮膜内底色：行高/padding/transform 一律不动，258 行才不抖 */
+.tbl td { transition: background-color var(--t-fast) var(--ease); }
+.tbl th { color: var(--text-dim); font-weight: 500; font-size: var(--fz-xs); letter-spacing: 0.08em; background: var(--panel2); }
+.tbl tr:hover td { background-color: var(--glass-hover); }
+.tbl td.num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl td.mono { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 面板 / 卡片：半透明白 .06 + 1px 冷灰边 + 0 8px 32px rgba(0,0,0,.3)
+      + inset 0 1px 0 rgba(255,255,255,.08)。四行数值全部来自令牌：
+      --panel / --line / --shadow-pop / --shadow-inset，改令牌即全站生效。 */
+.panel {
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen);   /* 顶部迎光斜向渐变：平面看出弧面 */
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 网格里的卡片才上浮（市场概览卡 / 服务面板）；整幅区块例如 quality 的检查项不动，
+   否则鼠标划过正文时整块跳动。hover 只加 background-color，保住迎光面。 */
+.grid2 > .panel, .grid3 > .panel {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.grid2 > .panel:hover, .grid3 > .panel:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.panel + .panel { margin-top: var(--sp3); }
+.panel-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim); letter-spacing: 0.12em;
+}
+.panel-h .spacer { flex: 1; }
+.panel-b { padding: var(--sp3); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp3); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp3); }
+@media (max-width: 1100px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── 空态与提示 ──────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp2);
+  padding: var(--sp4); border: 1px dashed var(--line2); border-radius: var(--r3);
+  color: var(--text-dim); font-size: var(--fz-s); background: var(--panel);
+}
+.empty b { color: var(--text); font-weight: 600; }
+.hint { font-size: var(--fz-xs); color: var(--text-dim2); }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── 标签页（详情区切换）：膜内凹槽 + 分段胶囊，不画底线（避免与凹槽边框叠成双线）── */
+.tabs {
+  display: flex; align-items: center; gap: 2px;
+  margin: var(--sp3) var(--sp4) 0; padding: 3px;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.tabs .tab {
+  height: 24px; padding: 0 var(--sp3); cursor: pointer; border: 0; border-radius: var(--r2);
+  background: transparent; color: var(--text-dim);
+  font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.tabs .tab:hover { color: var(--text); background-color: var(--panel2); }
+.tabs .tab[aria-selected="true"] {
+  color: var(--acc-hover); background-color: var(--panel3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ── 进度条（银条；只做状态显示）────────────────────────────────── */
+.bar { height: 4px; background: var(--panel4); border-radius: var(--r); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--acc); }
+.bar.ok > i { background: var(--ok); }
+.bar.warn > i { background: var(--warn); }
+.bar.bad > i { background: var(--bad); }
+
+/* ── 代码/日志块：.glass-well 口径（膜内凹槽，不铺毛玻璃）──────────────
+   长文本上再叠一层 backdrop-filter 是纯浪费帧率，凹槽靠 bg-deep + 内描边成像。 */
+.code {
+  margin: 0; padding: var(--sp2);
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line); border-radius: var(--r2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  font-family: var(--mono); font-size: var(--fz-xs);
+  color: var(--text-dim); overflow: auto; max-height: 220px; white-space: pre-wrap; word-break: break-all;
+}
+.code .k { color: var(--t-text); }
+.code .ok { color: var(--ok); }
+.code .bad { color: var(--bad-ink); }
+
+/* ── 窄屏（≤900px）：悬浮板全部取消外边距、贴边全宽，卡片不再上浮 ─────
+   blur 的降档在 tokens.css 的 @media (max-width:900px) 里（--glass-blur →
+   blur(12px)），骨架一律引用 var(--glass-blur)，所以这里不用再写一遍 blur。 */
+@media (max-width: 900px) {
+  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .body > .aside {
+    margin: 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none;
+    max-height: 42vh;   /* 侧栏变成顶部条带，内部照旧滚动 */
+  }
+  .topbar { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .main-h { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none; }
+  .main-b { padding: var(--sp3); }
+  .main-f { margin: 0; border-width: 1px 0 0; border-radius: 0; box-shadow: none; }
+  .statusbar { padding: 0 var(--sp3); }
+  .tabs { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .grid2, .grid3 { gap: var(--sp2); }
+  /* 卡片不再上浮：hover 只提亮，位移与冷光一起收掉 */
+  .grid2 > .panel:hover, .grid3 > .panel:hover {
+    transform: none;
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+}

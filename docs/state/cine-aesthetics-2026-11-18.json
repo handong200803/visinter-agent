@@ -1,0 +1,24 @@
+{
+  "schema": "ai-video-platform/cine-aesthetics",
+  "at": "2026-11-18T10:56:56Z",
+  "plan": "灰境「抖音氛围感高质量视频：内置审美与参数方案」",
+  "job": { "id": "job_mwm06tcy_234bc1", "state": "succeeded", "ms": 200447, "ratio": "9:16", "status": "success", "theme": "sunset_gold" },
+  "output": {
+    "file": "D:\\云盘\\02-视频\\成片\\cine-黄昏公路边女生背影，暖橙逆光发丝金边-2026-11-18T10-56-56.mp4",
+    "ffprobe_measured": { "video": "h264 1080x1920@48", "audio": "aac", "duration_s": 4.9375, "bytes": 3515117 },
+    "vertical_guarantee": "题材建议9:16 → t2i 720*1280 → i2v 竖屏 → post 1080×1920（实测真9:16）"
+  },
+  "aesthetics_applied": {
+    "theme": "sunset_gold", "grade": "filmic-sunset", "soundMood": "warm-nostalgic",
+    "bed": { "noise": "pink amplitude0.05", "lowpass": 450, "pad": 130 },
+    "light": "golden hour 逆光，轮廓光 rim light，暖金主光，阴影带冷青平衡",
+    "color": "暖金、微褪色、橙青对比，暗部偏青",
+    "params_requested": { "cfg": 5.8, "steps": 27, "res": "1080*1608", "hd": 0.4, "negStrength": 0.85, "sampler": "DPM++ 2M SDE Karras", "applicable": false },
+    "durationRequested": 12, "durationActualPerShot": 5, "duration_note": "i2v 模型上限5s/镜，12s 需多镜组接（M7）达成"
+  },
+  "visual_verdict": "竖屏9:16；发丝金边轮廓光成立；暖金高光+青冷阴影(橙青对比)；公路背景暖色光斑浅景深；自然皮肤纹理无塑料感；filmic 微褪色+细颗粒+轻暗角 → 符合日落金色人像配方",
+  "qa": { "decision": "REVIEW", "pass_with_review": true, "note": "视频结构项无抽帧URL→REVIEW人工（诚实口径）" },
+  "gates": { "build": "7/0", "selftest_all": "PASS 9 FAIL 0", "lint_ui": "7 pages green", "e2e": "52/0" },
+  "honest_boundaries": "内置高赞氛围片共性套路推到模型上限附近；突破不了模型档位(逐帧细节/真人皮肤/复杂动作/4K)；sampler/CFG/步数/HD为请求口径applicable:false；不本地跑超分插帧ML；审美主观可微调",
+  "provenance": { "ffprobe": "measured", "visual": "human-inspection", "params": "requested(applicable:false)", "qa": "measured+model-opinion" }
+}

@@ -1,0 +1,124 @@
+{
+  "schema": "ai-video-platform/quality@1",
+  "mode": "quality_first",
+  "modes": [
+    {
+      "id": "quality_first",
+      "label": "质量优先",
+      "default": true,
+      "note": "生成速度不做优化；分辨率/采样/帧率一律向画质与稳定倾斜"
+    }
+  ],
+  "resolution_tiers": [
+    {
+      "id": "720p",
+      "label": "1280×720",
+      "width": 1280,
+      "height": 720
+    },
+    {
+      "id": "864p",
+      "label": "1536×864",
+      "width": 1536,
+      "height": 864
+    },
+    {
+      "id": "1080p",
+      "label": "1920×1080",
+      "width": 1920,
+      "height": 1080
+    },
+    {
+      "id": "cinema_2176",
+      "label": "2176×912",
+      "width": 2176,
+      "height": 912
+    }
+  ],
+  "sampling": {
+    "sampler": "dpmpp_2m",
+    "sampler_label": "DPM++ 2M Karras",
+    "scheduler": "karras",
+    "steps": [
+      16,
+      25
+    ],
+    "cfg": [
+      7,
+      10
+    ],
+    "denoise": [
+      0.55,
+      0.75
+    ],
+    "note": "区间为硬约束：低于下限视为降质，平台会夹回下限并记录 adjusted"
+  },
+  "fps": {
+    "native": [
+      24,
+      30
+    ],
+    "native_default": 30,
+    "output": [
+      24,
+      30,
+      60
+    ],
+    "output_default": 60,
+    "interp_target": 60,
+    "note": "原生只出 24/30fps；60fps 由后处理插帧得到，禁止模型原生输出 60fps"
+  },
+  "scoring": {
+    "weights": {
+      "Sface": 0.35,
+      "Sflow": 0.35,
+      "Sstyle": 0.2,
+      "Sbad": 0.1
+    },
+    "speed_terms": [],
+    "note": "目标函数不含任何速度/耗时项；优化目标只有人脸稳定、光流稳定、风格相似、崩坏惩罚"
+  },
+  "vram_model": {
+    "base_mib": 5200,
+    "mib_per_megapixel": 8000,
+    "note": "由本机实测反推：480×512(0.246MP) 峰值 7223MiB ≈ 5200 + 0.246×8000；仅用于准入判断，不作为性能承诺"
+  },
+  "weights_policy": "use_existing_and_report_precision",
+  "custom_resolution": {
+    "explicit_selection": true,
+    "width": 640,
+    "height": 384,
+    "note": "由用户显式选择；不自动降低档位或采样步数"
+  },
+  "forbid": [
+    "auto_downscale",
+    "speed_mode",
+    "distill",
+    "automatic_quantization",
+    "lowres_preview",
+    "auto_step_reduce"
+  ],
+  "engine_overrides": {
+    "minimax_h3": {
+      "native_fps": 24,
+      "note": "H3 固定原生 24fps；官方采样路径 euler/simple、CFG 5–7。通用 DPM++ 2M Karras + CFG 7 会让 H3 输出整片噪声（2026-11-20 真机实测）。允许使用已安装量化权重并如实标注，不自动量化、不启用 turbo。",
+      "sampler": "euler",
+      "scheduler": "simple",
+      "cfg": [
+        4,
+        7
+      ],
+      "cfg_note": "下限放到 4：I2V 首帧驱动下 CFG 越高越容易\"加戏\"（文字/贴片幻觉），实测需要 4 档对照",
+      "turbo_allowed": true,
+      "turbo_steps": [
+        4,
+        8
+      ],
+      "turbo_cfg": [
+        1.0,
+        1.6
+      ],
+      "turbo_note": "turbo LoRA 是为 4–8 步蒸馏的权重：走 turbo 时步数锁 4–8、CFG 1.0–1.6；走无损路径时 16–25 步。两条都是合规路径，任务记录里标 provenance（turbo / non-turbo）"
+    }
+  }
+}

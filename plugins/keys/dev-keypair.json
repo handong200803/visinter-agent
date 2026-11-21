@@ -1,0 +1,8 @@
+{
+  "note": "本地开发/示例签名用的密钥对。生产签名密钥必须离线保存，禁止进仓库。",
+  "key_id": "avp-dev-local",
+  "alg": "ed25519",
+  "public_spki_base64": "MCowBQYDK2VwAyEAgQfDzWwmGPqAdhjMt+alvI5K5QpG/irq7PqADZn3XJE=",
+  "private_pkcs8_base64": "MC4CAQAwBQYDK2VwBCIEIHzlW466dSeM6sgcJ75l+1XdftjYDqHunFY7ZLVrDQrL",
+  "created": "2026-11-18T12:36:51.145Z"
+}

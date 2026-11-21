@@ -1,0 +1,182 @@
+{
+  "schema": "ai-video-platform/reverse.capabilities",
+  "version": "0.1.0",
+  "updated": "2026-11-18",
+  "note": "两个逆向能力的可执行能力包（Muse 氛围感 / 抖音网红脸）。本文件是『配方』的唯一真源：风格词不重复写，一律 derived_from prompt/styles.json，只补充『怎么打到某个具体模型上』的映射、参数矩阵、失败模式与验收断言。改风格改 styles.json，改接线改这里或 providers/seedream.js。",
+  "derived_from": {
+    "styles": "prompt/styles.json",
+    "muse_presets": "spec/muse.presets.json",
+    "docs": "docs/15-muse-seedream-capability.md"
+  },
+  "target": {
+    "provider": "seedream",
+    "channel": "std",
+    "base": "https://ark.cn-beijing.volces.com/api/v3",
+    "path": "/images/generations",
+    "method": "POST",
+    "auth": "Authorization: Bearer $ARK_API_KEY",
+    "models": {
+      "pro": "doubao-seedream-5-0-pro-260628",
+      "flash": "doubao-seedream-5-0-flash-260915"
+    },
+    "default_model": "doubao-seedream-5-0-pro-260628",
+    "capabilities": {
+      "t2i": true,
+      "edit_bbox_point": true,
+      "multi_ref_max": 10,
+      "layer_decomposition": true,
+      "transparent_bg": "edit_only && refs==1 && input_has_alpha && output_format!=jpeg"
+    },
+    "unsupported_params": [
+      "negative_prompt",
+      "sequential_image_generation",
+      "stream",
+      "tools/web_search"
+    ],
+    "param_notes": {
+      "negative_prompt": "5.0 系没有该字段（4.x 也没有）。负面集只能软化成『避免…』并入 prompt，或交给后处理。这是本能力包与 SD/Comfy 配方最大的不兼容点，不许假装有。",
+      "size": "只认 1K/1.5K/2K 档位或显式 WxH：总像素 ∈ [921600, 4624220]，宽高比 ∈ [1/16, 16]。",
+      "url": "response_format=url 返回的链接 24h 过期，必须立刻落盘（provider 已默认落盘 + 记账）。",
+      "optimize_prompt_options": "mode=standard|fast。人物骨相类改写用 standard；批量草稿用 fast。"
+    },
+    "pricing_cny_per_image": {
+      "pixels_le_2610000": 0.3,
+      "pixels_gt_2610000": 0.6,
+      "input_image_from_2nd": 0.02,
+      "audit_failure": 0
+    }
+  },
+  "tiers": [
+    { "tier": "1K", "ratio": "9:16", "size": "800x1424", "pixels": 1139200, "cost_cny": 0.3, "use_for": "骨相/构图试错：便宜，但面部细节不足以评皮相" },
+    { "tier": "1.5K", "ratio": "9:16", "size": "1152x2048", "pixels": 2359296, "cost_cny": 0.3, "use_for": "竖屏定稿首选：高度过 1080p，仍在 0.30 档内，等于半价买到 2K 可用性" },
+    { "tier": "2K", "ratio": "9:16", "size": "1584x2816", "pixels": 4460544, "cost_cny": 0.6, "use_for": "大屏/封面/需要二次裁切时；日常竖屏不必上，像素翻倍不等于观感翻倍" },
+    { "tier": "1.5K", "ratio": "16:9", "size": "2048x1152", "pixels": 2359296, "cost_cny": 0.3, "use_for": "横屏分镜板/关键帧" },
+    { "tier": "2K", "ratio": "1:1", "size": "2048x2048", "pixels": 4194304, "cost_cny": 0.6, "use_for": "方正封面、专辑图" }
+  ],
+  "prompt_policy": {
+    "order": [
+      "风格锚点（风格卡 card.prompt 的前 12 字，固定起手，避免模型把主体当唯一重点）",
+      "主体与骨相（如果角色设定里有脸型/肤质，必须被 overrides 接管，否则默认『鹅蛋脸』会把本风格拉回去）",
+      "光（单一方向 + 介质 + 暗部）",
+      "镜头位（焦段/角度/景别）",
+      "质感（颗粒/高光滚降/锐度）",
+      "画幅（竖构图/横构图，与 payload.size 一致，双保险）",
+      "软负面（『避免 A、B、C』，只留 4-6 条最有效，多了会稀释主体）"
+    ],
+    "zh_char_soft_limit": 180,
+    "zh_char_limit": 300,
+    "note": "中文>180 字后模型对后半段注意力骤降（软提醒）；官方建议 ≤300 字（硬上限，provider 会按槽位权重裁剪到达标）。软负面固定放在最后一句，权重最低也最不影响主体。"
+  },
+  "abilities": [
+    {
+      "id": "muse-atmosphere",
+      "name": "Muse氛围感",
+      "reverse_mode": "behavior-reverse",
+      "preconditions": {
+        "substitutions": [],
+        "note": "Muse 不依赖脸型，不需要改主体；但 ch.subject 里若手写了画风词（厚涂/古风插画），编译层会原样保留 —— 风格 overrides 只接管 ch.style/ch.palette/sb.genre 三个键，手写画风词仍会污染画面。"
+      },
+      "reverse_evidence": [
+        "本机 Muse 九段式提示词实录：江山人间 36 镜 / 4min 版 50 镜（产出反推）",
+        "APK 解包 1028 entries / 5 个 dex 的 1036 条 prompt/style 串：无风格词表，配方服务端下发 → APK 路线已证伪，不再投入"
+      ],
+      "invariants": [
+        "画内光：光源必须出现在画面逻辑里，单一方向可辨（窗/霓虹/车灯/火堆）",
+        "介质：薄雾/浮尘/湿地面/体积光——空气被看见，而不是加一层 Gray 滤镜",
+        "暗部抬起：shadow lift 保留细节，禁止死黑",
+        "光比：主光暖金 vs 环境青蓝，冷暖对撞才有电影感",
+        "镜头：35mm 人眼视角 + 浅景深分层虚化 + 轻颗粒 + 高光柔滚降",
+        "运镜：每镜只给一条路径（默认固定机位），多了动作就散"
+      ],
+      "failure_modes": [
+        { "symptom": "发灰塑料片", "cause": "只加雾/降饱和，缺画内光源与暗部抬起", "fix": "先定光向，再加介质，最后抬暗部；三步顺序不能反" },
+        { "symptom": "厚涂古风插画", "cause": "默认 ch.style=厚涂、ch.palette=东方暖调 没被 overrides 接管", "fix": "风格卡的 overrides 必须生效（本包已声明 ch.style/ch.palette/sb.genre）" },
+        { "symptom": "雾面一片脏", "cause": "雾浓度过高 + 没有轮廓光勾边", "fix": "雾只做背景分层，主体边缘必须有 rim light" },
+        { "symptom": "画面像手机夜景", "cause": "高光溢出未滚降 + 噪点被当颗粒", "fix": "加 halation、降噪后加细颗粒，禁用『高 ISO 噪点』" }
+      ],
+      "stage_prompt": {
+        "storyboard": "用 35mm 视角写分镜：每镜一句光、一句动作；不写形容词堆叠",
+        "keyframe": "暖金主光与青蓝天光对撞，侧逆光勾出发丝与肩线轮廓，画内光源单向打光，薄雾浮尘，湿地面柔反射，浅景深前后景分层，轻胶片颗粒，高光柔和滚降，暗部抬起",
+        "motion": "缓慢前推单一路径，落幅极稳；发丝与浮尘微动，不摇不晃",
+        "look": "低饱和高对比电影调色，高光 halation，轻暗角，肤色自然通透"
+      },
+      "structured_delta_ref": "prompt/styles.json#muse-atmosphere",
+      "seedream_recipe": {
+        "tier": "1.5K",
+        "ratio": "9:16",
+        "model": "doubao-seedream-5-0-pro-260628",
+        "optimize_prompt_options": { "mode": "standard" },
+        "soft_negative": "避免：平光无方向、死黑暗部、塑料皮肤、过曝死白、文字水印、厚涂插画感",
+        "extra_note": "5.0 对『电影感/Cinematic』这类词响应平淡，靠光向+介质+暗部三件套，不靠形容词。"
+      },
+      "yield_gate": {
+        "must_contain_any": [
+          ["画内光源", "光源", "窗光", "车灯", "火"],
+          ["轮廓光", "侧逆光", "rim"],
+          ["暗部", "shadow"],
+          ["颗粒", "grain"],
+          ["35mm", "50mm", "浅景深"]
+        ],
+        "must_not_contain": ["网红", "纯欲", "磨皮", "厚涂", "古风"]
+      }
+    },
+    {
+      "id": "douyin-face",
+      "name": "抖音网红脸",
+      "reverse_mode": "label-decomposition",
+      "preconditions": {
+        "substitutions": [
+          { "key": "ch.subject", "find": "，鹅蛋脸", "replace": "" }
+        ],
+        "note": "默认主体整句（ch.subject）写死『一个24岁的中国女孩，鹅蛋脸…』，overrides 只能跳过 ch.face_shape 这个键，跳不掉整句里的字面脸型。provider 编译前把主体句里的『，鹅蛋脸』整段删掉，让风格 delta 独占骨相描述——若只换成『瓜子脸』，提示词里会出现两次瓜子脸，模型反而会加重这个特征。"
+      },
+      "reverse_evidence": [
+        "Seedream 5.0 pro 对『网红脸/纯欲/清冷』这类社会标签词的响应是美颜泛化 → 大眼塑料娃",
+        "该词在训练语料里绑的是修图 App 的液化模板，不是可判定的几何",
+        "结论：把标签拆成 骨相几何 + 皮相光点 + 镜头位 三组，全部可判定、可复现"
+      ],
+      "invariants": [
+        "骨相：瓜子脸、下颌线收窄、尖下巴、颧骨略宽于下颌、山根起点低、鼻梁窄直、眼大卧蚕饱满、人中短唇峰清晰",
+        "皮相：保留毛孔 + 颧骨与鼻尖水光高光点（两条必须同时出现：只写水光=油脸，只写毛孔=不水润）",
+        "镜头位：85–105mm 中近景、正面偏侧 10–15°、机位高于视线 5–8°、焦点在眼睛 + 双眼眼神光",
+        "冲突处置：默认主体模板写『鹅蛋脸』，与本风格瓜子脸骨相直接冲突 → overrides 接管 ch.face_shape/ch.skin"
+      ],
+      "failure_modes": [
+        { "symptom": "塑料大眼娃娃", "cause": "提示词里直接出现『网红脸/纯欲/美颜』", "fix": "标签只留在卡片名与别名，进 payload 的一律是几何描述；平台黑名单已拦这些词" },
+        { "symptom": "证件照大头", "cause": "缺镜头位那组（没写焦段/角度/景别）", "fix": "85-105mm + 偏侧 10-15° + 中近景 三件齐" },
+        { "symptom": "油脸", "cause": "只写水光，没写保留毛孔", "fix": "两条同权重 1.2 并存" },
+        { "symptom": "五官漂移（连续帧不一致）", "cause": "每帧重新文生图，没有参考图", "fix": "第 2 帧起用 image 参考（首张免费，第 2 张起 0.02/张），或先出定妆照再 i2v" },
+        { "symptom": "古装/厚涂混入", "cause": "默认 palette/风格未接管", "fix": "风格卡 overrides 生效（ch.style/ch.palette/sb.genre）" }
+      ],
+      "stage_prompt": {
+        "character": "写实人像摄影，瓜子脸下颌线收窄至尖下巴，山根起点低鼻梁窄直，眼睛偏大卧蚕饱满，人中短唇峰清晰，皮肤保留毛孔颧骨与鼻尖有水光高光点，柔光箱均匀面光低光比，85mm 正面偏侧十五度，机位略高于视线，暖肤冷背景低对比",
+        "keyframe": "同上，加竖构图人像与浅景深；背景只留冷暖分离的两个色块，不加剧情元素",
+        "motion": "极慢推近或固定机位，只允许微表情与发丝，不做转头/走路",
+        "look": "低对比柔调，肤色通透，不磨皮不锐化过度"
+      },
+      "structured_delta_ref": "prompt/styles.json#douyin-face",
+      "seedream_recipe": {
+        "tier": "1.5K",
+        "ratio": "9:16",
+        "model": "doubao-seedream-5-0-pro-260628",
+        "optimize_prompt_options": { "mode": "standard" },
+        "soft_negative": "避免：塑料皮肤、过度磨皮、液化变形、过曝死白、卡通大眼、文字水印",
+        "consistency_plan": "定妆照 1 张（2K）→ 后续镜头作为 image 参考，最多 10 张；参考图越多越稳，但每张多 0.02 元"
+      },
+      "yield_gate": {
+        "must_contain_any": [
+          ["下颌", "瓜子脸", "V 形", "V-shaped"],
+          ["毛孔", "pores"],
+          ["水光", "高光点", "dewy"],
+          ["85", "105", "mm"]
+        ],
+        "must_not_contain": ["网红", "纯欲", "美颜", "磨皮", "大眼娃娃"]
+      }
+    }
+  ],
+  "handoff": {
+    "cost_per_shot": "竖屏 1.5K = 0.30 元/张（含软负面，不含参考图）；2K = 0.60。批量 50 镜建议 1.5K，全片 ≈15 元。",
+    "consistency_rule": "同一角色连续镜头一律『定妆照 + 参考图』，不要靠『同一个提示词』赌一致性——5.0 每次采样独立。",
+    "audit_rule": "内容审核失败不计费，但会连挂；写实人像避免敏感姿势与未成年感描述，否则每次都被拦。"
+  }
+}

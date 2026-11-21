@@ -1,0 +1,30 @@
+{
+  "schema": "ai-video-platform/cine-engineering-upgrade",
+  "at": "2026-11-18T08:29:31Z",
+  "plan": "灰境 AI 平台工程提级方案（M1~M10，不换模型抬上限）· 本轮=§7第一步单镜闭环+第三步质感/声音",
+  "implemented": ["M1 分镜表(单镜行)", "M6 QA双闸(像素标定+审美VL)", "M8 filmic LUT+halation+deflicker+gate weave", "M9 合成环境声混流", "M10 报告/作品库增 shots/qa/gradePreset/audio", "M3/M5 复用既有8候选+种子"],
+  "deferred": ["M2 资产参考库", "M4 首尾帧一致性组装", "M7 多镜头组接", "M10 IndexedDB五表", "L1 adapter统一接口重构"],
+  "qa_calibration": { "source": "D:/缓存/avp/qa-calibration-2026-11-18.json", "samples": 4, "frames": 948, "baseline": { "sharpMin": 0.9, "flickerMeanMax": 0.3, "flickerHardMax": 2.0, "flowMeanMax": 0.2, "flowHardMax": 0.32, "badFrameRatioMax": 0.02 }, "provenance": "calibrated" },
+  "real_run": {
+    "id": "job_mwluxts9_3b2aa9", "prompt": "轮渡上年轻女生安静侧脸，傍晚海边阳光", "styleId": "cinema",
+    "state": "succeeded", "ms": 173663, "status": "success",
+    "qa": { "pixel": { "sharpMean": 1, "flickerMean": 0.211, "flickerMax": 0.98, "flowMean": 0.062, "flowMax": 0.185, "badFrames": 0, "pass": true }, "aesthetic": { "total": 9.6, "pass": true, "source": "model-opinion" }, "pass": true },
+    "audio": { "source": "synthetic-ambient", "native": false, "bed": { "noise": "pink", "lowpass": 500, "pad": 110 }, "provenance": "measured" },
+    "gradePreset": { "id": "filmic-cinema", "acesApprox": true, "exposureMatched": 0.526, "halation": { "gblur": 10, "screen": 0.1 }, "deflicker": { "size": 5, "mode": "am" }, "weave": 0.002, "shake": 0.005 },
+    "post_order": ["interpolate48", "upscale-lanczos", "filmic-lut", "halation", "deflicker", "grain8", "vignette1.5+lift", "shake0.5+weave0.2", "encode-h264-8M"],
+    "output": "D:\\云盘\\02-视频\\成片\\cine-轮渡上年轻女生安静侧脸，傍晚海边阳光-2026-11-18T08-29-31.mp4",
+    "ffprobe_measured": { "video": "h264 1080x1608@48", "audio": "aac" },
+    "visual_verdict": "filmic tonemap 暖高光/青阴影、rim light halation 光晕、轻暗角、细颗粒；皮肤纹理与中国面孔保留",
+    "warnings": ["CINE_FPS_DEVIATION"]
+  },
+  "ab_vs_old_pipeline": {
+    "old_case1": { "flickerMean": 0.253, "flickerMax": 1.53, "flowMean": 0.133, "flowMax": 0.32, "audio": "none" },
+    "new_run": { "flickerMean": 0.211, "flickerMax": 0.98, "flowMean": 0.062, "flowMax": 0.185, "audio": "synthetic-ambient" },
+    "delta": { "flickerMean": "-16.6%", "flickerMax": "-36%", "flowMean": "-53%", "flowMax": "-42%" },
+    "note": "deflicker+filmic 使闪烁/运动残差实测下降；新增音轨；n=1 对照，非统计显著"
+  },
+  "gates": { "build": "7/0", "selftest_all": "PASS 9 FAIL 0 (server 135/0)", "lint_ui": "7 pages green", "e2e": "52/0" },
+  "local_zero_billing_stage_test": { "post_bytes": 3890001, "audio_bytes": 3967969, "streams": "video+audio", "qa_bad": 0, "exposure": 0.501 },
+  "honest_boundaries": "工程抬同一模型上限；消不掉复杂运动/逐帧精度/长镜一致性/原生音画同步/硬规格；本地 RIFE/ESRGAN 禁；synthetic 音频非原生音画同步",
+  "provenance": { "ffprobe": "measured", "qa_metrics": "measured(quality/frames)", "aesthetic": "model-opinion", "visual": "human-inspection", "ab_delta": "measured n=1" }
+}

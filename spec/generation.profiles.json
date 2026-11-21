@@ -1,0 +1,199 @@
+{
+  "schema": "ai-video-platform/generation.profiles",
+  "version": "0.1.0",
+  "updated": "2026-11-17",
+  "provenance": {
+    "note": "生成档位是「预设模型 + 尺寸 + 时长」的可执行组合。size/duration 白名单来自各 provider 官方文档的取值；本文件不写价格数字（避免编价），成本以控制台账单为准。｜2026-11-18：provider 全部改为本地 comfy，付费云端模型已删。",
+    "levels": [
+      "doc",
+      "measured",
+      "estimate"
+    ]
+  },
+  "default": "standard",
+  "profiles": [
+    {
+      "id": "draft",
+      "label": "草稿 · 480p 5s",
+      "kind": "t2v",
+      "provider": "comfy",
+      "model": "wan21_t2v",
+      "size": "832*480",
+      "width": 832,
+      "height": 480,
+      "duration": 5,
+      "fps": 24,
+      "aspect": "16:9",
+      "note": "最便宜的一档，用来试提示词；分辨率低，别拿去成片。｜2026-11-18：原 DashScope 云端档位已改为本地 ComfyUI 档位（付费视频模型全部删除）",
+      "provenance": "doc",
+      "paid": false
+    },
+    {
+      "id": "standard",
+      "label": "标准 · 720p 5s（16:9）",
+      "kind": "t2v",
+      "provider": "comfy",
+      "model": "wan21_t2v",
+      "size": "1280*720",
+      "width": 1280,
+      "height": 720,
+      "duration": 5,
+      "fps": 24,
+      "aspect": "16:9",
+      "note": "项目默认档：能直接进成片流水线。｜2026-11-18：原 DashScope 云端档位已改为本地 ComfyUI 档位（付费视频模型全部删除）",
+      "provenance": "doc",
+      "paid": false
+    },
+    {
+      "id": "cinematic",
+      "label": "电影级 · 1080p 5s（16:9）",
+      "kind": "t2v",
+      "provider": "comfy",
+      "model": "wan21_t2v",
+      "size": "1920*1080",
+      "width": 1920,
+      "height": 1080,
+      "duration": 5,
+      "fps": 24,
+      "aspect": "16:9",
+      "provenance": "doc",
+      "paid": false,
+      "note": "2026-11-18：原 DashScope 云端档位已改为本地 ComfyUI 档位（付费视频模型全部删除）"
+    },
+    {
+      "id": "vertical",
+      "label": "竖屏 · 720p 5s（9:16）",
+      "kind": "t2v",
+      "provider": "comfy",
+      "model": "wan21_t2v",
+      "size": "720*1280",
+      "width": 720,
+      "height": 1280,
+      "duration": 5,
+      "fps": 24,
+      "aspect": "9:16",
+      "note": "抖音/视频号/小红书直发比例。｜2026-11-18：原 DashScope 云端档位已改为本地 ComfyUI 档位（付费视频模型全部删除）",
+      "provenance": "doc",
+      "paid": false
+    },
+    {
+      "id": "vertical-hd",
+      "label": "竖屏高清 · 1080p 5s（9:16）",
+      "kind": "t2v",
+      "provider": "comfy",
+      "model": "wan21_t2v",
+      "size": "1080*1920",
+      "width": 1080,
+      "height": 1920,
+      "duration": 5,
+      "fps": 24,
+      "aspect": "9:16",
+      "provenance": "doc",
+      "paid": false,
+      "note": "2026-11-18：原 DashScope 云端档位已改为本地 ComfyUI 档位（付费视频模型全部删除）"
+    },
+    {
+      "id": "square",
+      "label": "方形 · 960p 5s（1:1）",
+      "kind": "t2v",
+      "provider": "comfy",
+      "model": "wan21_t2v",
+      "size": "960*960",
+      "width": 960,
+      "height": 960,
+      "duration": 5,
+      "fps": 24,
+      "aspect": "1:1",
+      "provenance": "doc",
+      "paid": false,
+      "note": "2026-11-18：原 DashScope 云端档位已改为本地 ComfyUI 档位（付费视频模型全部删除）"
+    },
+    {
+      "id": "i2v-standard",
+      "label": "图生视频 · 720p 5s（9:16）",
+      "kind": "i2v",
+      "provider": "comfy",
+      "model": "wan22_i2v_local",
+      "size": "720*1280",
+      "width": 720,
+      "height": 1280,
+      "duration": 5,
+      "fps": 24,
+      "aspect": "9:16",
+      "note": "需要一张公网可读的图片 URL（http/https），或走 provider 的临时上传（AVP 自 v0.2 支持）。｜2026-11-18：原 DashScope 云端档位已改为本地 ComfyUI 档位（付费视频模型全部删除）",
+      "provenance": "doc",
+      "paid": false
+    }
+  ],
+  "providers": {
+    "dashscope": {
+      "label": "阿里云百炼 · 通义万相（云端，按量计费）",
+      "base": "https://dashscope.aliyuncs.com",
+      "key_env": [
+        "DASHSCOPE_API_KEY",
+        "AVP_DASHSCOPE_KEY"
+      ],
+      "endpoints": {
+        "t2v": "/api/v1/services/aigc/video-generation/video-synthesis",
+        "task": "/api/v1/tasks/{task_id}"
+      },
+      "models": {
+        "wan2.2-t2v-plus": {
+          "kind": "t2v",
+          "durations": [
+            5
+          ],
+          "sizes": [
+            "832*480",
+            "480*832",
+            "624*624",
+            "1280*720",
+            "720*1280",
+            "960*960",
+            "1920*1080",
+            "1080*1920",
+            "1440*1440"
+          ]
+        },
+        "wan2.2-i2v-plus": {
+          "kind": "i2v",
+          "durations": [
+            5
+          ],
+          "sizes": [
+            "832*480",
+            "1280*720",
+            "720*1280",
+            "1920*1080",
+            "1080*1920"
+          ]
+        },
+        "wanx2.1-t2v-turbo": {
+          "kind": "t2v",
+          "durations": [
+            5
+          ],
+          "sizes": [
+            "832*480",
+            "480*832",
+            "624*624",
+            "1280*720",
+            "720*1280",
+            "960*960"
+          ]
+        }
+      }
+    },
+    "comfy": {
+      "label": "本地 ComfyUI（RTX 5060 8G，需已装模型）",
+      "base_env": [
+        "COMFY_URL"
+      ],
+      "note": "把注册表里的 preset 值编译成本地工作流；模型名要与 models.catalog.json 的 keyframe/i2v 条目一致。"
+    },
+    "mock": {
+      "label": "演示模式（不产生真实画面，仅跑通链路）",
+      "note": "只能在 AVP_PROVIDER=mock 或没有任何可用 provider 时显式启用；任务会标 mock:true。"
+    }
+  }
+}

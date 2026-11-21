@@ -1,0 +1,236 @@
+{
+  "schema": "ai-video-platform/template",
+  "format": 1,
+  "id": "doc-interview-real",
+  "name": "写实纪录访谈",
+  "version": "2.0.0",
+  "author": "云盘工坊",
+  "license": "paid",
+  "registry_version": "0.1.0",
+  "created": "2026-11-16T09:30:00.000Z",
+  "tags": [
+    "纪录片",
+    "访谈",
+    "写实",
+    "口型",
+    "中景"
+  ],
+  "stage_focus": [
+    "voice",
+    "motion",
+    "look"
+  ],
+  "cover_params": [
+    "vo.closeup_only",
+    "mo.mask_area",
+    "lk.grain",
+    "kf.key_light_dir"
+  ],
+  "values": {
+    "ch.age": 45,
+    "ch.face_shape": "方",
+    "ch.palette": "莫兰迪",
+    "ch.subject": "45岁男性老木匠，短发夹白，深蓝工装外套，手上有锯末，坐在工作台前",
+    "ex.bitrate": 10,
+    "ex.codec": "H.265",
+    "ex.episode_duration": 90,
+    "ex.intro": false,
+    "ex.outro": false,
+    "kf.cfg": 4.2,
+    "kf.color_temp": 5600,
+    "kf.composition": "黄金分割",
+    "kf.dof": 48,
+    "kf.grain": 8,
+    "kf.key_light_dir": "侧光",
+    "kf.light_ratio": 2.2,
+    "kf.steps": 26,
+    "kf.tonemap": "reinhard",
+    "kf.usm_amount": 0.28,
+    "lk.contrast": 104,
+    "lk.grain": 24,
+    "lk.highlight_rolloff": 30,
+    "lk.lut": "胶片",
+    "lk.lut_strength": 48,
+    "lk.saturation": 96,
+    "lk.temperature": 4,
+    "lk.vignette": 18,
+    "mo.breath_amp": 26,
+    "mo.cloth_sway": 14,
+    "mo.flow_stabilize": 68,
+    "mo.hair_sway": 18,
+    "mo.i2v_res": "576p",
+    "mo.i2v_strength": 0.32,
+    "mo.mask_area": 18,
+    "mo.mode": "局部i2v",
+    "sb.character_count": 2,
+    "sb.closeup_ratio": 30,
+    "sb.conflict_intensity": 35,
+    "sb.duration": 90,
+    "sb.emotion_curve": 55,
+    "sb.genre": "都市",
+    "sb.grid_count": 30,
+    "sb.line_density": 5.4,
+    "sb.llm_temperature": 0.5,
+    "sb.medium_ratio": 50,
+    "sb.narration_ratio": 58,
+    "sb.rhythm": "慢",
+    "sb.subtitle_lines": 3,
+    "vo.bgm_genre": "钢琴",
+    "vo.bgm_strength": 18,
+    "vo.closeup_only": false,
+    "vo.compression": 4,
+    "vo.ducking_db": -18,
+    "vo.emotion": "平静",
+    "vo.loudness": "-23 LUFS",
+    "vo.pause_insert": 260,
+    "vo.speed": 0.95,
+    "vo.voice_id": "旁白男"
+  },
+  "checksum": "djb2:de8fd408",
+  "lineage": {
+    "derived_from": [],
+    "parent_checksum": null,
+    "origin": "manual"
+  },
+  "compat": {
+    "min_platform": "0.1.0",
+    "max_tested": "0.1.0",
+    "platform": "ai-video-platform"
+  },
+  "pricing": {
+    "mode": "paid",
+    "price_cny": 36
+  },
+  "signature": {
+    "algo": "HMAC-SHA256",
+    "key_id": "bcbe68321eca99c8",
+    "value": "014945bf61fc925b79071e794b5c005a5977eb8ec293a2f848631b672b7ab6b7",
+    "signed_at": "2026-11-16T09:30:00.000Z",
+    "issuer": "market/build_samples.js",
+    "scope": "payload = 模板对象去掉 signature 字段后按 key 递归排序的 JSON"
+  },
+  "estimate_meta": {
+    "device": "T2",
+    "peak_mib": 6114,
+    "usable_mib": 14200,
+    "ratio": 0.431,
+    "state": "ok",
+    "dominant": "keyframe",
+    "shot_sec": 170,
+    "episode_sec": 5144,
+    "quality": 80,
+    "cost_episode_yuan": 0.2229
+  },
+  "workflow_ref": {
+    "kind": "inline",
+    "format": "comfyui-api",
+    "path": "workflow",
+    "synthetic": true,
+    "registry_version": "0.1.0",
+    "nodes": 4,
+    "params": 6,
+    "targets": [
+      "CLIP Text Encode",
+      "Character Builder",
+      "EmptyLatentImage",
+      "KSampler"
+    ],
+    "bindings": [
+      {
+        "key": "ch.subject",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.face_detail",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.age",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "age"
+      },
+      {
+        "key": "ch.face_shape",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "face_shape"
+      },
+      {
+        "key": "kf.resolution",
+        "stage": "keyframe",
+        "node": "3",
+        "target": "EmptyLatentImage",
+        "widget": "width"
+      },
+      {
+        "key": "kf.steps",
+        "stage": "keyframe",
+        "node": "4",
+        "target": "KSampler",
+        "widget": "steps"
+      }
+    ]
+  },
+  "workflow": {
+    "1": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "45岁男性老木匠，短发夹白，深蓝工装外套，手上有锯末，坐在工作台前"
+      },
+      "_meta": {
+        "title": "CLIP Text Encode",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "2": {
+      "class_type": "CharacterBuilder",
+      "inputs": {
+        "age": 45,
+        "face_shape": "方"
+      },
+      "_meta": {
+        "title": "Character Builder",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "3": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 1536
+      },
+      "_meta": {
+        "title": "EmptyLatentImage",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "4": {
+      "class_type": "KSampler",
+      "inputs": {
+        "steps": 26
+      },
+      "_meta": {
+        "title": "KSampler",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    }
+  },
+  "build": {
+    "engine": "core/engine.js",
+    "preset_schema": "ai-video-platform/preset",
+    "preset_format": 1,
+    "packer": "market/pack.js@1"
+  }
+}

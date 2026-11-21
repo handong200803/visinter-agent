@@ -1,0 +1,2984 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>质检 · VisInter-Agent v0.1</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   tokens.css —— 平台唯一视觉令牌源
+   ───────────────────────────────────────────────────────────────────────
+   定位：「暗黑玻璃拟态 · 冷银基调」。深黑 #08080a 上悬浮两团冷色光晕
+   （左上蓝灰、右下紫灰），所有卡片/面板/输入/弹窗是一层半透明白玻璃：
+   光从玻璃后面透出来，边缘靠 1px 亮线勾勒，hover 上浮并泛一圈冷光。
+
+   为什么要有这个文件：
+     七套界面此前各持一份配色。令牌集中到一处之后，全平台只有一种视觉人格，
+     并且「像不像暗黑玻璃」这件事变成了可被 lint 校验的硬指标（tools/lint_ui.mjs）。
+
+   四条硬规矩（违反即 lint 失败）：
+     1. 玻璃面统一：背景 rgba(255,255,255,.06)、边框 rgba(255,255,255,.12)、
+        圆角 16px、blur(20px) saturate(1.4)、黑阴影 + 顶部 1px 内亮线。
+     2. 冷银唯一强调：--acc #C8CDD4，高亮 #EEF1F5。光晕只许冷色
+        （蓝灰/紫灰/银，通道差 ≤ 64 且蓝≥红），禁止暖色荧光与 AI 紫。
+     3. hover 三件套：背景提亮到 .10、边框提亮到 .25、上浮 3px + 冷光
+        0 0 20px rgba(180,200,230,.15)。循环动画只给铸造粒子/烟雾加载器。
+     4. 碑铭字体保留：平台名与卡片标题走 --serif 宽字距；正文 --sans
+        小字号松行高；数字一律 tabular-nums。颗粒层保留（胶片感）。
+
+   使用方式：
+     单文件产物要求双击 file:// 可用 → 不允许运行时 @import。
+     各 HTML 的 :root 必须**逐字复制**本文件的变量块；lint 会比对变量名与取值。
+     通用玻璃类 .glass-card / .glass-btn / .glass-input 在本文件底部，
+     组件直接挂类，不要各写一份玻璃配方。移动端 blur 自动降到 12px。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 碑铭衬线：Cinzel（SIL OFL，本地 woff2，见 assets/fonts/LICENSE-Cinzel.txt）。
+   中文无 Cinzel 字形，自然落到宋体/思源宋体——碑铭感靠字距与字重，不靠假字体。 */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-700.woff2") format("woff2");
+}
+
+:root {
+  /* ── 玻璃明度阶梯：半透明白膜叠在深黑上，冷光晕从后面透出来 ──────
+     越靠近内容越亮。--panel 是标准玻璃面，--panel2 是膜内凹槽。 */
+  --bg:        #08080a;   /* 应用底（双光晕的落点） */
+  --bg-deep:   #0a0a0d;   /* 画布凹槽（节点图、时间轴）：比玻璃面更暗 */
+  --panel:     rgba(255, 255, 255, 0.06);   /* 标准玻璃面 */
+  --panel2:    rgba(255, 255, 255, 0.04);   /* 输入框 / 膜内凹槽 */
+  --panel3:    rgba(255, 255, 255, 0.10);   /* 悬停态 */
+  --panel4:    rgba(255, 255, 255, 0.14);   /* 按下 / 选中填充 */
+
+  /* ── 分隔线：玻璃边缘的亮线（1px 半透明白）───────────────────── */
+  --line:      rgba(255, 255, 255, 0.12);   /* 常规玻璃边框 */
+  --line2:     rgba(255, 255, 255, 0.18);   /* 强分隔 / 输入框边框 */
+  --line3:     rgba(255, 255, 255, 0.25);   /* hover / 焦点边框 */
+
+  /* ── 文字（三级，绝不用纯白：纯白在暗底上光晕扩散）────────────── */
+  --text:      #d4d8de;   /* 主文本 */
+  --text-dim:  #7a8089;   /* 次要说明 */
+  --text-dim2: #565c66;   /* 占位 / 禁用 */
+
+  /* ── 唯一强调色：冷银。高亮 #eef1f5，像光扫过玻璃边缘 ─────────── */
+  --acc:       #c8cdd4;
+  --acc-hover: #eef1f5;
+  --acc-dim:   #8a9099;
+  --acc-fill:  rgba(200, 205, 212, 0.10);  /* 选中行底色 */
+
+  /* ── 语义状态（降饱和；血红只作错误信号，不铺大面）──────────────
+     --bad 太暗不能作文字色，错误文案用 --bad-ink，边框/填充用 --bad。 */
+  --ok:        #7d9b84;
+  --warn:      #b3985a;
+  --bad:       #6b2020;
+  --bad-ink:   #c98080;
+  --ok-fill:   rgba(125, 155, 132, 0.12);
+  --warn-fill: rgba(179, 152, 90, 0.12);
+  --bad-fill:  rgba(107, 32, 32, 0.16);
+
+  /* ── 端口/类型色（节点图专用，仅连线与 3-4px 圆点；全部压成灰调）── */
+  --t-model:   #8d84a0;   /* 模型 */
+  --t-latent:  #a08489;   /* 潜空间 */
+  --t-image:   #a09678;   /* 图像 */
+  --t-number:  #7f948c;   /* 数值 */
+  --t-text:    #84909f;   /* 文本 */
+
+  /* ── 字号（正文小字号 + 松行高；碑铭标题另走 --serif 放大）────── */
+  --fz-xs: 10.5px;
+  --fz-s:  11.5px;
+  --fz:    12.5px;
+  --fz-l:  13.5px;
+  --fz-xl: 15px;
+  --lh:    1.6;
+
+  /* ── 间距（4 的倍数）─────────────────────────────────────────── */
+  --sp1: 4px;  --sp2: 8px;  --sp3: 12px;  --sp4: 16px;  --sp5: 24px;
+
+  /* ── 圆角（玻璃 16 / 按钮与输入 12 / 小件 8）──────────────────── */
+  --r:   8px;
+  --r2:  12px;
+  --r3:  16px;       /* 卡片 / 面板 / 弹窗 */
+  --r-pill: 999px;   /* 只用于状态点、计数徽标 */
+
+  /* ── 阴影与光：黑阴影托底 + 顶部内亮线；冷光只给 hover/焦点 ────── */
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 20px rgba(180, 200, 230, 0.15);
+  --glow-soft: 0 0 20px rgba(180, 200, 230, 0.08);
+  --glass: rgba(255, 255, 255, 0.06);   /* 导航/顶栏/侧栏的玻璃底 */
+
+  /* ── 玻璃配方（通用类共用；移动端 --glass-blur 自动降档）───────── */
+  --glass-blur: blur(20px) saturate(1.4);
+  --glass-blur-lite: blur(12px) saturate(1.3);
+  --glass-hover: rgba(255, 255, 255, 0.10);
+  --glass-line-hover: rgba(255, 255, 255, 0.25);
+  --glow-cool: rgba(180, 200, 230, 0.15);
+  /* 环境光：玻璃必须「有东西可透」。0.16 的光晕压在 #08080a 上只剩 #1a1d24，
+     肉眼等于平黑——玻璃层再正确也读不出来。这里提到 0.30/0.26，
+     合成后左上≈#262d39（蓝灰）、右下≈#241f2c（紫灰），仍远低于卡片明度。 */
+  --amb-blue: rgba(108, 132, 172, 0.30);   /* 左上蓝灰环境光 */
+  --amb-purple: rgba(132, 112, 168, 0.26); /* 右下紫灰环境光 */
+  --amb-core: rgba(226, 232, 240, 0.05);   /* 中景冷白核心光，给玻璃一层极淡的迎光面 */
+  --vignette: radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  --sheen: linear-gradient(158deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0) 46%);
+
+  /* ── 动效（状态切换 90-140ms；入场与铸造加载走 --t-slow）───────── */
+  --t-fast: 90ms;
+  --t:      140ms;
+  --t-slow: 320ms;
+  --ease:   cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── 过渡别名（迁移垫片，不是设计决策）───────────────────────── */
+  --dim:   #7a8089;
+  --dim2:  #565c66;
+  --acc2:  #eef1f5;
+
+  /* ── 字体 ─────────────────────────────────────────────────────
+     数字一律 tabular-nums：参数面板全是会跳动的数字，等宽数字能避免整行抖动。 */
+  --sans: -apple-system, "Segoe UI", "Microsoft YaHei UI", "PingFang SC",
+          "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --serif: "Cinzel", "Palatino Linotype", "Book Antiqua", Georgia,
+           "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+}
+
+/* ── 基础层：七个界面共用的最小复位与排版基调 ───────────────────── */
+/* 底：深黑 + 两团冷色径向光晕（左上蓝灰 / 右下紫灰）+ 中景冷白核光 + 边缘压暗。
+   fixed 不随滚动漂移。光晕是玻璃的「景」——没有它们，blur 透出来的只是一片死黑。 */
+html {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(78% 62% at 6% -4%, var(--amb-blue) 0%, rgba(108, 132, 172, 0) 68%),
+    radial-gradient(70% 58% at 104% 102%, var(--amb-purple) 0%, rgba(132, 112, 168, 0) 68%),
+    radial-gradient(60% 46% at 50% 34%, var(--amb-core) 0%, rgba(226, 232, 240, 0) 70%),
+    radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+body {
+  background: transparent;
+  color: var(--text);
+  font: var(--fz)/var(--lh) var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* 胶片颗粒：极细噪点铺满视口，不拦截指针；4% 透明度只够"感觉到"不够"看到" */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background: url("../assets/grain.png") repeat;
+  background-size: 160px 160px;
+}
+
+/* ── 通用玻璃类：组件直接挂类，配方只此一份 ─────────────────────── */
+.glass-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 可交互玻璃卡：hover 提亮 + 上浮 3px + 冷光（风格卡/作品卡/模板卡） */
+.glass-card.hoverable {
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.glass-card.hoverable:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.glass-btn {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--glass-line-hover);
+  color: var(--acc-hover);
+  box-shadow: 0 0 20px var(--glow-cool);
+}
+.glass-input {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease),
+              background var(--t) var(--ease);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: var(--glass-line-hover);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: var(--glow);
+}
+.glass-input::placeholder { color: var(--text-dim2); }
+
+/* 移动端：blur 降到 12px，避免大面积毛玻璃拖垮帧率 */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+}
+
+/* 碑铭体：平台名、卡片标题、章节题字共用 */
+.serif {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+/* 数字等宽：所有数值读数都用它 */
+.num, kbd, code, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点环：冷银描边 + 一圈极淡冷光，键盘可达 */
+:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(180, 200, 230, 0.12);
+}
+
+/* 滚动条：细、暗、玻璃亮线 thumb，hover 提亮；不用系统默认蓝条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+*::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* 选区：银的低透明填充，不用系统蓝 */
+::selection { background: var(--acc-fill); color: var(--acc-hover); }
+
+/* ── 玻璃族第二批：弹窗 / 浮条 / 侧栏 / 凹槽 / 胶囊 ──────────────────
+   同一套配方，只是圆角与投影档位不同。组件直接挂类，别再复写 blur。 */
+.glass-modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.glass-toast {
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+/* 悬浮工具条：画布顶部/参数板顶部那种横条，圆角 16 贴在内容之上 */
+.glass-toolbar {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏 / 导航栏：从贴边条改成悬浮玻璃板（margin 16 + 圆角 16） */
+.glass-rail {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 凹槽：画布底、代码块、时间轴这类「玻璃板里的暗面」，不铺毛玻璃 */
+.glass-well {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.glass-chip {
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r2);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+}
+
+/* 玻璃卡顶部迎光：一层极淡的白到透明的斜向渐变，让平面看出弧面 */
+.glass-card, .glass-modal, .glass-rail, .panel {
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+}
+
+/* ── 无 backdrop-filter 的浏览器：把膜加厚一档，至少不塌成纯黑 ──────── */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar { background-color: rgba(255, 255, 255, 0.10); }
+  .glass-toast { background-color: rgba(255, 255, 255, 0.14); }
+}
+
+/* ── 移动端：blur 降到 12px；小控件直接关掉毛玻璃，省一次合成 ────────── */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+  .glass-btn, .glass-chip, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+}
+
+/* ── 尊重系统设置：减少动效 / 减少透明 ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .glass-card.hoverable:hover, .glass-btn:hover { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar, .glass-toast, .glass-chip, .glass-btn, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(24, 26, 30, 0.92);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   module-ui.css —— 功能模块入口的共享骨架
+   ───────────────────────────────────────────────────────────────────────
+   定位：market / plugins / quality / server 四个入口共用同一套外壳结构
+   （顶栏 / 左列表 / 右详情 / 底部口径条），差异只在中间的「内容形态」。
+
+   视觉人格：暗黑玻璃拟态 · 冷银基调（ui/tokens.css 为唯一令牌源）。
+     - 顶栏 / 侧栏 / 详情区头 / 底部口径条：四块悬浮玻璃板，统一 margin 16 + 圆角 16 + blur 20
+     - 侧栏：#08080a 上的半透明白膜（.body > .aside，比 skin 的 .aside 高一级）
+     - 选中态：左侧 2px 冷银竖线 + 一圈冷银亮边，不做亮色填充、不引入彩色
+     - 按钮：玻璃底 rgba(255,255,255,.1) + 1px 亮边 + 冷白字，圆角 12；输入框圆角 16
+     - 卡片：.06 白膜 + 0 8px 32px rgba(0,0,0,.3) + inset 0 1px 0 rgba(255,255,255,.08)
+     - 凹槽：标签页与代码/日志块走 .glass-well 口径（bg-deep + 内描边，不铺毛玻璃）
+     - 卡片标题：碑铭衬线（--serif）宽字距；表格行 hover 只提亮、不位移
+
+   规矩（与 docs/09-design-system.md 一致，lint 会拦）：
+     - 只用 ui/tokens.css 的变量，不新增色值
+     - 圆角只走 --r / --r2 / --r3 / --r-pill（卡片上限 16px）
+     - 光晕只给冷色（--glow / --glow-soft / --glow-cool），投影只给中性黑
+   ═══════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: transparent; color: var(--text); font: var(--fz)/var(--lh) var(--sans); }
+a { color: var(--acc); text-decoration: none; }
+a:hover { color: var(--acc-hover); }
+
+/* ── 页面骨架：悬浮玻璃顶栏 + 主体 + 口径条 24 ───────────────────── */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) 24px; height: 100vh; }
+
+.topbar {
+  display: flex; align-items: center; gap: var(--sp3);
+  margin: var(--sp4) var(--sp4) 0; min-height: 38px;
+  padding: 0 var(--sp3);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  position: relative; z-index: 5;
+}
+.topbar .brand { display: flex; align-items: baseline; gap: var(--sp2); }
+.topbar .brand b {
+  font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.18em; color: var(--acc);
+}
+.topbar .brand span { font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: 0.08em; }
+.topbar .spacer { flex: 1; }
+.topbar .crumbs { font-size: var(--fz-s); color: var(--text-dim); }
+.topbar .crumbs i { color: var(--text-dim2); font-style: normal; padding: 0 var(--sp1); }
+
+.body { display: grid; grid-template-columns: var(--col, 320px) minmax(0, 1fr); min-height: 0; }
+.body.no-aside { grid-template-columns: minmax(0, 1fr); }
+
+/* 侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20 / 边框 rgba(255,255,255,.12)）。
+   选择器写在 .body > .aside：glass-skin.css 里 .aside 只留膜（background-color: transparent，
+   玻璃底色交给页面），这里比它高一级，底色与迎光面由骨架自己给，两边不互相覆盖。 */
+.body > .aside {
+  display: flex; flex-direction: column; min-height: 0;
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  overflow: hidden;   /* 内部滚到底也不露直角 */
+}
+.aside-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim);
+  letter-spacing: 0.12em; flex: 0 0 auto;
+}
+.aside-h .spacer { flex: 1; }
+.aside-b { flex: 1; min-height: 0; overflow: auto; }
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: transparent; }
+/* 详情区头：悬浮玻璃条，与左栏板同一条基线（左 16 / 上 16），下沿不画分隔线 */
+.main-h {
+  display: flex; align-items: center; gap: var(--sp2);
+  margin: var(--sp4) var(--sp4) 0;
+  padding: var(--sp2) var(--sp3); min-height: 34px; flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.main-h h2 {
+  margin: 0; font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.12em; color: var(--acc);
+}
+.main-h .sub { font-size: var(--fz-xs); color: var(--text-dim); }
+.main-h .spacer { flex: 1; }
+.main-b { flex: 1; min-height: 0; overflow: auto; padding: var(--sp3) var(--sp4); }
+/* 底部口径条：悬浮玻璃条（统计/说明常驻在这里），左右与主体内容同一列线 */
+.main-f {
+  flex: 0 0 auto; margin: var(--sp3) var(--sp4) var(--sp4);
+  padding: var(--sp2) var(--sp3); font-size: var(--fz-xs); color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 全平台口径条（最底一行）：细玻璃条，不做大圆角，只提亮到膜上 */
+.statusbar {
+  display: flex; align-items: center; gap: var(--sp3); padding: 0 var(--sp4);
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  border-top: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-size: var(--fz-xs); color: var(--text-dim2);
+}
+.statusbar .spacer { flex: 1; }
+.statusbar .num { color: var(--text-dim); }
+
+/* ── 列表行（左栏主力形态）───────────────────────────────────────── */
+.list { display: flex; flex-direction: column; }
+.list .row {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center; gap: var(--sp2);
+  padding: 0 var(--sp2); min-height: 28px; cursor: pointer;
+  border-bottom: 1px solid var(--line); color: var(--text);
+  transition: background var(--t-fast) var(--ease);
+}
+.list .row:hover { background: var(--panel3); }
+/* 选中 = 左 2px 冷银竖线 + 一圈冷银亮边 + 极淡银底；全程冷银，不用任何彩色 */
+.list .row[aria-selected="true"] {
+  background: var(--acc-fill);
+  box-shadow: inset 2px 0 0 var(--acc), inset 0 0 0 1px var(--glass-line-hover);
+  color: var(--acc-hover);
+}
+.list .row[aria-selected="true"]:hover { background: var(--panel3); }
+.list .row .t { font-size: var(--fz); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .row .s { font-size: var(--fz-xs); color: var(--text-dim2); }
+.list .row .ico { display: flex; align-items: center; justify-content: center; color: var(--text-dim); }
+.list .row[aria-selected="true"] .ico { color: var(--acc); }
+.list .sect {
+  padding: var(--sp2) var(--sp2) var(--sp1); font-size: var(--fz-xs); color: var(--text-dim2);
+  letter-spacing: 0.12em; border-bottom: 1px solid var(--line); background: transparent;
+}
+.list .empty-row { padding: var(--sp3); color: var(--text-dim2); font-size: var(--fz-s); }
+
+/* ── 徽标与状态点 ────────────────────────────────────────────────── */
+.dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--text-dim2); flex: 0 0 auto; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); }
+.dot.acc { background: var(--acc); }
+.dot.off { background: var(--line2); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 17px; padding: 0 6px;
+  border: 1px solid var(--line2); border-radius: var(--r); background: var(--panel2);
+  font-size: var(--fz-xs); color: var(--text-dim); white-space: nowrap;
+}
+.badge.ok { border-color: var(--ok); color: var(--ok); background: var(--ok-fill); }
+.badge.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-fill); }
+.badge.bad { border-color: var(--bad); color: var(--bad-ink); background: var(--bad-fill); }
+.badge.acc { border-color: var(--acc-dim); color: var(--acc); background: var(--acc-fill); }
+.badge.pill { border-radius: var(--r-pill); }
+
+/* ── 按钮：玻璃底 + 1px 亮边 + 冷白字；hover 提亮泛冷光 ───────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 26px; padding: 0 11px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: var(--r2); background: rgba(255, 255, 255, 0.10);
+  color: var(--text); font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+              box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.btn:hover { background: rgba(255, 255, 255, 0.14); border-color: var(--glass-line-hover); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+.btn:active { background: var(--panel4); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+/* 主操作：不是实心色块，而是亮边更亮一档的玻璃碑牌 */
+.btn.acc { background: var(--panel3); border-color: var(--acc-dim); color: var(--acc-hover); letter-spacing: 0.12em; }
+.btn.acc:hover { background: var(--panel4); border-color: var(--acc-hover); box-shadow: var(--glow); }
+.btn.mini { height: 21px; padding: 0 7px; font-size: var(--fz-xs); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-dim); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.btn.ghost:hover { background: var(--panel3); color: var(--text); box-shadow: none; }
+
+/* ── 表单：膜内凹槽 + 1px 亮边；圆角 16（按钮 12，两者别混）────────── */
+.input, .select, .textarea {
+  height: 26px; padding: 0 8px; color: var(--text);
+  background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r3);
+  font: var(--fz-s)/1 var(--sans); outline: none;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.textarea { height: auto; padding: 5px 6px; font-family: var(--mono); resize: vertical; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--acc-hover); box-shadow: var(--glow); }
+.input::placeholder { color: var(--text-dim2); }
+label.field { display: flex; flex-direction: column; gap: var(--sp1); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 键值对 / 表格 ───────────────────────────────────────────────── */
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--sp3); font-size: var(--fz-s); }
+.kv dt { color: var(--text-dim); }
+.kv dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.kv dd.num { color: var(--text); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--fz-s); }
+.tbl th, .tbl td { text-align: left; padding: 0 var(--sp2); height: 26px; border-bottom: 1px solid var(--line); }
+/* 行 hover 只提亮膜内底色：行高/padding/transform 一律不动，258 行才不抖 */
+.tbl td { transition: background-color var(--t-fast) var(--ease); }
+.tbl th { color: var(--text-dim); font-weight: 500; font-size: var(--fz-xs); letter-spacing: 0.08em; background: var(--panel2); }
+.tbl tr:hover td { background-color: var(--glass-hover); }
+.tbl td.num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl td.mono { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 面板 / 卡片：半透明白 .06 + 1px 冷灰边 + 0 8px 32px rgba(0,0,0,.3)
+      + inset 0 1px 0 rgba(255,255,255,.08)。四行数值全部来自令牌：
+      --panel / --line / --shadow-pop / --shadow-inset，改令牌即全站生效。 */
+.panel {
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen);   /* 顶部迎光斜向渐变：平面看出弧面 */
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 网格里的卡片才上浮（市场概览卡 / 服务面板）；整幅区块例如 quality 的检查项不动，
+   否则鼠标划过正文时整块跳动。hover 只加 background-color，保住迎光面。 */
+.grid2 > .panel, .grid3 > .panel {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.grid2 > .panel:hover, .grid3 > .panel:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.panel + .panel { margin-top: var(--sp3); }
+.panel-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim); letter-spacing: 0.12em;
+}
+.panel-h .spacer { flex: 1; }
+.panel-b { padding: var(--sp3); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp3); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp3); }
+@media (max-width: 1100px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── 空态与提示 ──────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp2);
+  padding: var(--sp4); border: 1px dashed var(--line2); border-radius: var(--r3);
+  color: var(--text-dim); font-size: var(--fz-s); background: var(--panel);
+}
+.empty b { color: var(--text); font-weight: 600; }
+.hint { font-size: var(--fz-xs); color: var(--text-dim2); }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── 标签页（详情区切换）：膜内凹槽 + 分段胶囊，不画底线（避免与凹槽边框叠成双线）── */
+.tabs {
+  display: flex; align-items: center; gap: 2px;
+  margin: var(--sp3) var(--sp4) 0; padding: 3px;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.tabs .tab {
+  height: 24px; padding: 0 var(--sp3); cursor: pointer; border: 0; border-radius: var(--r2);
+  background: transparent; color: var(--text-dim);
+  font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.tabs .tab:hover { color: var(--text); background-color: var(--panel2); }
+.tabs .tab[aria-selected="true"] {
+  color: var(--acc-hover); background-color: var(--panel3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ── 进度条（银条；只做状态显示）────────────────────────────────── */
+.bar { height: 4px; background: var(--panel4); border-radius: var(--r); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--acc); }
+.bar.ok > i { background: var(--ok); }
+.bar.warn > i { background: var(--warn); }
+.bar.bad > i { background: var(--bad); }
+
+/* ── 代码/日志块：.glass-well 口径（膜内凹槽，不铺毛玻璃）──────────────
+   长文本上再叠一层 backdrop-filter 是纯浪费帧率，凹槽靠 bg-deep + 内描边成像。 */
+.code {
+  margin: 0; padding: var(--sp2);
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line); border-radius: var(--r2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  font-family: var(--mono); font-size: var(--fz-xs);
+  color: var(--text-dim); overflow: auto; max-height: 220px; white-space: pre-wrap; word-break: break-all;
+}
+.code .k { color: var(--t-text); }
+.code .ok { color: var(--ok); }
+.code .bad { color: var(--bad-ink); }
+
+/* ── 窄屏（≤900px）：悬浮板全部取消外边距、贴边全宽，卡片不再上浮 ─────
+   blur 的降档在 tokens.css 的 @media (max-width:900px) 里（--glass-blur →
+   blur(12px)），骨架一律引用 var(--glass-blur)，所以这里不用再写一遍 blur。 */
+@media (max-width: 900px) {
+  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .body > .aside {
+    margin: 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none;
+    max-height: 42vh;   /* 侧栏变成顶部条带，内部照旧滚动 */
+  }
+  .topbar { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .main-h { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none; }
+  .main-b { padding: var(--sp3); }
+  .main-f { margin: 0; border-width: 1px 0 0; border-radius: 0; box-shadow: none; }
+  .statusbar { padding: 0 var(--sp3); }
+  .tabs { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .grid2, .grid3 { gap: var(--sp2); }
+  /* 卡片不再上浮：hover 只提亮，位移与冷光一起收掉 */
+  .grid2 > .panel:hover, .grid3 > .panel:hover {
+    transform: none;
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+}
+/* ═══════════════════════════════════════════════════════════════════════
+   glass-skin.css —— 玻璃映射层（最后一遍）
+   ───────────────────────────────────────────────────────────────────────
+   定位：ui/tokens.css 定义「玻璃是什么」，本文件负责「把各页已经写好的
+   组件选择器映射到那套配方上」。页面源件里只留自己的结构与排版，不再各写
+   一份 background/border/blur/shadow。
+
+   为什么单独一层而不是逐组件改：
+     七个页面 + 帧检视器共 543KB 源，卡片族有 40 多个类名，逐个改一遍既容易
+     漏、又会在下一次改令牌时全部失配。映射层只做增量：圆角补齐、hover 三件套、
+     侧栏悬浮、弹窗居中、控件玻璃化。谁想加新卡片，挂 .glass-card 即可。
+
+   注入位置：每个页面 <style> 的最后一行（构建期替换 /*__SKIN__*\/）。
+     放在最后 = 同权重规则里一定赢，所以整份文件不需要一个 !important。
+
+   三条规矩：
+     1. 只写「页面自己的类名 → 玻璃配方」，不新增色值，全部走 var()。
+     2. 不改布局栅格（列宽/行高/顺序由各页自持）；只加外边距让它浮起来。
+     3. 循环动画、彩色光晕、纯白文字一律不写（tools/lint_ui.mjs 会拦）。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 悬浮侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20）── */
+#sidenav,
+nav#rail,
+#pRail,
+aside,
+.aside {
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);      /* 膜必须由本层给：页面侧多为 transparent，靠 skin 兜底 */
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏内部滚到底时的圆角不露直角 */
+#sidenav, nav#rail, #pRail, aside { overflow-y: auto; }
+
+/* ── 2. 圆角补齐：还停在 12px 的卡片族一律抬到 16px ───────────────── */
+.card,
+.style-card,
+.ai-card,
+.gen-card,
+.work-item,
+.opt,
+.honest,
+.summary,
+.reco,
+.prow,
+.np-row,
+.legend,
+.tip,
+#toast,
+.toast,
+.loaded,
+.errcard,
+.svc,
+.node,
+.wp,
+.stage-chip,
+.field,
+.empty {
+  border-radius: var(--r3);
+}
+
+/* 输入框：规范要求 16px（按钮 12px，别混） */
+select,
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="password"],
+input[type="url"],
+textarea {
+  border-radius: var(--r3);
+}
+
+/* ── 3. hover 三件套：提亮 + 亮边 + 上浮 3px + 一圈冷光 ────────────── */
+.card,
+.style-card,
+.work-item,
+.opt,
+.np-row,
+.loaded {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.card:hover,
+.style-card:hover,
+.work-item:hover,
+.opt:hover,
+.np-row:hover,
+.loaded:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* 提示块不是可点目标：.honest / .summary / .svc 只提亮，不上浮（跟着鼠标跳会很脏） */
+.honest,
+.summary,
+.svc {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.honest:hover,
+.summary:hover,
+.svc:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+}
+
+/* 列表行 / 参数行：只在膜内提亮，不上浮（上浮会让 258 行变成果冻） */
+.row:hover,
+.list .row:hover,
+.prow:hover,
+.tier-head:hover,
+.wstep:hover,
+.rail-item:hover,
+.nav-item:hover,
+.wi-acts:hover {
+  background-color: var(--glass-hover);
+}
+
+/* ── 4. 悬浮工具条 / 弹窗 / Toast ─────────────────────────────────── */
+/* 画布顶部与参数板顶部的横条：同一条玻璃，圆角 16 */
+#canvasTop,
+.canvas-tools,
+.toolbar,
+.board-head,
+.main-h,
+.viewhead {
+  border-radius: var(--r3);
+}
+#canvasTop,
+.canvas-tools,
+.toolbar {
+  background-color: var(--glass);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 弹窗：居中 + 玻璃 + 16px；遮罩压暗但不铺纯黑 */
+.wiz,
+.modal,
+.dialog,
+.panel-pop {
+  background-color: var(--panel);
+  background-image: var(--sheen);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 弹层遮罩只负责压暗与居中，毛玻璃档位交给页面自己（app 用 10px）。
+   这里若再写一份 blur(2px)，同权重且 skin 在后，会把页面的遮罩糊没了。 */
+#wizard,
+#forgeOverlay {
+  display: grid;
+  place-items: center;
+}
+
+/* Toast：玻璃胶囊，居中偏下 */
+#toast,
+.toast {
+  background-color: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 5. 画布：区域是深色凹槽，节点与属性面板是玻璃 ────────────────── */
+#nodeWrap {
+  margin: 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+#nodeWrap .legend,
+#nodeWrap .node,
+#estimator {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+#nodeWrap .node:hover {
+  border-color: var(--glass-line-hover);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 6. 表单控件：滑块轨道是膜内凹槽，拇指是一颗冷银 ─────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--panel4);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px; height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 1px solid var(--acc-hover);
+  box-shadow: 0 0 10px var(--glow-cool);
+  transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--acc-hover); }
+input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: var(--r-pill); background: var(--panel4);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--acc); border: 1px solid var(--acc-hover);
+}
+
+/* ── 7. 细节：风格图标去彩（emoji 只作字形，不作彩色贴纸）─────────── */
+.sc-emoji,
+.wi-emoji,
+.style-ico {
+  filter: grayscale(0.72) contrast(0.94);
+  opacity: 0.92;
+}
+
+/* 底部口径条 / 状态栏：细玻璃条，不做大圆角 */
+#statusbar,
+.statusbar,
+footer {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* 代码块 / 日志：膜内凹槽，别铺毛玻璃（长文本 blur 很贵） */
+.code,
+pre,
+.gout {
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+/* ── 8. 窄屏：侧栏取消外边距，改为贴边全宽；卡片不再上浮 ─────────── */
+@media (max-width: 900px) {
+  #sidenav,
+  nav#rail,
+  #pRail,
+  aside,
+  .aside {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .card:hover,
+  .style-card:hover,
+  .work-item:hover,
+  .opt:hover,
+  .honest:hover,
+  .summary:hover,
+  .np-row:hover,
+  .loaded:hover,
+  .svc:hover {
+    transform: none;
+  }
+  #nodeWrap { margin: 0; border-radius: 0; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   质检入口专属样式（骨架与令牌来自 ui/module-ui.css 与 ui/tokens.css）
+   只补三样东西：总判区、检查项行、问题时间轴条带。
+   不新增色值、不加阴影、不做装饰动效 —— lint 会逐条判。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.main-b > .panel:first-child { margin-top: 0; }
+
+/* ── 总判区：一块玻璃卡，左侧 3px 语义竖条（只竖条带色，卡面仍是银灰）── */
+.q-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px 176px;
+  gap: var(--sp3);
+  align-items: center;
+  padding: var(--sp3) var(--sp4);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--text-dim2);
+  border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen); background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.q-hero[data-tone="bad"]  { border-left-color: var(--bad); }
+.q-hero[data-tone="warn"] { border-left-color: var(--warn); }
+.q-hero[data-tone="ok"]   { border-left-color: var(--ok); }
+.q-hero .cap { font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: .4px; }
+.q-hero .verdict {
+  font-size: 24px; font-weight: 600; letter-spacing: .5px; line-height: 1.25; margin-top: 2px;
+}
+/* 判定文字用 --bad-ink / --warn：--bad (#6b2020) 当文字在 #08080a 上读不出来 */
+.q-hero[data-tone="bad"]  .verdict { color: var(--bad-ink); }
+.q-hero[data-tone="warn"] .verdict { color: var(--warn); }
+.q-hero[data-tone="ok"]   .verdict { color: var(--ok); }
+.q-hero .rule { font-size: var(--fz-xs); color: var(--text-dim2); margin-top: 3px; }
+.q-hero .score { font-size: 26px; font-weight: 600; line-height: 1.15; }
+.q-hero .score-unit { font-size: var(--fz-xs); color: var(--text-dim); font-weight: 400; }
+.q-hero .pct { font-size: var(--fz-xs); color: var(--text-dim); margin-top: 3px; }
+.q-hero .counts { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+
+/* 修复对比条：一级玻璃（--panel2 膜），左侧 3px warn 竖条 + 内亮线；
+   不挂 hover 位移 —— 它是结论，不是可点的卡片 */
+.q-fix {
+  display: flex; align-items: baseline; gap: var(--sp2); flex-wrap: wrap;
+  margin-top: var(--sp2); padding: var(--sp2) var(--sp3);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  border-radius: var(--r2); background-color: var(--panel2);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  box-shadow: var(--shadow-inset);
+  font-size: var(--fz-s);
+}
+.q-fix .k { color: var(--text-dim); font-size: var(--fz-xs); letter-spacing: .4px; }
+.q-fix .v { color: var(--text); }
+.q-fix .s { color: var(--text-dim2); font-size: var(--fz-xs); }
+
+/* ── 检查项行：只提亮，不位移（整块是长列表，位移会变成果冻）──────────── */
+.chk {
+  display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: var(--sp2);
+  align-items: start; padding: var(--sp2) var(--sp3);
+  border-bottom: 1px solid var(--line);
+  transition: background-color var(--t-fast) var(--ease);
+}
+.chk:hover { background-color: var(--panel2); }
+.chk:last-child { border-bottom: 0; }
+.chk .dot { margin-top: 5px; }
+.chk-top { display: flex; align-items: center; gap: var(--sp2); flex-wrap: wrap; }
+.chk-top b { font-size: var(--fz); font-weight: 600; }
+.chk-act { font-size: var(--fz-s); color: var(--text); margin-top: 3px; }
+.chk-act .mono { font-size: var(--fz-xs); color: var(--text-dim); }
+.chk-bas { font-size: var(--fz-xs); color: var(--text-dim2); margin-top: 2px; line-height: 1.5; }
+.chk-bas .mono { color: var(--text-dim); }
+.chk-subs {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr);
+  gap: 1px var(--sp2); margin-top: 4px;
+  font-size: var(--fz-xs); color: var(--text-dim);
+}
+.chk-subs .k { color: var(--text-dim2); }
+
+/* ── 问题时间轴（纯 div + 百分比定位）：膜内凹槽，不铺毛玻璃 ────────── */
+.tl-track {
+  position: relative; height: 34px; overflow: hidden;
+  background-color: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.tl-track .gl { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.seg {
+  position: absolute; top: 5px; bottom: 5px; min-width: 2px; padding: 0;
+  border: 0; border-radius: 1px; background: var(--panel4); cursor: pointer;
+}
+.seg.warn { background: var(--warn); }
+.seg.bad  { background: var(--bad); }
+.seg:hover, .seg:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+.tl-axis {
+  display: flex; justify-content: space-between; gap: var(--sp2);
+  margin-top: 3px; font-size: var(--fz-xs); color: var(--text-dim2);
+}
+.tl-read { min-height: 18px; margin-top: var(--sp1); font-size: var(--fz-xs); color: var(--text-dim); }
+.tl-legend { display: flex; gap: var(--sp3); align-items: center; font-size: var(--fz-xs); color: var(--text-dim); }
+.tl-legend .item { display: inline-flex; align-items: center; gap: 5px; }
+.tl-chip { width: 10px; height: 10px; border-radius: 1px; display: inline-block; }
+
+/* ── 窄屏：单列铺满，时间轴与表格仍不出横向滚动 ───────────────────── */
+@media (max-width: 1100px) {
+  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  /* 侧栏从悬浮玻璃板改为顶部条带：与骨架 ≤900 的处理同一套（贴边全宽、无圆角、无外投影） */
+  .body > .aside {
+    margin: 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none; max-height: 156px;
+  }
+  .aside-b { overflow: auto; }
+  .q-hero { grid-template-columns: minmax(0, 1fr); }
+  .q-hero .counts { flex-direction: row; }
+}
+
+/* ── 诊断行 / 提示 ───────────────────────────────────────────────── */
+.diagbar { display: flex; align-items: center; gap: var(--sp2); }
+.diagbar .input { flex: 1; min-width: 0; height: 22px; font-size: var(--fz-xs); }
+#notice { color: var(--text-dim); }
+#notice.on { color: var(--text); }
+.sec-h { display: flex; align-items: baseline; gap: var(--sp2); margin-bottom: var(--sp2); flex-wrap: wrap; }
+.sec-h h3 { margin: 0; font-size: var(--fz); font-weight: 600; }
+.sec-h .hint { font-size: var(--fz-xs); }
+.tbl-wrap { width: 100%; }
+.nowrap { white-space: nowrap; }
+
+/* ── 窄屏（≤900）：诊断行占满一行，图例收紧 ───────────────────────── */
+@media (max-width: 900px) {
+  .diagbar { flex-wrap: wrap; }
+  .diagbar .input { flex: 1 1 100%; }
+  .tl-legend { gap: var(--sp2); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <a class="btn mini ghost" data-backlink href="../app/index.html" title="返回平台工作台（各模块页共用的回程路）">← 工作台</a>
+    <div class="brand"><b>质检</b><span>逐帧管线 · quality</span></div>
+    <span class="crumbs">工作台<i>/</i>质检</span>
+    <span class="spacer"></span>
+    <span class="badge" id="modeBadge"><span class="dot off" id="modeDot"></span><span id="modeText">模式 —</span></span>
+    <a class="btn" href="../inspector/index.html" target="_blank" rel="noopener">打开帧检查器</a>
+    <button class="btn" type="button" id="btnCopy">复制诊断行</button>
+    <button class="btn acc" type="button" id="btnExport">导出报告 JSON</button>
+  </header>
+
+  <div class="body" style="--col:272px">
+    <aside class="aside">
+      <div class="aside-h">样例<span class="spacer"></span><span class="num" id="sampleCount">—</span></div>
+      <div class="aside-b">
+        <div class="list" id="sampleList" role="listbox" aria-label="质检样例"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-h">
+        <h2 id="sampleTitle">—</h2>
+        <span class="sub" id="sampleSub"></span>
+        <span class="spacer"></span>
+        <span class="hint" id="sampleMeta"></span>
+      </div>
+
+      <div class="main-b" id="mainBody">
+
+        <div id="verdictSlot"></div>
+
+        <div class="panel">
+          <div class="panel-h">检查项
+            <span class="badge" id="checkCount">—</span>
+            <span class="spacer"></span>
+            <span class="hint">只列 quality/frames.js 与 quality/probe.js 里真实存在的判定</span>
+          </div>
+          <div id="checkSlot"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">问题时间轴
+            <span class="spacer"></span>
+            <span class="tl-legend">
+              <span class="item"><i class="tl-chip" style="background:var(--warn)"></i>warn</span>
+              <span class="item"><i class="tl-chip" style="background:var(--bad)"></i>bad</span>
+            </span>
+          </div>
+          <div class="panel-b">
+            <div class="tl-track" id="tlTrack"></div>
+            <div class="tl-axis" id="tlAxis"></div>
+            <div class="tl-read" id="tlRead">把指针放到色块上，或 Tab 到色块上，看该段起止时间与缺陷名</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">最差帧
+            <span class="badge" id="worstCount">—</span>
+            <span class="spacer"></span>
+            <span class="hint">按分数升序；同一分数按帧号升序 · 时间列由帧号 ÷ fps 推算</span>
+          </div>
+          <div class="tbl-wrap" id="worstSlot"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">阈值表
+            <span class="spacer"></span>
+            <span class="hint">源 quality/frames.js DEFAULTS</span>
+          </div>
+          <div class="tbl-wrap" id="thresholdSlot"></div>
+          <div class="panel-b" style="border-top:1px solid var(--line)">
+            <div class="hint" id="thresholdNote">阈值是硬编码默认值，改阈值要改代码。</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">注入帧号对照
+            <span class="spacer"></span>
+            <span class="hint">测试素材的缺陷是定点注入的，帧号已知</span>
+          </div>
+          <div class="tbl-wrap" id="crossSlot"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">已知缺口
+            <span class="spacer"></span>
+            <span class="hint">docs/06-quality.md §7</span>
+          </div>
+          <div id="gapSlot"></div>
+        </div>
+
+      </div>
+
+      <div class="main-f">
+        <div class="diagbar">
+          <span class="hint">诊断行</span>
+          <input class="input mono" id="diagLine" readonly value="—" aria-label="诊断行">
+          <span class="hint" id="notice"></span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="footLeft">数据来源 quality/snapshot.json</span>
+    <span class="spacer"></span>
+    <span class="num" id="footRight">—</span>
+  </footer>
+</div>
+
+<script>
+window.__SNAP = {
+  "tool": "avp-qc-snap",
+  "schema": "quality.snapshot/1",
+  "generated_at": "2026-11-19T15:15:51.966Z",
+  "env": {
+    "ffmpeg": "9.0.2-full_build-www.gyan.dev",
+    "ffprobe": "9.0.2-full_build-www.gyan.dev",
+    "ffmpeg_bin": "ffmpeg",
+    "ffprobe_bin": "ffprobe",
+    "cache_root": "D:/缓存/avp/repair-check-yG4Ukf",
+    "fixture_dir": "D:\\缓存\\avp\\repair-check-yG4Ukf\\avp\\qc\\fixtures",
+    "node": "v24.21.0",
+    "platform": "win32"
+  },
+  "sources": {
+    "snapshot": "quality/snapshot.json",
+    "report": "quality/report.js build()",
+    "frames": "quality/frames.js analyze()",
+    "probe": "quality/probe.js probe()",
+    "fixtures": "quality/fixtures.js generate()"
+  },
+  "thresholds": {
+    "items": [
+      {
+        "key": "width",
+        "value": 160,
+        "type": "number",
+        "group": "分析",
+        "meaning": "分析宽度：解码后降采样到 160px 宽灰度帧，据此算锐度与帧差",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "scaleFlags",
+        "value": "area",
+        "type": "string",
+        "group": "分析",
+        "meaning": "降采样算法：area=盒式平均（抗锯齿，但会抹掉一部分高频）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "blackY",
+        "value": 24,
+        "type": "number",
+        "group": "判定",
+        "meaning": "黑帧判定：YAVG ≤ 24（limited range 黑=16，留 8 级编码噪声余量）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "whiteY",
+        "value": 235,
+        "type": "number",
+        "group": "判定",
+        "meaning": "白帧判定：YAVG ≥ 235（limited range 白=235）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "flickerHard",
+        "value": 20,
+        "type": "number",
+        "group": "判定",
+        "meaning": "亮度跳变硬阈值：相邻帧 YAVG 差 ≥ 20 级（≈8% 画幅亮度）即判可感知闪/切",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "flowRaw",
+        "value": 3,
+        "type": "number",
+        "group": "判定",
+        "meaning": "帧差显示映射：平均绝对差 3 级即让 flowResidual 顶格 0.32",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "flowHard",
+        "value": 6,
+        "type": "number",
+        "group": "判定",
+        "meaning": "帧差打分硬阈值：平均绝对差 ≥ 6 级（硬切/大运动）时运动项得分归零",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "flowCap",
+        "value": 0.32,
+        "type": "number",
+        "group": "判定",
+        "meaning": "flowResidual 的上限，与 inspector 折线除数保持一致",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "sharpLo",
+        "value": 6,
+        "type": "number",
+        "group": "判定",
+        "meaning": "拉普拉斯方差 log 归一化的下界（实测模糊段方差≈2.5）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "sharpHi",
+        "value": 400,
+        "type": "number",
+        "group": "判定",
+        "meaning": "拉普拉斯方差 log 归一化的上界（实测 720p 网格素材正常帧≈130-190）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "sharpBlurAt",
+        "value": 0.22,
+        "type": "number",
+        "group": "判定",
+        "meaning": "锐度归一值低于此判模糊，分数封顶 45",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "freezeMinSec",
+        "value": 0.1,
+        "type": "number",
+        "group": "冻结",
+        "meaning": "连续静止 ≥ 0.1s 才算冻结（30fps 即 3 帧）；单帧重复属正常动画",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "blackMinSec",
+        "value": 0.02,
+        "type": "number",
+        "group": "冻结",
+        "meaning": "交给 blackdetect 的最短黑场时长，0.02s 起抓，1 帧也不放过",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "staticEps",
+        "value": 0.05,
+        "type": "number",
+        "group": "冻结",
+        "meaning": "相邻帧平均绝对差 < 0.05 视为像素级完全相同",
+        "note": "声明的默认值：当前判定链路用的是 anchorEps（frames.js:229），本值只出现在 thresholds 输出里（frames.js:333），未参与逐帧判定。",
+        "dormant": true,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "anchorEps",
+        "value": 0.4,
+        "type": "number",
+        "group": "冻结",
+        "meaning": "与\"静止候选段\"锚点的平均绝对差 < 0.4 视为画面没动（实测静帧噪声 0~0.2，慢运动每帧 0.13 但会累计超限）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "timeoutMs",
+        "value": 600000,
+        "type": "number",
+        "group": "运行",
+        "meaning": "单次 ffmpeg 解码超时，超时返回 E_FFMPEG_TIMEOUT 而不是挂死",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "statsFile",
+        "value": "stats.txt",
+        "type": "string",
+        "group": "运行",
+        "meaning": "signalstats 逐帧输出的临时文件名（相对 work 目录，绕开 Windows 盘符在 filtergraph 里的转义坑）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      }
+    ],
+    "extra": [
+      {
+        "key": "scoreWeights",
+        "value": "sharp 0.45 · flicker 0.35 · flow 0.20",
+        "ref": "frames.js:243",
+        "meaning": "综合分权重：锐度是\"能不能用\"的第一判据，闪烁是\"能不能播\"的硬伤，帧差只做辅助"
+      },
+      {
+        "key": "statusCut",
+        "value": "ok ≥ 80 · warn ≥ 65 · bad < 65",
+        "ref": "frames.js:253",
+        "meaning": "三档分数切点，与 inspector 前端判定逐字一致（避免后台说 ok、前端标红）"
+      },
+      {
+        "key": "scoreClamp",
+        "value": "结构缺陷封顶：黑 10 / 白 15 / 模糊 45 / 冻结 30 / 跳变 60",
+        "ref": "frames.js:247-252,297",
+        "meaning": "命中结构性缺陷时分数直接被压到上限以内，不靠权重算——权重算不出\"整帧全黑\"这种事"
+      },
+      {
+        "key": "minStaticFrames",
+        "value": "max(3, round(fps × freezeMinSec))",
+        "ref": "frames.js:283",
+        "meaning": "冻结段的最短帧数，由 fps 与 freezeMinSec 推出，不另设常量"
+      },
+      {
+        "key": "anchorEps",
+        "value": 0.4,
+        "ref": "frames.js:229",
+        "meaning": "冻结判定的实际门限（与锚点比对）。它没有写进 analyze() 的 thresholds 输出（frames.js:331-335），下游要读只能回读 DEFAULTS"
+      },
+      {
+        "key": "warningBy",
+        "value": "阈值改动路径：改 DEFAULTS → 重跑 node tools/snap_quality.mjs → 重跑 selftest",
+        "ref": "docs/06-quality.md §2",
+        "meaning": "阈值是硬编码默认值：页面上所有阈值只读，改判定的唯一入口是改代码"
+      }
+    ],
+    "note": "阈值是硬编码默认值，改阈值要改 quality/frames.js 的 DEFAULTS 后重跑本脚本。"
+  },
+  "gaps": [
+    {
+      "id": "blur-calib",
+      "title": "模糊门限未做真机标定",
+      "detail": "sharpBlurAt 0.22 对「轻微虚焦」是否够灵敏未标定；测试素材的模糊段锐度归零是 gblur sigma=14 的阈值效应，不代表真实失焦的水平。",
+      "ref": "docs/06-quality.md §7-1"
+    },
+    {
+      "id": "no-flow",
+      "title": "flowResidual 不是真光流",
+      "detail": "它是相邻帧平均绝对差，会把握拍/快速平移当成高残差，靠 flowHard 归零兜住，不精确。",
+      "ref": "docs/06-quality.md §7-2"
+    },
+    {
+      "id": "no-audio",
+      "title": "无音频质检",
+      "detail": "probe 只取音频参数（codec / 采样率 / 声道），astats 未接，不做响度、削波、静音检测。",
+      "ref": "docs/06-quality.md §7-3"
+    },
+    {
+      "id": "no-color",
+      "title": "无色彩质检",
+      "detail": "不做色偏、色带（banding）、gamma 异常检测；inspector 里的「色带断层」负向词目前没有指标支撑。",
+      "ref": "docs/06-quality.md §7-4"
+    },
+    {
+      "id": "no-bbox",
+      "title": "缺陷定位到帧，不定位到区域",
+      "detail": "defect 只说 blur / flicker / dark / white / freeze，不给 bbox；框选重绘靠人工在 inspector 里拖框。",
+      "ref": "docs/06-quality.md §7-5"
+    },
+    {
+      "id": "no-parallel",
+      "title": "批量不做并行",
+      "detail": "batch 逐条串行跑 ffmpeg，多片时 CPU 有空闲，未做 worker 池。",
+      "ref": "docs/06-quality.md §7-6"
+    }
+  ],
+  "report_fields": [
+    {
+      "key": "summary.status",
+      "type": "{ok,warn,bad}",
+      "note": "逐帧状态计数，页面顶部三枚徽标"
+    },
+    {
+      "key": "summary.mean / p5 / p95 / min / max",
+      "type": "number",
+      "note": "分数分布。p5 用线性插值，比单帧最小值稳（转场/编码抖动会拉低极值）"
+    },
+    {
+      "key": "summary.worst[]",
+      "type": "array",
+      "note": "分数最低的 N 帧，带 reasons（人话理由）与 suggestion（修复建议）"
+    },
+    {
+      "key": "summary.segments[]",
+      "type": "array",
+      "note": "连续问题帧按同一缺陷合并成段：start/end/frames/defect/defect_cn/score_avg"
+    },
+    {
+      "key": "summary.problem_frames",
+      "type": "number",
+      "note": "status ≠ ok 的帧数"
+    },
+    {
+      "key": "summary.redraw_plan[]",
+      "type": "array",
+      "note": "worst 的前 N 条压成「帧号 + 理由 + 建议」，直接当重绘工单"
+    },
+    {
+      "key": "detect",
+      "type": "object",
+      "note": "blackdetect / freezedetect 区间（交叉验证）+ 逐帧命中的帧号集合"
+    },
+    {
+      "key": "thresholds",
+      "type": "object",
+      "note": "本次实际生效的阈值（可被 opts 覆盖，与 DEFAULTS 对照）"
+    },
+    {
+      "key": "frames[]",
+      "type": "array",
+      "note": "逐帧契约：frame/score/sharp/flicker/flowResidual/defect/status/extra，inspector/index.html 直接吃这份"
+    }
+  ],
+  "capabilities": {
+    "implemented": [
+      "黑场 / 黑帧",
+      "白屏 / 白帧",
+      "冻结（freeze）",
+      "模糊（锐度）",
+      "亮度跳变（闪烁）",
+      "参数合规（元数据自洽）",
+      "综合分三档"
+    ],
+    "not_implemented": [
+      "音频静音 / 响度 / 削波",
+      "色彩（色偏 / 色带 / gamma）",
+      "缺陷区域定位（bbox）",
+      "批量并行"
+    ]
+  },
+  "mode": "real",
+  "mode_note": "本机 ffmpeg 9.0.2-full_build-www.gyan.dev 可用，全部数字来自真实解码：fixtures 合成 → ffprobe → 单次 ffmpeg 逐帧分析 → report 汇总。",
+  "mode_caveat": "样片是 ffmpeg 现场合成的测试素材（缺陷定点注入、帧号已知），不是真实拍摄/生成影片；阈值在真机素材上的灵敏度见\"已知缺口\"。",
+  "fixture_spec": {
+    "dir": "D:\\缓存\\avp\\repair-check-yG4Ukf\\avp\\qc\\fixtures",
+    "fps": 30,
+    "expected": {
+      "black": [
+        20,
+        24
+      ],
+      "white": [
+        40,
+        42
+      ],
+      "blur": [
+        60,
+        89
+      ],
+      "freeze": [
+        100,
+        119
+      ]
+    },
+    "expected_cn": "注入帧号（30fps）：黑 20–24 · 白 40–42 · 模糊 60–89 · 冻结 100–119",
+    "made_now": [
+      "good-720p30.mp4",
+      "bad-720p30.mp4"
+    ],
+    "note": "good 为 3.0s / 90 帧带 AAC 静音轨；bad 为 4.0s / 120 帧且无音轨（fixtures.js 生成时未加音频输入）。"
+  },
+  "samples": [
+    {
+      "id": "bad",
+      "label": "坏片 · 定点注入缺陷",
+      "role": "bad",
+      "file": "bad-720p30.mp4",
+      "ok": true,
+      "bytes": 139906,
+      "fps": 30,
+      "frames": 120,
+      "analysisSize": "160×284",
+      "verdict": {
+        "key": "fail",
+        "label": "不通过",
+        "tone": "bad",
+        "rule": "bad > 0 → 不通过"
+      },
+      "headline": "先修第 20 帧（t=0.667s）：整帧接近全黑（YAVG=16）",
+      "top_fix": {
+        "frame": 20,
+        "t": 0.667,
+        "defect": "dark",
+        "defect_cn": "黑帧",
+        "reason": "整帧接近全黑（YAVG=16）；亮度跳变 65.92 级（相邻帧 YAVG 差）",
+        "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败"
+      },
+      "probe": {
+        "codec": "h264",
+        "profile": "High",
+        "pixFmt": "yuv420p",
+        "displayWidth": 720,
+        "displayHeight": 1280,
+        "fps": 30,
+        "avgFps": 30,
+        "duration": 4,
+        "nbFrames": 120,
+        "framesSource": "nb_frames",
+        "colorRange": null,
+        "colorSpace": null,
+        "hdr": false,
+        "rotation": 0,
+        "audio": null,
+        "format": "mov,mp4,m4a,3gp,3g2,mj2",
+        "sizeBytes": 139906,
+        "ffprobe": "9.0.2-full_build-www.gyan.dev",
+        "tookMs": 91
+      },
+      "summary": {
+        "mean": 64.3,
+        "p5": 14.8,
+        "p95": 94.1,
+        "min": 1,
+        "max": 95,
+        "frames": 120,
+        "problems": 60,
+        "status": {
+          "ok": 60,
+          "warn": 0,
+          "bad": 60
+        },
+        "segments": [
+          {
+            "start": 20,
+            "end": 24,
+            "frames": 5,
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "score_avg": 8,
+            "t0": 0.667,
+            "t1": 0.8,
+            "grade": "bad"
+          },
+          {
+            "start": 25,
+            "end": 25,
+            "frames": 1,
+            "defect": "flicker",
+            "defect_cn": "亮度跳变",
+            "score_avg": 40,
+            "t0": 0.833,
+            "t1": 0.833,
+            "grade": "bad"
+          },
+          {
+            "start": 40,
+            "end": 42,
+            "frames": 3,
+            "defect": "white",
+            "defect_cn": "白帧",
+            "score_avg": 10,
+            "t0": 1.333,
+            "t1": 1.4,
+            "grade": "bad"
+          },
+          {
+            "start": 43,
+            "end": 43,
+            "frames": 1,
+            "defect": "flicker",
+            "defect_cn": "亮度跳变",
+            "score_avg": 41,
+            "t0": 1.433,
+            "t1": 1.433,
+            "grade": "bad"
+          },
+          {
+            "start": 60,
+            "end": 89,
+            "frames": 30,
+            "defect": "blur",
+            "defect_cn": "模糊",
+            "score_avg": 45,
+            "t0": 2,
+            "t1": 2.967,
+            "grade": "bad"
+          },
+          {
+            "start": 100,
+            "end": 119,
+            "frames": 20,
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "score_avg": 30,
+            "t0": 3.333,
+            "t1": 3.967,
+            "grade": "bad"
+          }
+        ],
+        "worst": [
+          {
+            "frame": 20,
+            "score": 1,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 65.92,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）",
+              "亮度跳变 65.92 级（相邻帧 YAVG 差）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.667,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 40,
+            "score": 1,
+            "status": "bad",
+            "defect": "white",
+            "defect_cn": "白帧",
+            "yavg": 235,
+            "lapVar": 0,
+            "flicker": 157.33,
+            "reasons": [
+              "整帧接近全白（YAVG=235）",
+              "亮度跳变 157.33 级（相邻帧 YAVG 差）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 1.333,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 21,
+            "score": 10,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.7,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 22,
+            "score": 10,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.733,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 23,
+            "score": 10,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.767,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 24,
+            "score": 10,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.8,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 41,
+            "score": 15,
+            "status": "bad",
+            "defect": "white",
+            "defect_cn": "白帧",
+            "yavg": 235,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全白（YAVG=235）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 1.367,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 42,
+            "score": 15,
+            "status": "bad",
+            "defect": "white",
+            "defect_cn": "白帧",
+            "yavg": 235,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全白（YAVG=235）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 1.4,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 100,
+            "score": 30,
+            "status": "bad",
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "yavg": 74.04,
+            "lapVar": 289.25,
+            "flicker": 0.04,
+            "reasons": [
+              "与前序帧完全相同，画面停止变化"
+            ],
+            "suggestion": "重绘该帧并补运动：复制帧不能用作关键帧",
+            "t": 3.333,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 101,
+            "score": 30,
+            "status": "bad",
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "yavg": 74.07,
+            "lapVar": 289.32,
+            "flicker": 0.03,
+            "reasons": [
+              "与前序帧完全相同，画面停止变化"
+            ],
+            "suggestion": "重绘该帧并补运动：复制帧不能用作关键帧",
+            "t": 3.367,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 102,
+            "score": 30,
+            "status": "bad",
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "yavg": 74.04,
+            "lapVar": 289.14,
+            "flicker": 0.03,
+            "reasons": [
+              "与前序帧完全相同，画面停止变化"
+            ],
+            "suggestion": "重绘该帧并补运动：复制帧不能用作关键帧",
+            "t": 3.4,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 103,
+            "score": 30,
+            "status": "bad",
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "yavg": 74.05,
+            "lapVar": 289.13,
+            "flicker": 0,
+            "reasons": [
+              "与前序帧完全相同，画面停止变化"
+            ],
+            "suggestion": "重绘该帧并补运动：复制帧不能用作关键帧",
+            "t": 3.433,
+            "t_note": "frame ÷ fps"
+          }
+        ],
+        "worst_shown": 12
+      },
+      "detect": {
+        "black": [
+          {
+            "startFrame": 20,
+            "endFrame": 24,
+            "start": 0.667,
+            "end": 0.833,
+            "duration": 0.167,
+            "open": false
+          }
+        ],
+        "freeze": [
+          {
+            "startFrame": 20,
+            "endFrame": 24,
+            "start": 0.667,
+            "end": 0.833,
+            "duration": 0.167,
+            "open": false
+          },
+          {
+            "startFrame": 40,
+            "endFrame": 42,
+            "start": 1.333,
+            "end": 1.433,
+            "duration": 0.1,
+            "open": false
+          },
+          {
+            "startFrame": 99,
+            "endFrame": 119,
+            "start": 3.3,
+            "end": 3.967,
+            "duration": 0.667,
+            "open": true
+          }
+        ],
+        "staticRuns": [
+          {
+            "start": 21,
+            "end": 24,
+            "frames": 4,
+            "anchor": 20
+          },
+          {
+            "start": 100,
+            "end": 119,
+            "frames": 20,
+            "anchor": 99
+          }
+        ],
+        "black_frames": 5,
+        "white_frames": 3,
+        "frozen_frames": 24
+      },
+      "checks": [
+        {
+          "id": "black",
+          "name": "黑场 / 黑帧",
+          "status": "bad",
+          "threshold": "YAVG ≤ 24",
+          "thresholdKey": "blackY",
+          "actual": "5 帧（20–24） · blackdetect 0.667s–0.833s",
+          "basis": "frames.js:247 —— 每帧平均亮度 yavg ≤ blackY 判黑帧，分数封顶 10；blackdetect 区间只做交叉验证，不覆盖逐帧结论。",
+          "hits": 5
+        },
+        {
+          "id": "white",
+          "name": "白屏 / 白帧",
+          "status": "bad",
+          "threshold": "YAVG ≥ 235",
+          "thresholdKey": "whiteY",
+          "actual": "3 帧（40–42）",
+          "basis": "frames.js:248 —— yavg ≥ whiteY 判白帧（过曝/空镜），分数封顶 15。",
+          "hits": 3
+        },
+        {
+          "id": "freeze",
+          "name": "冻结（freeze）",
+          "status": "bad",
+          "threshold": "与锚点差 ≥ 0.4 视为画面变化；连续静止 ≥ 0.1s 判冻结",
+          "thresholdKey": "anchorEps",
+          "actual": "24 帧（21–24、100–119） · 静止段 2 段 · freezedetect 交叉验证 0.667s–0.833s，1.333s–1.433s，3.3s–3.967s",
+          "basis": "frames.js:283-300 —— 以\"静止候选段锚点\"累计帧差（只看相邻差区分不了编码噪声与慢速运镜），命中后分数封顶 30 并改写 defect=freeze。门限 anchorEps 未写进 thresholds 输出，本行从 DEFAULTS 回读。",
+          "hits": 24
+        },
+        {
+          "id": "blur",
+          "name": "模糊（锐度）",
+          "status": "bad",
+          "threshold": "sharp < 0.22 判模糊（log 归一，上下界 6/400）",
+          "thresholdKey": "sharpBlurAt",
+          "actual": "30 帧（60–89）判模糊 · 全片最低 sharp 0",
+          "basis": "frames.js:249 —— 拉普拉斯方差 log 归一后的 sharpNorm 低于 sharpBlurAt 判模糊，分数封顶 45。",
+          "hits": 30
+        },
+        {
+          "id": "flicker",
+          "name": "亮度跳变（闪烁）",
+          "status": "bad",
+          "threshold": "相邻帧 |ΔYAVG| ≥ 20",
+          "thresholdKey": "flickerHard",
+          "actual": "4 帧越线 · 全片最大跳变 157.98 级",
+          "basis": "frames.js:251 —— flicker ≥ flickerHard 判可感知闪/切，分数封顶 60；闪烁在权重里占 0.35，因为它直接决定能不能播。",
+          "hits": 4
+        },
+        {
+          "id": "params",
+          "name": "参数合规（元数据自洽）",
+          "status": "ok",
+          "threshold": "帧数必须可溯源；fps 与 avg_fps 必须一致",
+          "thresholdKey": null,
+          "actual": "帧数来源 nb_frames / nb_read_frames（实测），fps 与 avg_fps 一致",
+          "basis": "probe.js:140-178 —— 只把 ffprobe 结果翻译成稳定字段，并把帧数标注为容器声明还是数出来的；回退到 duration×fps 时属估算，页面按 warn 处理。",
+          "subs": [
+            {
+              "k": "画面",
+              "v": "720×1280 · h264 High · yuv420p"
+            },
+            {
+              "k": "帧率",
+              "v": "30 fps（avg 30）"
+            },
+            {
+              "k": "帧数",
+              "v": "120 帧 · 来源 nb_frames"
+            },
+            {
+              "k": "色彩",
+              "v": "range=未标注 · space=未标注"
+            },
+            {
+              "k": "音轨",
+              "v": "无音频流"
+            },
+            {
+              "k": "容器",
+              "v": "mov,mp4,m4a,3gp,3g2,mj2 · 137KB"
+            }
+          ],
+          "hits": 0
+        },
+        {
+          "id": "audio",
+          "name": "音频静音",
+          "status": "na",
+          "implemented": false,
+          "threshold": "未接入（astats 未接）",
+          "thresholdKey": null,
+          "actual": "该片无音频流，静音检查无从进行",
+          "basis": "docs/06-quality.md §7 缺口 3 —— probe.js 只取音频参数，frames.js 不含任何音频指标；本行如实标「未实现」，不冒充通过。",
+          "hits": null
+        },
+        {
+          "id": "bands",
+          "name": "综合分三档（status）",
+          "status": "bad",
+          "threshold": "ok ≥ 80 · warn ≥ 65 · bad < 65",
+          "thresholdKey": "statusCut",
+          "actual": "ok 60 / warn 0 / bad 60 · 问题帧 60/120",
+          "basis": "frames.js:253 —— 综合分 = sharp×0.45 + flicker×0.35 + flow×0.20，再按三档切；切点与 inspector 前端逐字一致。",
+          "hits": 60
+        }
+      ],
+      "coverage": [
+        {
+          "defect": "dark",
+          "defect_cn": "黑帧",
+          "expect": "20–24",
+          "total": 5,
+          "hit": 5
+        },
+        {
+          "defect": "white",
+          "defect_cn": "白帧",
+          "expect": "40–42",
+          "total": 3,
+          "hit": 3
+        },
+        {
+          "defect": "blur",
+          "defect_cn": "模糊",
+          "expect": "60–89",
+          "total": 30,
+          "hit": 30
+        },
+        {
+          "defect": "freeze",
+          "defect_cn": "冻结",
+          "expect": "100–119",
+          "total": 20,
+          "hit": 20
+        }
+      ],
+      "timing": {
+        "ffmpegMs": 547
+      },
+      "generated_from": "probe → frames → report（单次 ffmpeg 解码）"
+    },
+    {
+      "id": "good",
+      "label": "正常片 · 无注入",
+      "role": "good",
+      "file": "good-720p30.mp4",
+      "ok": true,
+      "bytes": 106994,
+      "fps": 30,
+      "frames": 90,
+      "analysisSize": "160×284",
+      "verdict": {
+        "key": "pass",
+        "label": "通过",
+        "tone": "ok",
+        "rule": "bad = 0 且 warn = 0 → 通过"
+      },
+      "headline": "无问题帧（90 帧全部 ok）",
+      "top_fix": null,
+      "probe": {
+        "codec": "h264",
+        "profile": "High",
+        "pixFmt": "yuv420p",
+        "displayWidth": 720,
+        "displayHeight": 1280,
+        "fps": 30,
+        "avgFps": 30,
+        "duration": 3,
+        "nbFrames": 90,
+        "framesSource": "nb_frames",
+        "colorRange": null,
+        "colorSpace": null,
+        "hdr": false,
+        "rotation": 0,
+        "audio": {
+          "codec": "aac",
+          "sampleRate": 48000,
+          "channels": 2,
+          "channelLayout": "stereo",
+          "bitrate": 2289
+        },
+        "format": "mov,mp4,m4a,3gp,3g2,mj2",
+        "sizeBytes": 106994,
+        "ffprobe": "9.0.2-full_build-www.gyan.dev",
+        "tookMs": 67
+      },
+      "summary": {
+        "mean": 93.9,
+        "p5": 93,
+        "p95": 95,
+        "min": 93,
+        "max": 95,
+        "frames": 90,
+        "problems": 0,
+        "status": {
+          "ok": 90,
+          "warn": 0,
+          "bad": 0
+        },
+        "segments": [],
+        "worst": [
+          {
+            "frame": 1,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 86.22,
+            "lapVar": 250.16,
+            "flicker": 0.14,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.033,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 2,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.95,
+            "lapVar": 250.66,
+            "flicker": 0.27,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.067,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 3,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.74,
+            "lapVar": 251.49,
+            "flicker": 0.21,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.1,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 4,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.42,
+            "lapVar": 252.12,
+            "flicker": 0.32,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.133,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 5,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.28,
+            "lapVar": 252.71,
+            "flicker": 0.14,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.167,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 6,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.01,
+            "lapVar": 253.38,
+            "flicker": 0.27,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.2,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 7,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 84.81,
+            "lapVar": 254.02,
+            "flicker": 0.2,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.233,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 8,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 84.48,
+            "lapVar": 254.88,
+            "flicker": 0.33,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.267,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 9,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 84.31,
+            "lapVar": 255.34,
+            "flicker": 0.17,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.3,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 10,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 84.02,
+            "lapVar": 256.12,
+            "flicker": 0.29,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.333,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 12,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 83.6,
+            "lapVar": 257.59,
+            "flicker": 0.28,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.4,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 13,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 83.39,
+            "lapVar": 258.42,
+            "flicker": 0.21,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.433,
+            "t_note": "frame ÷ fps"
+          }
+        ],
+        "worst_shown": 12
+      },
+      "detect": {
+        "black": [],
+        "freeze": [],
+        "staticRuns": [],
+        "black_frames": 0,
+        "white_frames": 0,
+        "frozen_frames": 0
+      },
+      "checks": [
+        {
+          "id": "black",
+          "name": "黑场 / 黑帧",
+          "status": "ok",
+          "threshold": "YAVG ≤ 24",
+          "thresholdKey": "blackY",
+          "actual": "0 帧 · blackdetect 0 段",
+          "basis": "frames.js:247 —— 每帧平均亮度 yavg ≤ blackY 判黑帧，分数封顶 10；blackdetect 区间只做交叉验证，不覆盖逐帧结论。",
+          "hits": 0
+        },
+        {
+          "id": "white",
+          "name": "白屏 / 白帧",
+          "status": "ok",
+          "threshold": "YAVG ≥ 235",
+          "thresholdKey": "whiteY",
+          "actual": "0 帧",
+          "basis": "frames.js:248 —— yavg ≥ whiteY 判白帧（过曝/空镜），分数封顶 15。",
+          "hits": 0
+        },
+        {
+          "id": "freeze",
+          "name": "冻结（freeze）",
+          "status": "ok",
+          "threshold": "与锚点差 ≥ 0.4 视为画面变化；连续静止 ≥ 0.1s 判冻结",
+          "thresholdKey": "anchorEps",
+          "actual": "0 帧 · 静止段 0 段 · freezedetect 交叉验证 0 段",
+          "basis": "frames.js:283-300 —— 以\"静止候选段锚点\"累计帧差（只看相邻差区分不了编码噪声与慢速运镜），命中后分数封顶 30 并改写 defect=freeze。门限 anchorEps 未写进 thresholds 输出，本行从 DEFAULTS 回读。",
+          "hits": 0
+        },
+        {
+          "id": "blur",
+          "name": "模糊（锐度）",
+          "status": "ok",
+          "threshold": "sharp < 0.22 判模糊（log 归一，上下界 6/400）",
+          "thresholdKey": "sharpBlurAt",
+          "actual": "0 帧判模糊 · 全片最低 sharp 0.884",
+          "basis": "frames.js:249 —— 拉普拉斯方差 log 归一后的 sharpNorm 低于 sharpBlurAt 判模糊，分数封顶 45。",
+          "hits": 0
+        },
+        {
+          "id": "flicker",
+          "name": "亮度跳变（闪烁）",
+          "status": "ok",
+          "threshold": "相邻帧 |ΔYAVG| ≥ 20",
+          "thresholdKey": "flickerHard",
+          "actual": "0 帧越线 · 全片最大跳变 0.34 级",
+          "basis": "frames.js:251 —— flicker ≥ flickerHard 判可感知闪/切，分数封顶 60；闪烁在权重里占 0.35，因为它直接决定能不能播。",
+          "hits": 0
+        },
+        {
+          "id": "params",
+          "name": "参数合规（元数据自洽）",
+          "status": "ok",
+          "threshold": "帧数必须可溯源；fps 与 avg_fps 必须一致",
+          "thresholdKey": null,
+          "actual": "帧数来源 nb_frames / nb_read_frames（实测），fps 与 avg_fps 一致",
+          "basis": "probe.js:140-178 —— 只把 ffprobe 结果翻译成稳定字段，并把帧数标注为容器声明还是数出来的；回退到 duration×fps 时属估算，页面按 warn 处理。",
+          "subs": [
+            {
+              "k": "画面",
+              "v": "720×1280 · h264 High · yuv420p"
+            },
+            {
+              "k": "帧率",
+              "v": "30 fps（avg 30）"
+            },
+            {
+              "k": "帧数",
+              "v": "90 帧 · 来源 nb_frames"
+            },
+            {
+              "k": "色彩",
+              "v": "range=未标注 · space=未标注"
+            },
+            {
+              "k": "音轨",
+              "v": "aac 48000Hz 2ch stereo"
+            },
+            {
+              "k": "容器",
+              "v": "mov,mp4,m4a,3gp,3g2,mj2 · 104KB"
+            }
+          ],
+          "hits": 0
+        },
+        {
+          "id": "audio",
+          "name": "音频静音",
+          "status": "na",
+          "implemented": false,
+          "threshold": "未接入（astats 未接）",
+          "thresholdKey": null,
+          "actual": "仅记录音轨参数：aac 48000Hz 2ch",
+          "basis": "docs/06-quality.md §7 缺口 3 —— probe.js 只取音频参数，frames.js 不含任何音频指标；本行如实标「未实现」，不冒充通过。",
+          "hits": null
+        },
+        {
+          "id": "bands",
+          "name": "综合分三档（status）",
+          "status": "ok",
+          "threshold": "ok ≥ 80 · warn ≥ 65 · bad < 65",
+          "thresholdKey": "statusCut",
+          "actual": "ok 90 / warn 0 / bad 0 · 问题帧 0/90",
+          "basis": "frames.js:253 —— 综合分 = sharp×0.45 + flicker×0.35 + flow×0.20，再按三档切；切点与 inspector 前端逐字一致。",
+          "hits": 0
+        }
+      ],
+      "coverage": null,
+      "timing": {
+        "ffmpegMs": 395
+      },
+      "generated_from": "probe → frames → report（单次 ffmpeg 解码）"
+    }
+  ],
+  "cross_check": [
+    {
+      "defect": "dark",
+      "defect_cn": "黑帧",
+      "expect": "20–24",
+      "total": 5,
+      "hit": 5
+    },
+    {
+      "defect": "white",
+      "defect_cn": "白帧",
+      "expect": "40–42",
+      "total": 3,
+      "hit": 3
+    },
+    {
+      "defect": "blur",
+      "defect_cn": "模糊",
+      "expect": "60–89",
+      "total": 30,
+      "hit": 30
+    },
+    {
+      "defect": "freeze",
+      "defect_cn": "冻结",
+      "expect": "100–119",
+      "total": 20,
+      "hit": 20
+    }
+  ]
+};
+(function () {
+  'use strict';
+
+  var SNAP = window.__SNAP || null;
+  var SAMPLES = (SNAP && Array.isArray(SNAP.samples)) ? SNAP.samples.filter(function (s) { return s && s.ok; }) : [];
+  var MODE = (SNAP && SNAP.mode) ? SNAP.mode : 'none';
+  var STORE_KEY = 'avp.quality.sample.v1';
+  var STATUS_CN = { ok: '达标', warn: '注意', bad: '命中', na: '未实现' };
+  var TONE_BADGE = { ok: 'ok', warn: 'warn', bad: 'bad', na: '' };
+  var cur = null;
+  var noticeTimer = null;
+
+  var $ = function (sel, root) { return (root || document).querySelector(sel); };
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function num(v, digits) {
+    if (v === null || v === undefined || (typeof v === 'number' && !isFinite(v))) return '—';
+    if (typeof v !== 'number') return esc(v);
+    return digits === undefined ? String(v) : v.toFixed(digits);
+  }
+  function secs(v) {
+    if (v === null || v === undefined || (typeof v === 'number' && !isFinite(v))) return '—';
+    return (Math.round(v * 1000) / 1000) + 's';
+  }
+  function localTime(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function stamp() {
+    var d = new Date();
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+  function notice(msg) {
+    var el = $('#notice');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'hint on';
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(function () { el.className = 'hint'; }, 7000);
+  }
+  function store(id) {
+    try { localStorage.setItem(STORE_KEY, String(id)); } catch (e) { /* file:// 下可能禁用本地存储，选中态退回内存 */ }
+  }
+  function restore() {
+    try { return localStorage.getItem(STORE_KEY); } catch (e) { return null; }
+  }
+
+  /* ── 顶部模式徽标 ─────────────────────────────────────────────── */
+  function renderMode() {
+    var text = { real: '模式 real · 真实报告', synthetic: '模式 synthetic · 口径说明', none: '无快照' }[MODE] || ('模式 ' + MODE);
+    $('#modeText').textContent = text;
+    $('#modeDot').className = 'dot ' + (MODE === 'real' ? 'acc' : MODE === 'synthetic' ? 'warn' : 'off');
+    $('#modeBadge').title = (SNAP && SNAP.mode_note) ? SNAP.mode_note : '未读到 quality/snapshot.json';
+  }
+
+  /* ── 左栏样例列表 ─────────────────────────────────────────────── */
+  function renderList() {
+    var box = $('#sampleList');
+    $('#sampleCount').textContent = SAMPLES.length ? SAMPLES.length + ' 条' : '0 条';
+    if (!SAMPLES.length) {
+      box.innerHTML = '<div class="sect">测试素材</div>' +
+        '<div class="empty-row">没有可用报告。跑 node tools/snap_quality.mjs 生成快照后重新构建本页。</div>';
+      return;
+    }
+    box.innerHTML = '<div class="sect">测试素材 · quality/fixtures.js 合成</div>' + SAMPLES.map(function (s) {
+      var st = s.summary.status;
+      return '<button type="button" class="row" role="option" data-id="' + esc(s.id) + '" aria-selected="false">' +
+        '<span class="ico"><span class="dot ' + esc(s.verdict.tone) + '"></span></span>' +
+        '<span class="t">' + esc(s.label) + '</span>' +
+        '<span class="s num">' + (st.bad ? 'bad ' + st.bad : 'ok ' + st.ok) + '</span>' +
+        '</button>';
+    }).join('');
+    $$('#sampleList .row').forEach(function (row) {
+      row.addEventListener('click', function () { select(row.getAttribute('data-id')); });
+    });
+    $('#sampleList').addEventListener('keydown', onListKey);
+  }
+
+  function onListKey(ev) {
+    if (ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp' && ev.key !== 'Home' && ev.key !== 'End') return;
+    var rows = $$('#sampleList .row');
+    if (!rows.length) return;
+    var i = rows.indexOf(document.activeElement);
+    if (ev.key === 'ArrowDown') i = Math.min(rows.length - 1, i + 1);
+    if (ev.key === 'ArrowUp') i = Math.max(0, i < 0 ? 0 : i - 1);
+    if (ev.key === 'Home') i = 0;
+    if (ev.key === 'End') i = rows.length - 1;
+    ev.preventDefault();
+    rows[i].focus();
+    select(rows[i].getAttribute('data-id'));
+  }
+
+  function markSelected(id) {
+    $$('#sampleList .row').forEach(function (r) {
+      r.setAttribute('aria-selected', r.getAttribute('data-id') === id ? 'true' : 'false');
+    });
+  }
+
+  function select(id) {
+    var next = null;
+    for (var i = 0; i < SAMPLES.length; i++) { if (SAMPLES[i].id === id) { next = SAMPLES[i]; break; } }
+    if (!next) next = SAMPLES[0];
+    cur = next;
+    store(next.id);
+    markSelected(next.id);
+    renderMain();
+  }
+
+  /* ── 总判区 ───────────────────────────────────────────────────── */
+  function renderVerdict(s) {
+    var st = s.summary.status;
+    var top = s.summary.worst[0] || null;
+    var html = '' +
+      '<div class="q-hero" data-tone="' + esc(s.verdict.tone) + '">' +
+        '<div>' +
+          '<div class="cap">总判</div>' +
+          '<div class="verdict">' + esc(s.verdict.label) + '</div>' +
+          '<div class="rule">判定规则：' + esc(s.verdict.rule) + '（页面口径，见 quality/README.md）</div>' +
+        '</div>' +
+        '<div>' +
+          '<div class="cap">均分 / 百分位</div>' +
+          '<div class="score num">' + num(s.summary.mean, 1) + ' <span class="score-unit">分</span></div>' +
+          '<div class="pct">p5 <span class="num">' + num(s.summary.p5, 1) + '</span> · p95 <span class="num">' + num(s.summary.p95, 1) + '</span></div>' +
+          '<div class="pct">最低 <span class="num">' + num(s.summary.min, 1) + '</span> · 最高 <span class="num">' + num(s.summary.max, 1) + '</span></div>' +
+        '</div>' +
+        '<div class="counts">' +
+          '<span class="badge ok"><span class="dot ok"></span>ok <b class="num">' + st.ok + '</b></span>' +
+          '<span class="badge warn"><span class="dot warn"></span>warn <b class="num">' + st.warn + '</b></span>' +
+          '<span class="badge bad"><span class="dot bad"></span>bad <b class="num">' + st.bad + '</b></span>' +
+          '<span class="hint">共 <span class="num">' + s.summary.frames + '</span> 帧 · 问题帧 <span class="num">' + s.summary.problems + '</span></span>' +
+        '</div>' +
+      '</div>';
+
+    if (top && s.top_fix) {
+      html += '<div class="q-fix">' +
+        '<span class="k">最需要先修</span>' +
+        '<span class="v">第 <b class="num">' + top.frame + '</b> 帧（t=' + secs(top.t) + '）· ' + esc(top.defect_cn) + ' <span class="mono hint">' + esc(top.defect || '') + '</span> —— ' + esc(top.reasons[0] || '') + '</span>' +
+        '<span class="s">' + esc(top.suggestion || '') + '</span>' +
+        '</div>';
+    } else if (s.verdict.key === 'pass') {
+      html += '<div class="q-fix" style="border-left-color:var(--ok)">' +
+        '<span class="k">最需要先修</span><span class="v">没有需要修的帧：' + esc(s.headline) + '</span></div>';
+    }
+    $('#verdictSlot').innerHTML = html;
+  }
+
+  /* ── 检查项 ───────────────────────────────────────────────────── */
+  function renderChecks(s) {
+    var checks = s.checks || [];
+    $('#checkCount').textContent = checks.filter(function (c) { return c.status !== 'na'; }).length + ' 项已实现';
+    $('#checkSlot').innerHTML = checks.map(function (c) {
+      var dot = c.status === 'na' ? 'off' : (TONE_BADGE[c.status] || 'off');
+      var cls = TONE_BADGE[c.status] || '';
+      var badge = '<span class="badge ' + cls + '">' + esc(STATUS_CN[c.status] || c.status) + '</span>';
+      var th = c.threshold ? '<span class="badge">阈值 ' + esc(c.threshold) + '</span>' : '';
+      var subs = (c.subs && c.subs.length) ? '<div class="chk-subs">' + c.subs.map(function (x) {
+        return '<span class="k">' + esc(x.k) + '</span><span>' + esc(x.v) + '</span>';
+      }).join('') + '</div>' : '';
+      return '<div class="chk">' +
+        '<span class="dot ' + dot + '"></span>' +
+        '<div>' +
+          '<div class="chk-top"><b>' + esc(c.name) + '</b>' + badge + th + '</div>' +
+          '<div class="chk-act">实测 ' + esc(c.actual) + '</div>' +
+          '<div class="chk-bas">判定依据 ' + esc(c.basis) + '</div>' +
+          subs +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* ── 问题时间轴 ───────────────────────────────────────────────── */
+  function renderTimeline(s) {
+    var total = s.frames || 0;
+    var segs = (s.summary.segments || []).slice(0, 240);
+    var track = $('#tlTrack');
+    if (!segs.length) {
+      track.innerHTML = '<div style="padding:8px 10px;font-size:var(--fz-xs);color:var(--text-dim2)">本片没有问题区间：所有帧 status 均为 ok</div>';
+      $('#tlAxis').innerHTML = '';
+      $('#tlRead').textContent = '无问题区间';
+      return;
+    }
+    var gl = '';
+    for (var g = 1; g < 4; g++) gl += '<div class="gl" style="left:' + (g * 25) + '%"></div>';
+    track.innerHTML = gl + segs.map(function (seg, i) {
+      var left = total ? (seg.start / total) * 100 : 0;
+      var width = total ? (seg.frames / total) * 100 : 0;
+      var label = '帧 ' + seg.start + '–' + seg.end + ' · ' + secs(seg.t0) + '–' + secs(seg.t1) + ' · ' + seg.defect_cn + ' ' + (seg.defect || '') + ' · 均分 ' + seg.score_avg;
+      return '<button type="button" class="seg ' + esc(seg.grade) + '" data-i="' + i + '"' +
+        ' style="left:' + left.toFixed(3) + '%;width:' + Math.max(width, 0.4).toFixed(3) + '%"' +
+        ' title="' + esc(label) + '" aria-label="' + esc(label) + '"></button>';
+    }).join('');
+    var dur = total && s.fps ? total / s.fps : 0;
+    $('#tlAxis').innerHTML = '<span>帧 0</span><span>' + esc(s.frames + ' 帧 · ' + (Math.round(dur * 100) / 100) + 's') + '</span><span>帧 ' + s.frames + '</span>';
+    var allSegs = (s.summary.segments || []).length;
+    $('#tlRead').textContent = allSegs > segs.length
+      ? '共 ' + allSegs + ' 段问题区间，仅画前 ' + segs.length + ' 段'
+      : segs.length + ' 段问题区间（' + segs.reduce(function (a, b) { return a + b.frames; }, 0) + ' 帧）';
+
+    var tip = function (seg) {
+      return '帧 ' + seg.start + '–' + seg.end + '（' + seg.frames + ' 帧）· ' + secs(seg.t0) + '–' + secs(seg.t1) +
+        ' · ' + seg.defect_cn + ' ' + (seg.defect || '') + ' · 段内均分 ' + seg.score_avg;
+    };
+    $$('#tlTrack .seg').forEach(function (el) {
+      var seg = segs[Number(el.getAttribute('data-i'))];
+      var show = function () { $('#tlRead').textContent = tip(seg); };
+      el.addEventListener('mouseenter', show);
+      el.addEventListener('focus', show);
+    });
+  }
+
+  /* ── 最差帧表 ─────────────────────────────────────────────────── */
+  function renderWorst(s) {
+    var rows = s.summary.worst || [];
+    $('#worstCount').textContent = rows.length + ' 帧';
+    if (!rows.length) {
+      $('#worstSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>没有可取样的帧</b><span>frames 数组为空，检查 ffmpeg 是否能解出画面。</span></div>';
+      return;
+    }
+    var body = rows.map(function (w) {
+      return '<tr>' +
+        '<td class="num">' + w.frame + '</td>' +
+        '<td class="num">' + secs(w.t) + '</td>' +
+        '<td class="num">' + num(w.score) + '</td>' +
+        '<td><span class="badge ' + esc(TONE_BADGE[w.status] || '') + '"><span class="dot ' + esc(TONE_BADGE[w.status] || 'off') + '"></span>' + esc(w.status) + '</span></td>' +
+        '<td>' + esc(w.defect_cn || '低分') + '</td>' +
+        '<td class="mono">' + esc(w.defect || '—') + '</td>' +
+        '<td class="num">' + num(w.yavg, 2) + '</td>' +
+        '<td class="num">' + num(w.lapVar, 2) + '</td>' +
+        '<td>' + esc((w.reasons || []).join('；') || '无结构性缺陷命中（仅作为全片最弱帧列出）') + '</td>' +
+        '</tr>';
+    }).join('');
+    $('#worstSlot').innerHTML = '<table class="tbl">' +
+      '<thead><tr>' +
+        '<th class="num">帧号</th><th class="num">时间</th><th class="num">分数</th>' +
+        '<th>状态</th><th>缺陷</th><th>defect</th>' +
+        '<th class="num">YAVG</th><th class="num">LapVar</th><th>理由</th>' +
+      '</tr></thead><tbody>' + body + '</tbody></table>';
+  }
+
+  /* ── 阈值表（全量 DEFAULTS） ─────────────────────────────────── */
+  function renderThresholds() {
+    var t = (SNAP && SNAP.thresholds) || null;
+    if (!t || !Array.isArray(t.items) || !t.items.length) {
+      $('#thresholdSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>没有阈值数据</b><span>快照缺 thresholds，重跑 node tools/snap_quality.mjs。</span></div>';
+      return;
+    }
+    var rows = t.items.map(function (it) {
+      var dormant = it.dormant ? ' <span class="badge warn">未参与判定</span>' : '';
+      return '<tr>' +
+        '<td class="mono">' + esc(it.key) + dormant + '</td>' +
+        '<td class="num">' + esc(String(it.value)) + '</td>' +
+        '<td class="mono">' + esc(it.group) + '</td>' +
+        '<td>' + esc(it.meaning) + '</td>' +
+        '<td class="hint">' + esc(it.note || '') + '</td>' +
+        '</tr>';
+    }).join('');
+    var extra = (t.extra || []).map(function (it) {
+      return '<tr>' +
+        '<td class="mono">' + esc(it.key) + '</td>' +
+        '<td class="num">' + esc(String(it.value)) + '</td>' +
+        '<td class="mono">派生</td>' +
+        '<td>' + esc(it.meaning) + '</td>' +
+        '<td class="hint mono">' + esc(it.ref || '') + '</td>' +
+        '</tr>';
+    }).join('');
+    $('#thresholdSlot').innerHTML = '<table class="tbl">' +
+      '<thead><tr><th>键</th><th class="num">值</th><th>分组</th><th>含义</th><th>备注</th></tr></thead>' +
+      '<tbody>' + rows + extra + '</tbody></table>';
+    $('#thresholdNote').textContent = t.note || '阈值是硬编码默认值，改阈值要改代码。';
+  }
+
+  /* ── 注入帧号对照 ─────────────────────────────────────────────── */
+  function renderCross(s) {
+    var cov = s.coverage;
+    if (!cov || !cov.length) {
+      $('#crossSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)">' +
+        '<b>该样片没有注入缺陷</b><span>正常片没有 ground truth 可对照；对照表只在坏片上出现（fixtures.js 声明的注入帧号 vs 实际检出帧号）。</span></div>';
+      return;
+    }
+    var rows = cov.map(function (c) {
+      var miss = c.total - c.hit;
+      var cls = miss === 0 ? 'ok' : 'bad';
+      return '<tr>' +
+        '<td>' + esc(c.defect_cn) + ' <span class="mono hint">' + esc(c.defect) + '</span></td>' +
+        '<td class="num">' + esc(c.expect) + '</td>' +
+        '<td class="num">' + c.total + '</td>' +
+        '<td class="num">' + c.hit + '</td>' +
+        '<td class="num">' + miss + '</td>' +
+        '<td><span class="badge ' + cls + '">' + (miss === 0 ? '全部命中' : '有漏检') + '</span></td>' +
+        '</tr>';
+    }).join('');
+    $('#crossSlot').innerHTML = '<table class="tbl">' +
+      '<thead><tr><th>缺陷</th><th class="num">声明帧号</th><th class="num">声明帧数</th><th class="num">检出命中</th><th class="num">漏检</th><th>结论</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }
+
+  /* ── 已知缺口 ─────────────────────────────────────────────────── */
+  function renderGaps() {
+    var gaps = (SNAP && Array.isArray(SNAP.gaps)) ? SNAP.gaps : [];
+    if (!gaps.length) { $('#gapSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>快照没有缺口清单</b></div>'; return; }
+    $('#gapSlot').innerHTML = gaps.map(function (g) {
+      return '<div class="chk">' +
+        '<span class="dot warn"></span>' +
+        '<div>' +
+          '<div class="chk-top"><b>' + esc(g.title) + '</b><span class="badge">' + esc(g.ref) + '</span></div>' +
+          '<div class="chk-bas" style="color:var(--text-dim)">' + esc(g.detail) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* ── 诊断行 ───────────────────────────────────────────────────── */
+  function diagLine() {
+    if (!cur) return 'quality: verdict=no_data, bad=0, worst_frame=—';
+    var top = cur.summary.worst[0];
+    return 'quality: verdict=' + cur.verdict.key + ', bad=' + cur.summary.status.bad + ', worst_frame=' + (top ? top.frame : '—');
+  }
+  function renderDiag() {
+    var el = $('#diagLine');
+    el.value = diagLine();
+    el.title = el.value;
+  }
+
+  /* ── 底部口径条 ───────────────────────────────────────────────── */
+  function renderFoot() {
+    var gen = (SNAP && SNAP.generated_at) ? localTime(SNAP.generated_at) : '—';
+    var modeCn = MODE === 'real' ? 'real' : MODE === 'synthetic' ? 'synthetic' : '无';
+    $('#footLeft').textContent = '数据来源 quality/snapshot.json · 生成时间 ' + gen + ' · 模式 ' + modeCn + ' · 阈值源 quality/frames.js DEFAULTS';
+    var th = (SNAP && SNAP.thresholds && SNAP.thresholds.items) ? SNAP.thresholds.items.length : 0;
+    $('#footRight').textContent = cur
+      ? ('样例 ' + SAMPLES.length + ' 条 · 当前 ' + cur.frames + ' 帧 · 阈值 ' + th + ' 项')
+      : ('阈值 ' + th + ' 项');
+  }
+
+  /* ── 降级态：无真实报告时只讲口径 ─────────────────────────────── */
+  function renderEmpty() {
+    var reason = (SNAP && SNAP.mode_note) ? SNAP.mode_note : '没有读到 quality/snapshot.json';
+    var caps = (SNAP && SNAP.capabilities) ? SNAP.capabilities : { implemented: [], not_implemented: [] };
+    var req = (SNAP && Array.isArray(SNAP.real_requires)) ? SNAP.real_requires : [
+      '安装 ffmpeg / ffprobe 全量包并把 bin 目录加入 PATH',
+      '或设置环境变量：set FFMPEG_BIN=D:\\path\\ffmpeg.exe 与 set FFPROBE_BIN=D:\\path\\ffprobe.exe',
+      '然后重跑 node tools/snap_quality.mjs'
+    ];
+    $('#sampleTitle').textContent = MODE === 'synthetic' ? '本页为口径说明' : '还没有报告';
+    $('#sampleSub').textContent = '没有逐帧数据';
+    $('#sampleMeta').textContent = '';
+
+    $('#verdictSlot').innerHTML = '<div class="empty">' +
+      '<b>' + (MODE === 'synthetic' ? '本页为口径说明，真实报告需本机 ffmpeg' : '跑 node tools/snap_quality.mjs 生成报告') + '</b>' +
+      '<span>原因：' + esc(reason) + '</span>' +
+      (SNAP && SNAP.mode_caveat ? '<span>说明：' + esc(SNAP.mode_caveat) + '</span>' : '') +
+      '<span>恢复路径：</span>' +
+      '<pre class="code" style="width:100%">' + esc(req.join('\n')) + '\nnode tools/build_module.mjs quality</pre>' +
+      '<span class="hint">FFMPEG_BIN / FFPROBE_BIN 只在当前命令行窗口生效；写进系统环境变量则全局生效。</span>' +
+      '</div>';
+
+    $('#checkSlot').innerHTML = '<div class="chk"><span class="dot off"></span><div>' +
+      '<div class="chk-top"><b>能力清单（来自代码，无实测数字）</b><span class="badge">口径</span></div>' +
+      '<div class="chk-act">已实现：' + esc((caps.implemented || []).join('、') || '—') + '</div>' +
+      '<div class="chk-bas">未实现：' + esc((caps.not_implemented || []).join('、') || '—') + '</div>' +
+      '</div></div>';
+    $('#checkCount').textContent = '0 项实测';
+
+    $('#tlTrack').innerHTML = '<div style="padding:8px 10px;font-size:var(--fz-xs);color:var(--text-dim2)">没有帧数据，画不出时间轴</div>';
+    $('#tlAxis').innerHTML = '';
+    $('#tlRead').textContent = '本页为口径说明：阈值与报告结构是真实的，帧号与分数不是';
+    $('#worstSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>没有最差帧</b><span>synthetic 模式不生成帧数据；生成真实报告后本表自动填充。</span></div>';
+    $('#worstCount').textContent = '0 帧';
+    $('#crossSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>没有注入帧号对照</b><span>需要先跑通 fixtures + 分析。</span></div>';
+  }
+
+  function renderMain() {
+    if (!cur) { renderEmpty(); return; }
+    $('#sampleTitle').textContent = cur.file;
+    $('#sampleSub').textContent = (cur.probe.displayWidth + '×' + cur.probe.displayHeight) +
+      ' · ' + cur.frames + ' 帧 · ' + cur.probe.fps + ' fps · ' + (cur.probe.duration || 0) + 's' +
+      (cur.probe.audio ? ' · ' + cur.probe.audio.codec + ' ' + cur.probe.audio.sampleRate + 'Hz ' + cur.probe.audio.channels + 'ch' : ' · 无音轨');
+    $('#sampleMeta').textContent = '分析尺寸 ' + (cur.analysisSize || '—') + ' 灰度 · ffmpeg ' + (cur.timing ? cur.timing.ffmpegMs + 'ms' : '—');
+    renderVerdict(cur);
+    renderChecks(cur);
+    renderTimeline(cur);
+    renderWorst(cur);
+    renderCross(cur);
+    renderDiag();
+    renderFoot();
+  }
+
+  /* ── 导出报告 JSON ────────────────────────────────────────────── */
+  function metaBlock() {
+    return {
+      tool: SNAP ? SNAP.tool : null,
+      schema: SNAP ? SNAP.schema : null,
+      snapshot_generated_at: SNAP ? SNAP.generated_at : null,
+      mode: MODE,
+      mode_note: SNAP ? SNAP.mode_note : null,
+      sources: SNAP ? SNAP.sources : null,
+      thresholds: SNAP ? SNAP.thresholds : null,
+      exported_at: new Date().toISOString(),
+    };
+  }
+
+  function download(name, text) {
+    var blob = new Blob([text], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+  }
+
+  function onExport() {
+    if (!SNAP) { notice('没有 window.__SNAP：先跑 node tools/snap_quality.mjs 与 node tools/build_module.mjs quality'); return; }
+    var payload;
+    var name;
+    if (cur) {
+      payload = { meta: metaBlock(), sample: cur, fixtures: SNAP.fixture_spec || null };
+      name = 'quality-' + cur.id + '-' + stamp() + '.json';
+    } else {
+      payload = { meta: metaBlock(), sample: null, caveat: SNAP.mode_caveat || null, thresholds: SNAP.thresholds, gaps: SNAP.gaps, report_fields: SNAP.report_fields };
+      name = 'quality-synthetic-' + stamp() + '.json';
+    }
+    download(name, JSON.stringify(payload, null, 2));
+    notice('已导出 ' + name);
+  }
+
+  /* ── 复制诊断行 ───────────────────────────────────────────────── */
+  function onCopy() {
+    var line = diagLine();
+    var selectFallback = function () {
+      var el = $('#diagLine');
+      el.value = line;
+      el.focus();
+      el.select();
+      notice('剪贴板不可用（file:// 下常见），诊断行已选中，按 Ctrl+C 复制');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(line).then(function () {
+        notice('已复制：' + line);
+      }, selectFallback);
+    } else {
+      selectFallback();
+    }
+  }
+
+  /* ── 启动 ─────────────────────────────────────────────────────── */
+  renderMode();
+  renderList();
+  renderThresholds();
+  renderGaps();
+  if (SAMPLES.length) {
+    var saved = restore();
+    select(saved || SAMPLES[0].id);
+  } else {
+    renderEmpty();
+    renderDiag();
+    renderFoot();
+  }
+  $('#btnExport').addEventListener('click', onExport);
+  $('#btnCopy').addEventListener('click', onCopy);
+
+  /* 测试钩子：不参与界面逻辑，供人工在控制台核对渲染结果 */
+  window.__QC_UI = {
+    mode: MODE,
+    samples: SAMPLES.map(function (s) { return s.id; }),
+    diagLine: diagLine,
+    checkCount: function () { return $$('#checkSlot .chk').length; },
+    gapCount: function () { return $$('#gapSlot .chk').length; },
+    segCount: function () { return $$('#tlTrack .seg').length; },
+    current: function () { return cur ? cur.id : null; },
+  };
+})();
+</script>
+</body>
+</html>

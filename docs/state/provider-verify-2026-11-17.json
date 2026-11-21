@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-17",
+  "note": "卡③ 前置实测证据（真出片仍待 DASHSCOPE_API_KEY；本文件不含任何 key）",
+  "badkey_probe": {
+    "method": "临时进程内设假 key（sk-avp-invalid-key-selftest-000），createApp({providerId:'dashscope'})，POST /api/jobs 后轮询终态",
+    "endpoint": "https://dashscope.aliyuncs.com/api/v1（真实网络请求，零计费探测）",
+    "health_provider": { "id": "dashscope", "mode": "real", "reachable": false, "degraded": true, "reason": "Invalid API-key provided." },
+    "job": { "accepted": 202, "final_state": "failed", "mock": false, "elapsed_ms": 205, "error_code": "DS_INVALID_API_KEY", "http_status": 401, "comfy_code": "InvalidApiKey", "hint": "API key 无效或已失效：检查 DASHSCOPE_API_KEY 是否与模型地域匹配（北京/新加坡 key 不通用）。" },
+    "conclusion": "卡③完成定义的『换 key 失效 → failed + 人话原因，不静默成功』已实测成立；本机到 DashScope 网络通路正常"
+  },
+  "qa_precedent": {
+    "command": "node tools/qa.mjs run D:\\云盘\\02-视频\\成片\\仙宫仙境-5s-1080p.mp4",
+    "input": { "resolution": "1920x1080", "fps": 30, "duration_sec": 5, "frames": 150, "bytes_mb": 3.2 },
+    "result": { "score_mean": 96, "p5": 87.5, "p95": 99, "problem_frames": "0/150", "ok": 150, "warn": 0, "bad": 0, "blackdetect": "无", "freezedetect": "无", "analysis_ms": 878 },
+    "report": "D:\\缓存\\avp\\qc\\out\\仙宫仙境-5s-1080p.quality.json",
+    "conclusion": "质检链路对 wan2.2-t2v-plus 真实产出格式验证通过，卡③验收命令就绪"
+  },
+  "gates": {
+    "build_all": "成功 6 · 失败 0",
+    "selftest_all": "PASS 9 · FAIL 0（server/selftest.js 60/0）",
+    "lint_ui": "7 页全绿",
+    "e2e": "通过 47 · 失败 0"
+  },
+  "pending": "设 DASHSCOPE_API_KEY（环境变量，不进仓库/前端）后跑真 5s 任务 → mp4 + ledger → qa → 回填 {provider, model, ms, bytes, actualPeakMib:null}"
+}

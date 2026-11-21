@@ -1,0 +1,455 @@
+{
+  "schema": "ai-video-platform/visinter.agent",
+  "version": "0.1.0",
+  "updated": "2026-11-18",
+  "note": "VisInter-Agent 规格真源：wan2.2 + ComfyUI 本地开源管线，Muse 氛围 + IP-Adapter 定妆锁脸 + FaceDetailer 精修，258 参数全开放。本文件只存『可执行规则』（提示词包、预设、白名单、风险阈值与文案、联动、自检），代码在 server/visinter.js。风险只提示不拦截、用户手改优先，是写进规则层的硬约束，不是 UI 文案。",
+  "pipeline": {
+    "name": "VisInter-Agent",
+    "backend": "wan2.2 (ComfyUI 本地)",
+    "cloud_required": false,
+    "ark_key_required": false,
+    "billing": "0 元/张（本机算力；IP-Adapter / FaceDetailer 都是本地节点，无额外计费）",
+    "params_open": 258,
+    "honesty": "缺 ComfyUI / 缺模型文件一律 fail 并给出路径，未跑自检标 inferred，只有 4 张实测通过才标 measured"
+  },
+  "rules": {
+    "user_first": "用户手改的参数与提示词优先：自动填充只写『用户没碰过的键』，且永不覆盖 ch.prompt_prefix / ch.negative / kf.negative",
+    "no_block": "六类风险只产出提示与建议，不拦截提交；前端两个按钮 = 继续生成 / 切换推荐预设",
+    "mode_split": "小白模式自动填充整套提示词与推荐预设；专家模式不填任何值，只保留风险检测",
+    "subject_switch": "识别人物→拼人像正向词并开人脸模块；识别风景/静物→移除人脸词并关模块，开关仍可手动反向开启"
+  },
+  "modes": {
+    "novice": {
+      "label": "小白一键",
+      "auto_fill": true,
+      "fills": [
+        "kf.prompt_prefix",
+        "kf.negative",
+        "kf.sampler",
+        "kf.steps",
+        "kf.cfg",
+        "mo.strength",
+        "kf.ipadapter_weight",
+        "kf.face_denoise",
+        "kf.identity_weight"
+      ],
+      "note": "填充后仍全部可改；改过的键下次不再自动填（用户优先）"
+    },
+    "expert": {
+      "label": "专家模式",
+      "auto_fill": false,
+      "fills": [],
+      "note": "不填值、不覆盖，只跑风险检测与提示词 lint"
+    }
+  },
+  "prompts": {
+    "muse_positive": "cinematic emotional storytelling, 35mm film shot, soft rim side light, volumetric haze, shallow depth of field, bokeh background, subtle film grain, gentle dark vignette, tiny breathing micro shake, natural color grading, teal and orange tone, foreground-midground-background layered composition, rule of thirds, quiet atmosphere, realistic texture, natural skin texture, soft highlight, stable face structure, consistent facial features, smooth slow motion, slight natural movement, no drastic camera shake, realistic environment detail, lifelike fabric and hair detail",
+    "portrait_positive": "pure chinese young girl, delicate facial features, big clear double eyelids, long curled eyelashes, straight high nose bridge, slim V-shaped face, soft natural makeup, light blush, glossy lips, silky black hair with broken strands around face, on-camera beauty, coordinated facial proportion",
+    "negative": "distorted face, deformed limbs, extra fingers, missing fingers, blurry, overexposed, underexposed, flat lighting, oversaturated, neon clutter, CGI, cartoon, anime, ugly, asymmetrical face, messy motion, fast violent shake, warped body, floating limbs, watermark, text, logo, bad anatomy, plastic fake skin, heavy filter, ghosting, frame jump, flickering face",
+    "note": "三条提示词都进输入框且可清空；自动拼接顺序 = muse_positive + (人像时) portrait_positive。负面里没有『no visible pores』类条款——那与 reverse.capabilities 的皮相结论冲突。"
+  },
+  "presets": {
+    "stable": {
+      "kf.sampler": "dpmpp_2m_sde",
+      "kf.steps": 30,
+      "kf.cfg": 5.5,
+      "mo.strength": 0.45,
+      "kf.ipadapter_weight": 0.75,
+      "kf.identity_weight": 0.8,
+      "kf.face_denoise": 0.4,
+      "kf.scheduler": "karras"
+    },
+    "note": "ComfyUI 界面上叫 DPM++ 2M SDE Karras，但平台注册表 kf.sampler 是枚举（euler/euler_a/dpmpp_2m/dpmpp_2m_sde/dpmpp_3m_sde/uni_pc/lcm），Karras 属于 kf.scheduler。所以 stable 预设落库为 sampler=dpmpp_2m_sde + scheduler=karras，展示名放 display.sampler_ui —— 直接写 'DPM++ 2M SDE Karras' 进 kf.sampler 会被 coerce 回落默认，那才是静默降级。运动 bucket 0.3~0.6 取 0.45；IP-Adapter 0.75 是甜区，>0.9 会锁死表情。",
+    "display": {
+      "sampler_ui": "DPM++ 2M SDE Karras"
+    }
+  },
+  "resolutions": [
+    "1080*1920",
+    "1920*1080",
+    "1440*1440",
+    "1248*1632",
+    "1632*1248",
+    "480*832",
+    "832*480",
+    "624*624"
+  ],
+  "resolution_note": "官方标准档位白名单；不在表内的值只提示不拦截（可能拉伸/黑屏/报错）",
+  "risk_rules": [
+    {
+      "id": "resolution",
+      "label": "分辨率非法",
+      "level": "warn",
+      "checker": "resolution",
+      "applies_to": "all",
+      "text": "当前分辨率非官方标准档位，可能出现画面拉伸、黑屏、报错、畸形画面，是否仍要使用自定义分辨率生成？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "motion",
+      "label": "运动幅度过高",
+      "level": "high",
+      "checker": "motion",
+      "applies_to": "all",
+      "text": "运动强度过高，高概率出现人脸闪烁、肢体变形、画面抖动、镜头撕裂、AI幻觉漂移，是否继续高运动强度生成？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "cfg",
+      "label": "CFG 异常",
+      "level": "high",
+      "checker": "cfg",
+      "applies_to": "all",
+      "text": "CFG 数值超出稳定区间，过高=画面畸形扭曲、崩脸；过低=画面模糊、细节丢失、风格弱化，是否继续？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "steps",
+      "label": "采样步数过低",
+      "level": "warn",
+      "checker": "steps",
+      "applies_to": "all",
+      "text": "采样步数过低，画面大概率糊脸、质感缺失、达不到 Muse 电影效果，是否继续生成？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "grade_stack",
+      "label": "多重调色叠加",
+      "level": "warn",
+      "checker": "grade_stack",
+      "applies_to": "all",
+      "text": "当前叠加多重调色滤镜，可能出现色彩错乱、频闪、画面脏色、风格混乱，是否继续？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "face_off",
+      "label": "关闭人脸模块",
+      "level": "high",
+      "checker": "face_off",
+      "applies_to": "portrait",
+      "text": "已关闭 AI 人脸精修 & 人物一致性锁定，人像可能五官崩坏、脸跳、质感丢失，是否继续？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    }
+  ],
+  "risk_thresholds": {
+    "motion_max": 0.6,
+    "cfg_min": 4,
+    "cfg_max": 7.5,
+    "steps_min": 20,
+    "grade_stack_count": 2,
+    "grade_params": [
+      "lk.lut",
+      "lk.bloom",
+      "lk.chroma",
+      "lk.sharpen",
+      "lk.screen_tone",
+      "lk.lut_strength"
+    ],
+    "face_params": [
+      "kf.ipadapter_weight",
+      "kf.face_denoise"
+    ]
+  },
+  "linkage": {
+    "portrait": {
+      "keywords": [
+        "女孩",
+        "女生",
+        "少女",
+        "女人",
+        "男子",
+        "男人",
+        "少年",
+        "人像",
+        "模特",
+        "主角",
+        "他",
+        "她",
+        "人脸",
+        "侧脸",
+        "特写",
+        "portrait",
+        "girl",
+        "boy",
+        "woman",
+        "man",
+        "face"
+      ],
+      "add_positive": [
+        "portrait_positive"
+      ],
+      "enable": {
+        "kf.ipadapter_weight": 0.75,
+        "kf.identity_weight": 0.8,
+        "kf.face_denoise": 0.4
+      },
+      "note": "人像场景：Muse 氛围包 + IP-Adapter 定妆参考 + FaceDetailer 同时启用；参考图存在才有意义（ch.ref_images 为空时如实提示）"
+    },
+    "landscape": {
+      "keywords": [
+        "风景",
+        "山",
+        "海",
+        "湖",
+        "森林",
+        "城市",
+        "街道",
+        "建筑",
+        "静物",
+        "花",
+        "天空",
+        "夜景",
+        "雪",
+        "沙漠",
+        "河",
+        "landscape",
+        "scenery",
+        "mountain",
+        "street",
+        "still life"
+      ],
+      "drop_positive": [
+        "portrait_positive"
+      ],
+      "disable": {
+        "kf.ipadapter_weight": 0,
+        "kf.face_denoise": 0,
+        "kf.identity_weight": 0
+      },
+      "note": "风景/静物：只留 Muse 氛围包；人脸模块关但开关保留，用户可手动反向开启"
+    }
+  },
+  "selfcheck": {
+    "label": "一键自检",
+    "shots": [
+      {
+        "id": "bone-1",
+        "kind": "bone",
+        "tier": "1K",
+        "ratio": "9:16",
+        "size": "800x1424",
+        "checks": [
+          "face_structure",
+          "v_shape"
+        ],
+        "seed": 11
+      },
+      {
+        "id": "bone-2",
+        "kind": "bone",
+        "tier": "1K",
+        "ratio": "9:16",
+        "size": "800x1424",
+        "checks": [
+          "face_structure"
+        ],
+        "seed": 11
+      },
+      {
+        "id": "hero-1",
+        "kind": "hero",
+        "tier": "1.5K",
+        "ratio": "9:16",
+        "size": "1152x2048",
+        "checks": [
+          "pores",
+          "dewy_highlight",
+          "catchlight"
+        ],
+        "seed": 21
+      },
+      {
+        "id": "hero-2",
+        "kind": "hero",
+        "tier": "1.5K",
+        "ratio": "9:16",
+        "size": "1152x2048",
+        "checks": [
+          "pores",
+          "dewy_highlight",
+          "catchlight"
+        ],
+        "seed": 21
+      }
+    ],
+    "model_requirements": [
+      {
+        "slot": "lora",
+        "name": "influencerBeauty_v1",
+        "node": "LoraLoader",
+        "path_hint": "ComfyUI/models/loras/influencerBeauty_v1.safetensors",
+        "node_types": [
+          "LoraLoader",
+          "LoraLoaderModelOnly"
+        ],
+        "files": [
+          "influencerBeauty_v1.safetensors",
+          "influencerBeauty.safetensors"
+        ],
+        "folder": "loras"
+      },
+      {
+        "slot": "ipadapter",
+        "name": "ip-adapter-faceid-sdxl",
+        "node": "IPAdapterFaceID",
+        "path_hint": "ComfyUI/models/ipadapter/ip-adapter-faceid_sdxl.bin",
+        "node_types": [
+          "IPAdapterFaceID",
+          "IPAdapterAdvanced",
+          "IPAdapterUnifiedLoader"
+        ],
+        "files": [
+          "ip-adapter-faceid_sdxl.bin",
+          "ip-adapter-faceid_sdxl_fp16.safetensors",
+          "ip-adapter-plus_sdxl_vit-h.bin"
+        ],
+        "folder": "ipadapter"
+      },
+      {
+        "slot": "face_detailer",
+        "name": "FaceDetailer",
+        "node": "FaceDetailer",
+        "path_hint": "ComfyUI/custom_nodes/ComfyUI-Impact-Pack",
+        "node_types": [
+          "FaceDetailer",
+          "FaceDetailerPipe"
+        ],
+        "files": [
+          "ComfyUI-Impact-Pack",
+          "ComfyUI-Impact-Subpack"
+        ],
+        "folder": "custom_nodes"
+      }
+    ],
+    "status": {
+      "inferred": "未跑自检；配方来源为文档/推理，不是实测",
+      "measured": "4 张实测通过（骨相 ×2 + 定妆 ×2），LoRA/IPAdapter/FaceDetailer 加载成功",
+      "fail": "缺 ComfyUI 或模型文件；给出 path_hint"
+    },
+    "layers": {
+      "note": "自检分两层：global（ComfyUI 可达 + 基础节点）与 face（LoRA/IPAdapter/FaceDetailer）。face 层缺失只封人像，不封风景——Muse 氛围管线不依赖人脸节点。",
+      "global_nodes": [
+        "CheckpointLoaderSimple",
+        "KSampler",
+        "SaveImage"
+      ],
+      "face_nodes": [
+        "LoraLoader",
+        "IPAdapterFaceID",
+        "FaceDetailer"
+      ]
+    },
+    "report": {
+      "note": "自检报告三块：模型加载状态（真实查节点与模型文件）、人脸一致性、质感评分。后两项没有 VL 模型时只能给规则代理值，必须标 provenance:'rule-proxy' 且 not_visual:true，不许冒充模型评分。",
+      "fields": [
+        {
+          "id": "models_loaded",
+          "label": "模型加载状态",
+          "provenance": "measured"
+        },
+        {
+          "id": "face_consistency",
+          "label": "人脸一致性",
+          "provenance": "rule-proxy",
+          "not_visual": true,
+          "reason": "按 4 张测试图的同一角色设定与参考图路径计数，不是视觉比对"
+        },
+        {
+          "id": "texture_score",
+          "label": "质感评分",
+          "provenance": "rule-proxy",
+          "not_visual": true,
+          "reason": "按出图字节/像素与是否带颗粒参数估算，不是 VL 画质分"
+        }
+      ]
+    }
+  },
+  "provenance": "inferred",
+  "face_presets": {
+    "note": "场景脸型预设：提示词没写脸型时按场景给默认（不是硬覆盖，UI 标【AI提取】且可改）。Muse 电影氛围与抖音网红人像都优先瓜子/V 脸——这是 reverse.capabilities#douyin-face 的骨相结论前置到 UI 层。",
+    "scenes": [
+      {
+        "id": "muse",
+        "match": [
+          "muse",
+          "氛围感",
+          "电影感",
+          "情绪",
+          "朦胧",
+          "空气感",
+          "cinematic"
+        ],
+        "face": "瓜子",
+        "reason": "Muse 氛围人像：瓜子脸 + 下颌收窄是本风格骨相锚点"
+      },
+      {
+        "id": "douyin",
+        "match": [
+          "网红",
+          "抖音",
+          "纯欲",
+          "网感",
+          "influencer",
+          "douyin"
+        ],
+        "face": "瓜子",
+        "reason": "抖音网红人像：V 脸骨相三件套之一，缺了会退回鹅蛋/圆脸"
+      },
+      {
+        "id": "anime",
+        "match": [
+          "二次元",
+          "动漫",
+          "漫画",
+          "anime"
+        ],
+        "face": "瓜子",
+        "reason": "二次元人设通用小 V 脸"
+      }
+    ],
+    "keyword_map": [
+      {
+        "re": "V脸|V 脸|v脸|小V脸|瓜子脸|瓜子|尖脸",
+        "face": "瓜子"
+      },
+      {
+        "re": "圆脸|娃娃脸|婴儿肥",
+        "face": "圆"
+      },
+      {
+        "re": "方脸|国字脸|棱角脸",
+        "face": "方"
+      },
+      {
+        "re": "鹅蛋脸|鹅蛋",
+        "face": "鹅蛋"
+      },
+      {
+        "re": "长脸|马脸",
+        "face": "长"
+      },
+      {
+        "re": "心形脸|桃心脸|倒三角",
+        "face": "心形"
+      }
+    ]
+  }
+}

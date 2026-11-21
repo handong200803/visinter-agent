@@ -1,0 +1,252 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://ai-video-platform.local/market/spec/template.schema.json",
+  "title": "AIP Video Template (.avptpl)",
+  "description": "本地视频生成平台模板包格式。单文件 JSON，后缀 .avptpl。为什么不是 zip：双击可读、git 可逐行 diff、无二进制头/解压炸弹/路径穿越，安装器只需 JSON.parse。模板存的是与默认值的差异（exportPreset 语义），checksum 与 engine.exportPreset 完全同构。",
+  "type": "object",
+  "additionalProperties": true,
+  "required": [
+    "schema",
+    "format",
+    "id",
+    "name",
+    "version",
+    "author",
+    "license",
+    "registry_version",
+    "created",
+    "tags",
+    "stage_focus",
+    "cover_params",
+    "values",
+    "checksum",
+    "lineage",
+    "compat",
+    "pricing",
+    "signature"
+  ],
+  "properties": {
+    "schema": {
+      "const": "ai-video-platform/template",
+      "description": "固定标识。用于区分 engine 的 /preset 与市场的 /template"
+    },
+    "format": {
+      "const": 1,
+      "description": "模板包格式版本。破坏性变更才 +1；解析方遇到 >1 必须拒绝"
+    },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$",
+      "description": "市场内唯一标识。小写，允许 . _ -；不允许中文（文件名/URL/索引键都要稳）"
+    },
+    "name": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 60
+    },
+    "version": {
+      "type": "string",
+      "pattern": "^\\d+\\.\\d+\\.\\d+(?:[-+][0-9A-Za-z.-]+)?$",
+      "description": "语义化版本。同 id 不同版本可共存于仓库，安装时校验 checksum 冲突"
+    },
+    "author": {
+      "type": "string",
+      "maxLength": 80
+    },
+    "license": {
+      "enum": ["free", "paid", "revenue_share"],
+      "description": "三选一，语义见 market/spec/license.md；必须与 pricing.mode 一致"
+    },
+    "registry_version": {
+      "type": "string",
+      "description": "打包时的 spec/params.registry.json version。与目标平台不一致即拒绝安装（参数语义可能已变）"
+    },
+    "created": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "tags": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 12,
+      "items": { "type": "string", "minLength": 1, "maxLength": 16 },
+      "description": "检索用。中文标签直接存中文，不做拼音归一（搜索时再做）"
+    },
+    "stage_focus": {
+      "type": "array",
+      "minItems": 1,
+      "uniqueItems": true,
+      "items": { "enum": ["character", "storyboard", "keyframe", "motion", "voice", "look", "export"] },
+      "description": "模板主张的板块。缺省时打包器按「改了哪些板块的参数」反推 top3"
+    },
+    "cover_params": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 6,
+      "items": { "type": "string" },
+      "description": "卡片上要展示的差异化参数键，必须存在于 registry 且最好出现在 values 里"
+    },
+    "values": {
+      "type": "object",
+      "additionalProperties": { "type": ["string", "number", "boolean"] },
+      "description": "与默认值不同的参数键值对（exportPreset 语义）。键必须是 registry 里存在的参数，越界值在安装时被夹紧——但发布时应该已经合法，否则 verify 报 value_out_of_range"
+    },
+    "checksum": {
+      "type": "string",
+      "pattern": "^djb2:[0-9a-f]{8}$",
+      "description": "djb2(JSON.stringify(键名排序后的 values))。防手改与传输损坏，不防伪造（伪造防护见 signature）"
+    },
+    "lineage": {
+      "type": "object",
+      "required": ["derived_from"],
+      "properties": {
+        "derived_from": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{2,63}$" },
+          "description": "血缘：本模板二次创作自哪些模板 id。用于追溯与分成结算"
+        },
+        "parent_checksum": { "type": ["string", "null"] },
+        "origin": { "type": "string" }
+      }
+    },
+    "compat": {
+      "type": "object",
+      "required": ["min_platform", "max_tested"],
+      "properties": {
+        "min_platform": { "type": "string", "description": "可运行的最低平台(registry)版本" },
+        "max_tested": { "type": "string", "description": "作者实测过的最高平台版本；平台更高只告警不拦" },
+        "platform": { "type": "string" }
+      }
+    },
+    "pricing": {
+      "type": "object",
+      "required": ["mode", "price_cny"],
+      "properties": {
+        "mode": { "enum": ["free", "paid", "revenue_share"] },
+        "price_cny": {
+          "type": "number",
+          "minimum": 0,
+          "maximum": 199,
+          "description": "人民币元。free 必须 0；paid 必须 >0；revenue_share 为折后的前置价，剩余从流水分成"
+        },
+        "share": {
+          "type": "object",
+          "properties": {
+            "creator_pct": { "type": "number", "minimum": 0, "maximum": 100 },
+            "platform_pct": { "type": "number", "minimum": 0, "maximum": 100 }
+          },
+          "description": "仅 revenue_share 使用，两者之和必须 100"
+        },
+        "basis": { "type": "string", "description": "分成基数口径，必须写明（默认：净流水）" },
+        "tier": { "type": "string", "description": "定价档位（draft/basic/pro/plus/flagship），由质量分推出" }
+      }
+    },
+    "signature": {
+      "type": ["object", "null"],
+      "description": "HMAC-SHA256 完整性/来源校验。null 表示未签名；它不是版权保护（不加密、不阻止复制）",
+      "properties": {
+        "algo": { "const": "HMAC-SHA256" },
+        "key_id": { "type": "string" },
+        "value": { "type": "string", "pattern": "^[0-9a-f]{64}$" },
+        "signed_at": { "type": "string" },
+        "issuer": { "type": "string" },
+        "scope": { "type": "string" }
+      }
+    },
+    "estimate_meta": {
+      "type": "object",
+      "description": "打包时的估算快照（engine.estimate 原值）。市场列表直接展示/排序用，避免客户端重算；缺省不算错误但会警告",
+      "properties": {
+        "device": { "type": "string" },
+        "peak_mib": { "type": "number" },
+        "usable_mib": { "type": "number" },
+        "ratio": { "type": "number" },
+        "state": { "enum": ["ok", "warn", "block"] },
+        "dominant": { "type": "string" },
+        "shot_sec": { "type": "number" },
+        "episode_sec": { "type": "number" },
+        "quality": { "type": "number" },
+        "cost_episode_yuan": { "type": "number" }
+      }
+    },
+    "build": {
+      "type": "object",
+      "description": "审计信息：谁导出的、导出规则版本",
+      "properties": {
+        "engine": { "type": "string" },
+        "preset_schema": { "type": "string" },
+        "preset_format": { "type": "number" },
+        "packer": { "type": "string" }
+      }
+    },
+    "workflow_ref": {
+      "type": "object",
+      "description": "编译口径（卡⑦）：告诉客户端/服务端怎么把 values 变成 ComfyUI API 图。缺省时 verify 只给 warning(no_workflow)，装了只能当参数快照用。",
+      "required": ["kind", "registry_version"],
+      "properties": {
+        "kind": {
+          "enum": ["inline", "registry-binds"],
+          "description": "inline=正文内嵌在本文件的 workflow 字段；registry-binds=只存口径，读时按当前注册表重建（体积最小，但依赖平台版本）"
+        },
+        "format": {
+          "const": "comfyui-api",
+          "description": "只支持 ComfyUI API 格式（{\"id\":{class_type,inputs}}）。前端 UI 格式含 nodes[] 会被 server/wf.js 拒绝"
+        },
+        "path": {
+          "type": "string",
+          "description": "kind=inline 时正文所在字段名，默认 workflow"
+        },
+        "synthetic": {
+          "type": "boolean",
+          "description": "true=绑定快照图（只有注册表 bind 落点，没有采样链/SaveImage），不是可直接跑真 ComfyUI 的成品图"
+        },
+        "registry_version": {
+          "type": "string",
+          "description": "必须与顶层 registry_version 相同；不同即 workflow_registry_mismatch"
+        },
+        "nodes": {
+          "type": "integer",
+          "minimum": 1,
+          "description": "节点数，必须与正文实际节点数一致（workflow_node_count_mismatch）"
+        },
+        "params": {
+          "type": "integer",
+          "description": "可落地参数个数（当前注册表只有 6 个参数 bind 完整）"
+        },
+        "targets": {
+          "type": "array",
+          "items": { "type": "string" },
+          "description": "声明图里存在的节点（id / _meta.title / class_type 任一可匹配）；对不上即 workflow_target_missing"
+        },
+        "bindings": {
+          "type": "array",
+          "description": "参数落点表：key → node.widget。与注册表 bind 不一致即 workflow_bind_unknown",
+          "items": {
+            "type": "object",
+            "required": ["key", "node", "target", "widget"],
+            "properties": {
+              "key": { "type": "string" },
+              "stage": { "type": "string" },
+              "node": { "type": "string" },
+              "target": { "type": "string" },
+              "widget": { "type": "string" }
+            }
+          }
+        }
+      }
+    },
+    "workflow": {
+      "type": "object",
+      "description": "内嵌最小工作流（ComfyUI API 格式，与 server/wf.js#compileWorkflow 的输入同构）。每个节点必须有 class_type；inputs 键=widget 名。节点 _meta.title 保留注册表里的可读标题，编译器的 id/title/class_type 三种匹配都能命中。",
+      "additionalProperties": {
+        "type": "object",
+        "required": ["class_type"],
+        "properties": {
+          "class_type": { "type": "string" },
+          "inputs": { "type": "object" },
+          "_meta": { "type": "object" }
+        }
+      }
+    }
+  }
+}

@@ -1,0 +1,275 @@
+{
+  "schema": "ai-video-platform/engines",
+  "version": "1.0.0",
+  "updated": "2026-11-19",
+  "note": "双开源免费视频模型底座（Wan2.2 + MiniMax H3）。两条硬规则写在这里而不是文档里：① 参数空间按引擎隔离存储，切换不串参、不覆盖；② 无任何付费 API —— paid 字段必须为 false，否则引擎不可选。",
+  "rules": {
+    "preserve": "保留 Wan2.2 节点 / IP-Adapter / FaceDetailer / 工作流 / 自检能力；质量策略优先，禁止降分辨率、自动量化和加速捷径",
+    "dual": "MiniMax H3 作为第二底座；前端下拉切换；两套 258 参数独立存储、独立自检、独立贝叶斯寻优、独立打分器",
+    "no_paid": "全程本地离线、免费开源、无任何付费 API；provider 侧已无 dashscope",
+    "auto_canvas": "所有视频生成入口统一走画布节点自动构建（≥120 节点、七大模块、禁止打包/子图）"
+  },
+  "engines": [
+    {
+      "id": "wan22",
+      "name": "Wan2.2",
+      "label": "Wan2.2（本地开源 · 现有底座）",
+      "kind": "local",
+      "free": true,
+      "paid": false,
+      "vae": {
+        "video": "wan2.2_vae",
+        "audio": null
+      },
+      "text_encoder": "umt5-xxl",
+      "sampler": "dpmpp_2m",
+      "features": [
+        "ipadapter",
+        "facedetailer",
+        "reference_lock",
+        "controlnet"
+      ],
+      "quant": {
+        "8g": "preserve",
+        "12g": "preserve",
+        "automatic": false
+      },
+      "params_ns": "engine:wan22",
+      "selfcheck_ns": "engine:wan22.selfcheck"
+    },
+    {
+      "id": "minimax_h3",
+      "name": "MiniMax H3",
+      "label": "MiniMax H3（本地开源 · 第二底座）",
+      "kind": "local",
+      "free": true,
+      "paid": false,
+      "vae": {
+        "video": "minimax_h3_video_vae_int8_convrot.safetensors",
+        "audio": "minimax_h3_audio_vae_fp32.safetensors"
+      },
+      "text_encoder": "qwen3vl_32b_minimax_h3_nvfp4_awq.safetensors",
+      "sampler": "dpmpp_2m",
+      "features": [
+        "reference_lock_native",
+        "audio_vae",
+        "video_audio_joint"
+      ],
+      "quant": {
+        "8g": "preserve",
+        "12g": "preserve",
+        "automatic": false
+      },
+      "params_ns": "engine:minimax_h3",
+      "selfcheck_ns": "engine:minimax_h3.selfcheck",
+      "weights": {
+        "diffusion": "minimax_h3_fl2va_pruned_int8_convrot.safetensors",
+        "lora_turbo": "minimax_h3_fl2v_turbo_4step_v1.0_768p_comfyui_bf16.safetensors",
+        "source": "hf-mirror://Comfy-Org/MiniMax-H3",
+        "total_gb": 42,
+        "names": [
+          "fl2va（首尾帧→视频+音频）",
+          "ref2va（多参考→视频）",
+          "sol_vae（可选高质 VAE）"
+        ],
+        "inventory_only": true,
+        "turbo_allowed": false,
+        "note": "允许使用现有量化权重并记录实际精度；不自动量化、更换或下载模型。turbo禁用，采样质量范围保持不变；原生尺寸只能由用户显式选择。"
+      },
+      "template": {
+        "comfyui": "video_minimax_h3_t2v / _i2v / _r2v（ComfyUI ≥0.33 模板库）",
+        "min_vram_gb": 24,
+        "min_vram_note": "仅作模板需求提示，不作当前设备实测或可运行保证；须通过质量准入检查，显存不足明确报错，禁止自动降分辨率、帧数或量化。"
+      }
+    }
+  ],
+  "vram_policy": {
+    "note": "保持已安装权重精度，不自动量化；按显存仅调整分片与按需卸载，实际量化情况单独标注；显存不足时由用户显式选择原生尺寸。",
+    "auto_quantization": false,
+    "tiers": [
+      {
+        "max_mib": 8192,
+        "quant": "preserve",
+        "split_load": true,
+        "offload": "on_demand",
+        "fp16": null
+      },
+      {
+        "max_mib": 16384,
+        "quant": "preserve",
+        "split_load": true,
+        "offload": "on_demand",
+        "fp16": null
+      },
+      {
+        "max_mib": null,
+        "quant": "preserve",
+        "split_load": false,
+        "offload": "none",
+        "fp16": null
+      }
+    ]
+  },
+  "isolation": {
+    "storage": "projects[active].engines.<engineId>.values（258 键/引擎），与旧 values 平级",
+    "switch": "切换引擎只切换读写命名空间，不复制、不覆盖另一侧",
+    "selfcheck": "每引擎独立记录 status: inferred|measured|fail 与模型路径",
+    "bayes": "每引擎独立 GP 数据集与最优参数，互不污染"
+  },
+  "canvas": {
+    "min_nodes": 120,
+    "forbid_packing": true,
+    "forbid_subgraph": true,
+    "modules": [
+      {
+        "id": "input_precheck",
+        "name": "输入校验预处理",
+        "quota": 20
+      },
+      {
+        "id": "text_encode",
+        "name": "文本编码细拆",
+        "quota": 15
+      },
+      {
+        "id": "latent_init",
+        "name": "潜变量初始化调度",
+        "quota": 15
+      },
+      {
+        "id": "sampler_core",
+        "name": "视频采样迭代核心",
+        "quota": 25
+      },
+      {
+        "id": "vae_decode",
+        "name": "VAE 细粒度解码",
+        "quota": 20
+      },
+      {
+        "id": "scoring",
+        "name": "四维量化打分",
+        "quota": 20
+      },
+      {
+        "id": "archive_split",
+        "name": "任务快照归档+双版本分流",
+        "quota": 15
+      }
+    ]
+  },
+  "bayes": {
+    "objective": "F(x) = w1*Sface + w2*Sflow + w3*Sstyle - w4*Sbad",
+    "weights_source": "quality.scoring.weights (Sface/Sflow/Sstyle/Sbad → w1/w2/w3/w4)",
+    "quality_tunables": ["kf.steps", "kf.cfg", "kf.refine_denoise"],
+    "auxiliary_only": ["detail"],
+    "speed_terms": [],
+    "init": {
+      "seed": "current best Muse params",
+      "perturb": 0.1,
+      "samples": 4
+    },
+    "search": {
+      "surrogate": "GP-RBF",
+      "acquisition": "EI",
+      "max_iter": 24,
+      "converge_patience": 4,
+      "converge_tol": 0.005
+    },
+    "constraints": "仅搜索 quality_tunables 白名单，范围取 quality.sampling；调用方 keys 不可绕过白名单或扩展范围。分辨率、宽高、档位、帧率、帧数、时长、seed、batch、精度和后处理均固定；完整评估快照与 fixed_constraints 落盘。"
+  },
+  "postprocess": {
+    "note": "第二阶段与贝叶斯完全独立，不污染实验数据；纯净版用于科研，增强版用于展示。",
+    "steps": [
+      {
+        "id": "interp",
+        "label": "智能插帧",
+        "impl": "RIFE",
+        "runtime": "外部 RIFE 可执行程序与模型权重，必须由用户预先配置；平台不自动安装或下载",
+        "required": ["executable", "model_weights"],
+        "on_missing": "explicit_error",
+        "fallback": null
+      },
+      {
+        "id": "upscale",
+        "label": "视频超分",
+        "impl": "Real-ESRGAN",
+        "runtime": "外部 Real-ESRGAN 可执行程序与模型权重，必须由用户预先配置；平台不自动安装或下载",
+        "required": ["executable", "model_weights"],
+        "on_missing": "explicit_error",
+        "fallback": null
+      },
+      {
+        "id": "lut",
+        "label": "电影级 LUT 调色",
+        "impl": "ffmpeg curves/colorbalance（Muse 青橙）"
+      },
+      {
+        "id": "deshake",
+        "label": "微量防抖",
+        "impl": "ffmpeg deshake"
+      },
+      {
+        "id": "grain",
+        "label": "胶片颗粒",
+        "impl": "ffmpeg noise(all_seed)"
+      }
+    ],
+    "modes": {
+      "novice": "寻优后默认全开",
+      "expert": "逐项开关"
+    }
+  },
+  "experiments": {
+    "abc": [
+      {
+        "id": "A",
+        "label": "模型原生默认参数",
+        "source": "registry-defaults"
+      },
+      {
+        "id": "B",
+        "label": "平台经验 Muse 参数",
+        "source": "muse-best"
+      },
+      {
+        "id": "C",
+        "label": "贝叶斯最优参数",
+        "source": "bayes-best"
+      }
+    ],
+    "ablation": {
+      "param": "kf.cfg",
+      "values": [
+        7,
+        7.5,
+        8,
+        9,
+        10
+      ],
+      "note": "单参数遍历，其余固定最优"
+    }
+  },
+  "gates": [
+    {
+      "id": "link",
+      "label": "基准链路连通自检"
+    },
+    {
+      "id": "scorer",
+      "label": "打分器相关性预校验"
+    },
+    {
+      "id": "dim",
+      "label": "参数降维校验"
+    },
+    {
+      "id": "converge",
+      "label": "贝叶斯收敛校验（贝叶斯任务生效）"
+    },
+    {
+      "id": "separation",
+      "label": "双层收益分离校验"
+    }
+  ]
+}

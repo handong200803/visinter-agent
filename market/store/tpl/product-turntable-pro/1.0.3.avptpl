@@ -1,0 +1,240 @@
+{
+  "schema": "ai-video-platform/template",
+  "format": 1,
+  "id": "product-turntable-pro",
+  "name": "商业产品转台",
+  "version": "1.0.3",
+  "author": "云盘工坊",
+  "license": "paid",
+  "registry_version": "0.1.0",
+  "created": "2026-11-16T09:10:00.000Z",
+  "tags": [
+    "电商",
+    "产品",
+    "转台",
+    "4K",
+    "广告"
+  ],
+  "stage_focus": [
+    "keyframe",
+    "motion",
+    "export"
+  ],
+  "cover_params": [
+    "kf.dof",
+    "mo.camera",
+    "lk.lut",
+    "ex.resolution"
+  ],
+  "values": {
+    "ch.palette": "莫兰迪",
+    "ch.skin": "哑光",
+    "ch.subject": "哑光黑陶瓷保温杯，磨砂喷塑表面，金属环扣，置于浅灰无缝背景中央",
+    "ex.bitrate": 26,
+    "ex.codec": "H.265",
+    "ex.color_space": "Rec.2020",
+    "ex.intro": false,
+    "ex.outro": false,
+    "ex.resolution": "4K",
+    "ex.transition": "无",
+    "kf.cfg": 3.8,
+    "kf.cn_type": "canny",
+    "kf.cn_weight": 0.55,
+    "kf.color_temp": 5400,
+    "kf.composition": "居中",
+    "kf.dof": 76,
+    "kf.ipadapter_mode": "风格",
+    "kf.ipadapter_weight": 0.95,
+    "kf.key_light_dir": "侧光",
+    "kf.light_ratio": 3.2,
+    "kf.negative_space": 12,
+    "kf.ratio": "1:1",
+    "kf.refine_scale": 1.6,
+    "kf.steps": 22,
+    "kf.usm_amount": 0.55,
+    "lk.bloom": 10,
+    "lk.contrast": 112,
+    "lk.denoise": 8,
+    "lk.grain": 6,
+    "lk.highlight_rolloff": 34,
+    "lk.lut": "青橙",
+    "lk.lut_strength": 55,
+    "lk.saturation": 94,
+    "lk.sharpen": 44,
+    "lk.subtitle_style": "圆体阴影",
+    "lk.temperature": -3,
+    "mo.camera": "环绕",
+    "mo.camera_speed": 0.35,
+    "mo.easing": "bezier",
+    "mo.flow_stabilize": 70,
+    "mo.fx_dust": 8,
+    "mo.layer1_shift": 120,
+    "mo.layer2_shift": 70,
+    "mo.motion_blur": 14,
+    "mo.parallax_layers": 4,
+    "mo.strength": 0.3,
+    "sb.beat_per_grid": 1,
+    "sb.closeup_ratio": 24,
+    "sb.conflict_intensity": 30,
+    "sb.duration": 15,
+    "sb.emotion_curve": 40,
+    "sb.genre": "都市",
+    "sb.grid_count": 12,
+    "sb.hook_seconds": false,
+    "sb.medium_ratio": 56,
+    "sb.narration_ratio": 0,
+    "sb.rhythm": "快",
+    "vo.bgm_genre": "氛围",
+    "vo.bgm_strength": 24,
+    "vo.emphasis": 40,
+    "vo.lipsync": false,
+    "vo.sfx_tracks": 3
+  },
+  "checksum": "djb2:6760587f",
+  "lineage": {
+    "derived_from": [],
+    "parent_checksum": null,
+    "origin": "manual"
+  },
+  "compat": {
+    "min_platform": "0.1.0",
+    "max_tested": "0.1.0",
+    "platform": "ai-video-platform"
+  },
+  "pricing": {
+    "mode": "paid",
+    "price_cny": 26
+  },
+  "signature": {
+    "algo": "HMAC-SHA256",
+    "key_id": "bcbe68321eca99c8",
+    "value": "0e7fb88c02626f4662e84ae8e868466517d56069e18aab398518fd9c4a4b2673",
+    "signed_at": "2026-11-16T09:10:00.000Z",
+    "issuer": "market/build_samples.js",
+    "scope": "payload = 模板对象去掉 signature 字段后按 key 递归排序的 JSON"
+  },
+  "estimate_meta": {
+    "device": "T1",
+    "peak_mib": 6260,
+    "usable_mib": 9600,
+    "ratio": 0.652,
+    "state": "ok",
+    "dominant": "keyframe",
+    "shot_sec": 205,
+    "episode_sec": 2505,
+    "quality": 77,
+    "cost_episode_yuan": 0.0835
+  },
+  "workflow_ref": {
+    "kind": "inline",
+    "format": "comfyui-api",
+    "path": "workflow",
+    "synthetic": true,
+    "registry_version": "0.1.0",
+    "nodes": 4,
+    "params": 6,
+    "targets": [
+      "CLIP Text Encode",
+      "Character Builder",
+      "EmptyLatentImage",
+      "KSampler"
+    ],
+    "bindings": [
+      {
+        "key": "ch.subject",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.face_detail",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.age",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "age"
+      },
+      {
+        "key": "ch.face_shape",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "face_shape"
+      },
+      {
+        "key": "kf.resolution",
+        "stage": "keyframe",
+        "node": "3",
+        "target": "EmptyLatentImage",
+        "widget": "width"
+      },
+      {
+        "key": "kf.steps",
+        "stage": "keyframe",
+        "node": "4",
+        "target": "KSampler",
+        "widget": "steps"
+      }
+    ]
+  },
+  "workflow": {
+    "1": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "哑光黑陶瓷保温杯，磨砂喷塑表面，金属环扣，置于浅灰无缝背景中央"
+      },
+      "_meta": {
+        "title": "CLIP Text Encode",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "2": {
+      "class_type": "CharacterBuilder",
+      "inputs": {
+        "age": 24,
+        "face_shape": "鹅蛋"
+      },
+      "_meta": {
+        "title": "Character Builder",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "3": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 1536
+      },
+      "_meta": {
+        "title": "EmptyLatentImage",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "4": {
+      "class_type": "KSampler",
+      "inputs": {
+        "steps": 22
+      },
+      "_meta": {
+        "title": "KSampler",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    }
+  },
+  "build": {
+    "engine": "core/engine.js",
+    "preset_schema": "ai-video-platform/preset",
+    "preset_format": 1,
+    "packer": "market/pack.js@1"
+  }
+}

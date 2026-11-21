@@ -1,0 +1,80 @@
+{
+  "schema": "ai-video-platform/plugin",
+  "id": "sample-node-pack",
+  "name": "示例 · 关键帧细节精修台",
+  "version": "1.0.0",
+  "type": "node",
+  "description": "演示 node 类插件：在既有 keyframe 板块里挂一个新节点，并带 2 个参数（含 hint 与 bind）。参数 key 沿用 kf. 前缀，不改 stage 结构。",
+  "author": "ai-video-platform 示例",
+  "engines": {
+    "platform": ">=0.1.0"
+  },
+  "permissions": [],
+  "contributes": {
+    "node": {
+      "id": "detail-polish",
+      "title": "细节精修台",
+      "stage": "keyframe",
+      "inputs": [
+        "image",
+        "mask"
+      ],
+      "outputs": [
+        "image"
+      ],
+      "notes": "接在 tile 精修之后、USM 之前；只对 mask 内区域做局部重绘式锐化，避免整图过锐。"
+    },
+    "params": [
+      {
+        "key": "kf.polish_strength",
+        "stage": "keyframe",
+        "type": "int",
+        "default": 35,
+        "min": 0,
+        "max": 100,
+        "step": 1,
+        "unit": "%",
+        "label": "精修强度",
+        "hint": "0 等于关闭节点；35–45 是皮肤保留纹理的甜区；>70 开始出现塑料感与边缘光晕。",
+        "tier": "L3",
+        "impact": {
+          "vram": 0,
+          "time": 0.08,
+          "quality": 0.22
+        },
+        "bind": {
+          "target": "Detail Polish",
+          "widget": "strength"
+        }
+      },
+      {
+        "key": "kf.polish_mode",
+        "stage": "keyframe",
+        "type": "enum",
+        "default": "自然",
+        "options": [
+          "自然",
+          "锐利",
+          "柔焦"
+        ],
+        "label": "精修风格",
+        "hint": "自然=保留毛孔的微对比；锐利=动漫/赛璐璐线稿；柔焦=成片前磨皮，会和 lm 颗粒叠加放大。",
+        "tier": "L4",
+        "impact": {
+          "vram": 0.01,
+          "time": 0.03,
+          "quality": 0.12
+        },
+        "bind": {
+          "target": "Detail Polish",
+          "widget": "mode"
+        }
+      }
+    ]
+  },
+  "signature": {
+    "key_id": "avp-dev-local",
+    "alg": "ed25519",
+    "sig": "A8xov3vfEzG1h0rxZAm7S8fBx6z5W4JXRoB0UPdxWKgNv56HDGCHxoyP/GcTq1k4Xb/0dlUEwDuiS9WJizHTBA=="
+  }
+}

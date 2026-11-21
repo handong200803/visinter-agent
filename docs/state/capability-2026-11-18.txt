@@ -1,0 +1,77 @@
+[32m✓[0m spec schema 正确
+[32m✓[0m 能力数 = 2
+[32m✓[0m 风格存在：muse-atmosphere
+[32m✓[0m 风格名一致：muse-atmosphere
+[32m✓[0m 覆盖 overrides：muse-atmosphere
+[32m✓[0m 风格存在：douyin-face
+[32m✓[0m 风格名一致：douyin-face
+[32m✓[0m 覆盖 overrides：douyin-face
+[32m✓[0m 档位尺寸合法 1K×9:16
+[32m✓[0m 档位像素记录一致 800x1424
+[32m✓[0m 档位成本一致 800x1424
+[32m✓[0m 档位尺寸合法 1.5K×9:16
+[32m✓[0m 档位像素记录一致 1152x2048
+[32m✓[0m 档位成本一致 1152x2048
+[32m✓[0m 档位尺寸合法 2K×9:16
+[32m✓[0m 档位像素记录一致 1584x2816
+[32m✓[0m 档位成本一致 1584x2816
+[32m✓[0m 档位尺寸合法 1.5K×16:9
+[32m✓[0m 档位像素记录一致 2048x1152
+[32m✓[0m 档位成本一致 2048x1152
+[32m✓[0m 档位尺寸合法 2K×1:1
+[32m✓[0m 档位像素记录一致 2048x2048
+[32m✓[0m 档位成本一致 2048x2048
+[32m✓[0m 计费分界 ≤2.61M → 0.30
+[32m✓[0m 计费分界 >2.61M → 0.60
+[32m✓[0m 尺寸越界会拒（800x800 像素不足）
+[32m✓[0m 尺寸越界会拒（宽高比 1:20）
+[32m✓[0m payload 可编译：muse-atmosphere
+[32m✓[0m payload 尺寸合法：muse-atmosphere
+[32m✓[0m payload 无 negative_prompt 字段：muse-atmosphere
+[32m✓[0m payload 声明 negative_field_supported:false：muse-atmosphere
+[32m✓[0m 正向命中「画内光源」：muse-atmosphere
+[32m✓[0m 正向命中「轮廓光」：muse-atmosphere
+[32m✓[0m 正向命中「暗部」：muse-atmosphere
+[32m✓[0m 正向命中「颗粒」：muse-atmosphere
+[32m✓[0m 正向命中「35mm」：muse-atmosphere
+[32m✓[0m 正向不含「网红」：muse-atmosphere
+[32m✓[0m 正向不含「纯欲」：muse-atmosphere
+[32m✓[0m 正向不含「磨皮」：muse-atmosphere
+[32m✓[0m 正向不含「厚涂」：muse-atmosphere
+[32m✓[0m 正向不含「古风」：muse-atmosphere
+[32m✓[0m 提示词过平台黑名单：muse-atmosphere
+[32m✓[0m 中文长度 ≤ 300（官方建议）：muse-atmosphere
+[32m✓[0m 软负面不产生双句号：muse-atmosphere
+[32m✓[0m payload 可编译：douyin-face
+[32m✓[0m payload 尺寸合法：douyin-face
+[32m✓[0m payload 无 negative_prompt 字段：douyin-face
+[32m✓[0m payload 声明 negative_field_supported:false：douyin-face
+[32m✓[0m 正向命中「下颌」：douyin-face
+[32m✓[0m 正向命中「毛孔」：douyin-face
+[32m✓[0m 正向命中「水光」：douyin-face
+[32m✓[0m 正向命中「85」：douyin-face
+[32m✓[0m 正向不含「网红」：douyin-face
+[32m✓[0m 正向不含「纯欲」：douyin-face
+[32m✓[0m 正向不含「美颜」：douyin-face
+[32m✓[0m 正向不含「磨皮」：douyin-face
+[32m✓[0m 正向不含「大眼娃娃」：douyin-face
+[32m✓[0m 提示词过平台黑名单：douyin-face
+[32m✓[0m 中文长度 ≤ 300（官方建议）：douyin-face
+[32m✓[0m 软负面不产生双句号：douyin-face
+[32m✓[0m 前置替换生效「，鹅蛋脸→」：douyin-face
+[32m✓[0m 瓜子脸骨相已进正向段
+[32m✓[0m SIZE_MAP 一致 1K×9:16
+[32m✓[0m SIZE_MAP 一致 1.5K×9:16
+[32m✓[0m SIZE_MAP 一致 2K×9:16
+[32m✓[0m SIZE_MAP 一致 1.5K×16:9
+[32m✓[0m SIZE_MAP 一致 2K×1:1
+[32m✓[0m provider id = seedream
+[32m✓[0m provider mode = real（不伪装 mock）
+[32m✓[0m provider 有 probe/run/cancel
+[32m✓[0m provider 已注册到工厂
+[32m✓[0m cine FACE_POS 不复读「no visible pores」
+[32m✓[0m cine FACE_POS 与能力包皮相同源（保毛孔）
+[32m✓[0m cine FACE_NEG 不把毛孔当缺陷
+[32m✓[0m 无 key 时 probe 如实 false/SR_NO_API_KEY
+
+[32m全部通过[0m（75 项）

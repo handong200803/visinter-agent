@@ -1,0 +1,291 @@
+{
+  "schema": "ai-video-platform/models.catalog",
+  "version": "0.1.0",
+  "updated": "2026-11-16",
+  "provenance": {
+    "note": "本文件里每一个数字都带来源等级：measured=真机测过；doc=设计文档已给出的区间中值；estimate=按参数量/架构推算，等真机标定覆盖。禁止把 estimate 当实测对外宣传。",
+    "levels": [
+      "measured",
+      "doc",
+      "estimate"
+    ]
+  },
+  "devices": [
+    {
+      "id": "T0",
+      "name": "RTX 5060 Laptop 8G（本机）",
+      "vram_total_mib": 8151,
+      "usable_mib": 6900,
+      "watts": 140,
+      "price_yuan_per_kwh": 0.6,
+      "provenance": "doc：nvidia-smi 8151MiB，WDDM 下实际可用 6.6–7.2G"
+    },
+    {
+      "id": "T0-low",
+      "name": "T0 · 桌面占用高（2026-11-16 17:13 实测 4024MiB 被占用）",
+      "vram_total_mib": 8151,
+      "usable_mib": 4127,
+      "watts": 140,
+      "price_yuan_per_kwh": 0.6,
+      "provenance": "measured：nvidia-smi 本次查询 memory.used=4024MiB"
+    },
+    {
+      "id": "T1",
+      "name": "10–12G",
+      "vram_total_mib": 11264,
+      "usable_mib": 9600,
+      "watts": 200,
+      "price_yuan_per_kwh": 0.6,
+      "provenance": "estimate：按 0.85 可用率折算"
+    },
+    {
+      "id": "T2",
+      "name": "16G",
+      "vram_total_mib": 16384,
+      "usable_mib": 14200,
+      "watts": 260,
+      "price_yuan_per_kwh": 0.6,
+      "provenance": "estimate"
+    },
+    {
+      "id": "T3",
+      "name": "24G",
+      "vram_total_mib": 24576,
+      "usable_mib": 21800,
+      "watts": 320,
+      "price_yuan_per_kwh": 0.6,
+      "provenance": "estimate"
+    },
+    {
+      "id": "T4",
+      "name": "32G",
+      "vram_total_mib": 32768,
+      "usable_mib": 29600,
+      "watts": 400,
+      "price_yuan_per_kwh": 0.6,
+      "provenance": "estimate"
+    },
+    {
+      "id": "T5",
+      "name": "48G+",
+      "vram_total_mib": 49152,
+      "usable_mib": 45000,
+      "watts": 600,
+      "price_yuan_per_kwh": 0.6,
+      "provenance": "estimate"
+    }
+  ],
+  "vram": {
+    "note": "peak = W_resident + c1·(Mpix·frames) + decode + overhead。系数按 wan1.3B/480p/49f 落在 6.2–6.3G 反解，待 device_profile 真机标定覆盖。",
+    "act_c1_mib_per_mpix_frame": 105,
+    "dec_tile_mib_per_mpix": 760,
+    "dec_full_mib_per_mpix_frame": 45,
+    "tile_pixels": 1048576,
+    "overhead": {
+      "keyframe": 450,
+      "i2v": 950,
+      "voice": 300
+    },
+    "safety_ratio": 0.92
+  },
+  "time": {
+    "note": "基准秒数取设计文档 §25 区间中值，乘性系数在 engine.js 里说明。",
+    "kf_base_sec": 35,
+    "kf_ref_pixels": 1327104,
+    "kf_ref_steps": 24,
+    "kf_refine_gain": 0.3,
+    "kf_anchor_gain": 0.1,
+    "i2v_base_sec": 75,
+    "i2v_ref_pixels": 399360,
+    "i2v_ref_frames": 49,
+    "post_base_sec": 18,
+    "voice_base_sec": 25,
+    "parallax_base_sec": 3,
+    "llm_base_sec": 25,
+    "encode_base_sec": 8
+  },
+  "models": {
+    "keyframe": [
+      {
+        "id": "Qwen-Image-GGUF-Q4",
+        "params_b": 20,
+        "resident_mib": {
+          "fp16": 11500,
+          "fp8": 11500,
+          "gguf_q4": 4400,
+          "int4": 3900
+        },
+        "t_factor": 1.0,
+        "license": "Apache-2.0",
+        "provenance": "estimate：20B Q4 常驻按 ComfyUI lowvram 分块装载折算",
+        "note": "8G 靠 block-swap 常驻 4.4G，块从内存流式读"
+      },
+      {
+        "id": "Qwen-Image-fp8",
+        "params_b": 20,
+        "resident_mib": {
+          "fp16": 20500,
+          "fp8": 11500,
+          "gguf_q4": 11500,
+          "int4": 9000
+        },
+        "t_factor": 0.95,
+        "license": "Apache-2.0",
+        "provenance": "estimate"
+      },
+      {
+        "id": "SDXL",
+        "params_b": 3.5,
+        "resident_mib": {
+          "fp16": 2600,
+          "fp8": 1900,
+          "gguf_q4": 1700,
+          "int4": 1400
+        },
+        "t_factor": 0.55,
+        "license": "CreativeML OpenRAIL++-M（商用需核实条款）",
+        "provenance": "estimate"
+      },
+      {
+        "id": "Flux-GGUF-Q4",
+        "params_b": 12,
+        "resident_mib": {
+          "fp16": 11800,
+          "fp8": 8200,
+          "gguf_q4": 4400,
+          "int4": 3600
+        },
+        "t_factor": 1.15,
+        "license": "FLUX.1 [dev] 非商用 / [schnell] Apache-2.0",
+        "provenance": "estimate"
+      }
+    ],
+    "i2v": [
+      {
+        "id": "Wan2.1-1.3B",
+        "params_b": 1.3,
+        "resident_mib": {
+          "fp16": 2480,
+          "fp8": 1500,
+          "gguf_q4": 1100,
+          "int4": 900
+        },
+        "t_factor": 1.0,
+        "license": "Apache-2.0",
+        "provenance": "estimate",
+        "note": "T0 的主力：480p/49f 是 8G 的甜区"
+      },
+      {
+        "id": "Wan2.2-5B",
+        "params_b": 5,
+        "resident_mib": {
+          "fp16": 9800,
+          "fp8": 5600,
+          "gguf_q4": 3600,
+          "int4": 3000
+        },
+        "t_factor": 2.2,
+        "license": "Apache-2.0",
+        "provenance": "estimate",
+        "note": "T2 起步；8G 上必须 fp8+分块，实际会退化"
+      },
+      {
+        "id": "LTX-2B",
+        "params_b": 2,
+        "resident_mib": {
+          "fp16": 4200,
+          "fp8": 2600,
+          "gguf_q4": 1800,
+          "int4": 1500
+        },
+        "t_factor": 1.2,
+        "license": "Lightricks 自有许可（商用条款需逐条核实）",
+        "provenance": "estimate"
+      },
+      {
+        "id": "H3(远程)",
+        "params_b": 0,
+        "resident_mib": {
+          "fp16": 0,
+          "fp8": 0,
+          "gguf_q4": 0,
+          "int4": 0
+        },
+        "t_factor": 0.05,
+        "license": "服务条款",
+        "provenance": "doc",
+        "note": "走 API，不吃本机显存，按次计费"
+      }
+    ],
+    "voice": [
+      {
+        "id": "LatentSync",
+        "resident_mib": {
+          "fp16": 1500,
+          "fp8": 1200
+        },
+        "t_factor": 1.0,
+        "license": "需核实",
+        "provenance": "estimate"
+      },
+      {
+        "id": "MuseTalk",
+        "resident_mib": {
+          "fp16": 900,
+          "fp8": 700
+        },
+        "t_factor": 0.8,
+        "license": "需核实",
+        "provenance": "estimate"
+      },
+      {
+        "id": "Wav2Lip",
+        "resident_mib": {
+          "fp16": 400,
+          "fp8": 350
+        },
+        "t_factor": 0.5,
+        "license": "需核实（原版非商用）",
+        "provenance": "estimate"
+      }
+    ]
+  },
+  "licenses": [
+    {
+      "name": "Wan2.1 / Wan2.2",
+      "license": "Apache-2.0",
+      "commercial": "可商用",
+      "verified": "doc §3 已核实"
+    },
+    {
+      "name": "Qwen-Image",
+      "license": "Apache-2.0",
+      "commercial": "可商用",
+      "verified": "doc §3 已核实"
+    },
+    {
+      "name": "CogVideoX / Mochi",
+      "license": "Apache-2.0",
+      "commercial": "可商用",
+      "verified": "doc §3 已核实"
+    },
+    {
+      "name": "HunyuanVideo 1.5",
+      "license": "腾讯混元社区许可",
+      "commercial": "需确认",
+      "verified": "未核实"
+    },
+    {
+      "name": "LTX-Video",
+      "license": "Lightricks 自有",
+      "commercial": "需逐条核实",
+      "verified": "未核实"
+    },
+    {
+      "name": "ComfyUI",
+      "license": "GPL-3.0",
+      "commercial": "只做进程外调用，不分发修改版",
+      "verified": "doc §3 红线"
+    }
+  ]
+}

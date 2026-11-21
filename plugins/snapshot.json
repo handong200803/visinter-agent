@@ -1,0 +1,1021 @@
+{
+  "module": "plugins",
+  "module_title": "插件管理",
+  "built_by": "tools/snap_plugins.mjs",
+  "validator": "plugins/loader.js",
+  "schema_file": "plugins/schema/plugin.schema.json",
+  "generated_at": "2026-11-19 23:15:51 +08:00",
+  "generated_at_utc": "2026-11-19T15:15:51.737Z",
+  "host": {
+    "platform_version": "0.1.0",
+    "registry_version": "0.1.0",
+    "platform_version_source": "spec/params.registry.json#version",
+    "version_rule": "plugins/loader.js satisfies()：>= <= > < = ^ ~ 空格为「与」、|| 为「或」，不支持 x/* 通配",
+    "base_params": 258,
+    "engine_prefixes": {
+      "ch": "character",
+      "sb": "storyboard",
+      "kf": "keyframe",
+      "mo": "motion",
+      "vo": "voice",
+      "lk": "look",
+      "ex": "export"
+    }
+  },
+  "permission_whitelist": [
+    "fs:read",
+    "net",
+    "exec",
+    "gpu"
+  ],
+  "plugin_types": [
+    "model",
+    "node",
+    "preset",
+    "ui"
+  ],
+  "schema_contract": {
+    "schema_file": "plugins/schema/plugin.schema.json",
+    "required": [
+      "schema",
+      "id",
+      "name",
+      "version",
+      "type",
+      "engines",
+      "contributes"
+    ],
+    "additional_properties": false,
+    "schema_const": "ai-video-platform/plugin",
+    "id_pattern": "^[a-z][a-z0-9-]{2,47}$",
+    "name_min_length": 1,
+    "name_max_length": 60,
+    "version_pattern": "^\\d+\\.\\d+\\.\\d+$",
+    "type_enum": [
+      "model",
+      "node",
+      "preset",
+      "ui"
+    ],
+    "description_max_length": 400,
+    "author_max_length": 80,
+    "homepage_pattern": "^https://",
+    "engines_required": [
+      "platform"
+    ],
+    "engines_keys": [
+      "platform",
+      "registry"
+    ],
+    "engines_pattern": "^[<>=^~0-9. |\\-]+$",
+    "permissions_items_enum": [
+      "fs:read",
+      "net",
+      "exec",
+      "gpu"
+    ],
+    "permissions_max_items": 4,
+    "permissions_unique": true,
+    "contributes_keys": [
+      "params",
+      "node",
+      "models",
+      "preset",
+      "ui"
+    ],
+    "type_requirements": [
+      {
+        "type": "node",
+        "contributes_required": [
+          "params"
+        ]
+      },
+      {
+        "type": "model",
+        "contributes_required": [
+          "models"
+        ]
+      },
+      {
+        "type": "preset",
+        "contributes_required": [
+          "preset"
+        ]
+      },
+      {
+        "type": "ui",
+        "contributes_required": [
+          "ui"
+        ]
+      }
+    ]
+  },
+  "counts": {
+    "entries": 7,
+    "packs": 4,
+    "fixtures": 3,
+    "active": 4,
+    "needs_review": 1,
+    "rejected": 2,
+    "errors": 10,
+    "warnings": 6,
+    "errors_packs": 0,
+    "errors_fixtures": 10,
+    "warnings_packs": 4,
+    "warnings_fixtures": 2
+  },
+  "runtime": {
+    "loader": "loader.loadAll()",
+    "plugins": 4,
+    "errors": 0,
+    "warnings": 4,
+    "injected": 4,
+    "registry_params": 260,
+    "registry_params_delta": 2,
+    "registry_presets": 1,
+    "registry_themes": 2
+  },
+  "entries": [
+    {
+      "id": "sample-model-pack",
+      "dir": "plugins/packs/sample-model-pack",
+      "origin": "pack",
+      "listed_in_runtime": true,
+      "name": "示例 · 新增模型/量化",
+      "version": "1.0.0",
+      "type": "model",
+      "description": "演示 model 类插件：往 keyframe 组里加一个 32B 图像模型的 Q4 量化标定条目。所有 resident_mib 都是推算值（provenance=estimate），不是真机实测。",
+      "author": "ai-video-platform 示例",
+      "homepage": "",
+      "engines": {
+        "platform": ">=0.1.0",
+        "registry": ">=0.1.0"
+      },
+      "engines_check": {
+        "platform": {
+          "range": ">=0.1.0",
+          "against": "0.1.0",
+          "satisfied": true
+        },
+        "registry": {
+          "range": ">=0.1.0",
+          "against": "0.1.0",
+          "satisfied": true
+        }
+      },
+      "permissions_declared": [
+        "gpu"
+      ],
+      "permissions_recognized": [
+        "gpu"
+      ],
+      "permissions_unknown": [],
+      "quarantine_exec": false,
+      "contributes": {
+        "keys": [
+          "models"
+        ],
+        "params": 0,
+        "models": 1,
+        "node": null,
+        "preset": null,
+        "ui": null
+      },
+      "state": "active",
+      "state_from": "loadAll",
+      "reason": "已注入（签名通过）",
+      "applies": true,
+      "applied": {
+        "params": 0,
+        "models": 1,
+        "presets": 0,
+        "themes": 0,
+        "panels": 0
+      },
+      "errors": [],
+      "warnings": [
+        {
+          "path": "$.permissions",
+          "code": "PERMISSION_REGISTERED",
+          "message": "net/gpu 当前只做能力登记：加载阶段不发网络请求、不分配显存"
+        }
+      ],
+      "manifest": {
+        "schema": "ai-video-platform/plugin",
+        "id": "sample-model-pack",
+        "name": "示例 · 新增模型/量化",
+        "version": "1.0.0",
+        "type": "model",
+        "description": "演示 model 类插件：往 keyframe 组里加一个 32B 图像模型的 Q4 量化标定条目。所有 resident_mib 都是推算值（provenance=estimate），不是真机实测。",
+        "author": "ai-video-platform 示例",
+        "engines": {
+          "platform": ">=0.1.0",
+          "registry": ">=0.1.0"
+        },
+        "permissions": [
+          "gpu"
+        ],
+        "contributes": {
+          "models": [
+            {
+              "group": "keyframe",
+              "id": "FLUX.2-dev-GGUF-Q4",
+              "params_b": 32,
+              "resident_mib": {
+                "fp16": 18500,
+                "fp8": 9400,
+                "gguf_q4": 6900,
+                "int4": 6200
+              },
+              "t_factor": 1.45,
+              "license": "需核实",
+              "provenance": "estimate",
+              "note": "按 32B×0.5B/Q4 权重 + 文本编码器/VAE + 激活余量与分块装载折算；t_factor 相对 Qwen-Image 20B 按参数比 1.6 打折到 1.45。许可证未核实，先标需核实。"
+            }
+          ]
+        },
+        "signature": {
+          "key_id": "avp-dev-local",
+          "alg": "ed25519",
+          "sig": "E35A3NbeHAYGf96N0sD4ltEpOqFGLHPB788jHiiB0IsGaeERPkVk5ZHybRarekmoQHHrjTkRcqNMwuQIuEOfDQ=="
+        }
+      }
+    },
+    {
+      "id": "sample-node-pack",
+      "dir": "plugins/packs/sample-node-pack",
+      "origin": "pack",
+      "listed_in_runtime": true,
+      "name": "示例 · 关键帧细节精修台",
+      "version": "1.0.0",
+      "type": "node",
+      "description": "演示 node 类插件：在既有 keyframe 板块里挂一个新节点，并带 2 个参数（含 hint 与 bind）。参数 key 沿用 kf. 前缀，不改 stage 结构。",
+      "author": "ai-video-platform 示例",
+      "homepage": "",
+      "engines": {
+        "platform": ">=0.1.0"
+      },
+      "engines_check": {
+        "platform": {
+          "range": ">=0.1.0",
+          "against": "0.1.0",
+          "satisfied": true
+        },
+        "registry": null
+      },
+      "permissions_declared": [],
+      "permissions_recognized": [],
+      "permissions_unknown": [],
+      "quarantine_exec": false,
+      "contributes": {
+        "keys": [
+          "node",
+          "params"
+        ],
+        "params": 2,
+        "models": 0,
+        "node": {
+          "id": "detail-polish",
+          "title": "细节精修台",
+          "stage": "keyframe",
+          "inputs": 2,
+          "outputs": 1
+        },
+        "preset": null,
+        "ui": null
+      },
+      "state": "active",
+      "state_from": "loadAll",
+      "reason": "已注入（签名通过）",
+      "applies": true,
+      "applied": {
+        "params": 2,
+        "models": 0,
+        "presets": 0,
+        "themes": 0,
+        "panels": 0
+      },
+      "errors": [],
+      "warnings": [
+        {
+          "path": "$.permissions",
+          "code": "DEFAULT_DENY",
+          "message": "未声明权限 → 全部按拒绝处理"
+        }
+      ],
+      "manifest": {
+        "schema": "ai-video-platform/plugin",
+        "id": "sample-node-pack",
+        "name": "示例 · 关键帧细节精修台",
+        "version": "1.0.0",
+        "type": "node",
+        "description": "演示 node 类插件：在既有 keyframe 板块里挂一个新节点，并带 2 个参数（含 hint 与 bind）。参数 key 沿用 kf. 前缀，不改 stage 结构。",
+        "author": "ai-video-platform 示例",
+        "engines": {
+          "platform": ">=0.1.0"
+        },
+        "permissions": [],
+        "contributes": {
+          "node": {
+            "id": "detail-polish",
+            "title": "细节精修台",
+            "stage": "keyframe",
+            "inputs": [
+              "image",
+              "mask"
+            ],
+            "outputs": [
+              "image"
+            ],
+            "notes": "接在 tile 精修之后、USM 之前；只对 mask 内区域做局部重绘式锐化，避免整图过锐。"
+          },
+          "params": [
+            {
+              "key": "kf.polish_strength",
+              "stage": "keyframe",
+              "type": "int",
+              "default": 35,
+              "min": 0,
+              "max": 100,
+              "step": 1,
+              "unit": "%",
+              "label": "精修强度",
+              "hint": "0 等于关闭节点；35–45 是皮肤保留纹理的甜区；>70 开始出现塑料感与边缘光晕。",
+              "tier": "L3",
+              "impact": {
+                "vram": 0,
+                "time": 0.08,
+                "quality": 0.22
+              },
+              "bind": {
+                "target": "Detail Polish",
+                "widget": "strength"
+              }
+            },
+            {
+              "key": "kf.polish_mode",
+              "stage": "keyframe",
+              "type": "enum",
+              "default": "自然",
+              "options": [
+                "自然",
+                "锐利",
+                "柔焦"
+              ],
+              "label": "精修风格",
+              "hint": "自然=保留毛孔的微对比；锐利=动漫/赛璐璐线稿；柔焦=成片前磨皮，会和 lm 颗粒叠加放大。",
+              "tier": "L4",
+              "impact": {
+                "vram": 0.01,
+                "time": 0.03,
+                "quality": 0.12
+              },
+              "bind": {
+                "target": "Detail Polish",
+                "widget": "mode"
+              }
+            }
+          ]
+        },
+        "signature": {
+          "key_id": "avp-dev-local",
+          "alg": "ed25519",
+          "sig": "A8xov3vfEzG1h0rxZAm7S8fBx6z5W4JXRoB0UPdxWKgNv56HDGCHxoyP/GcTq1k4Xb/0dlUEwDuiS9WJizHTBA=="
+        }
+      }
+    },
+    {
+      "id": "sample-preset-pack",
+      "dir": "plugins/packs/sample-preset-pack",
+      "origin": "pack",
+      "listed_in_runtime": true,
+      "name": "示例 · 参数预设包",
+      "version": "1.0.0",
+      "type": "preset",
+      "description": "演示 preset 类插件：values 由 core/engine.js exportPreset 生成并带 djb2 校验和；registry_version 锁 0.1.0，跨版本导入会被拒。",
+      "author": "ai-video-platform 示例",
+      "homepage": "",
+      "engines": {
+        "platform": ">=0.1.0",
+        "registry": ">=0.1.0 <0.2.0"
+      },
+      "engines_check": {
+        "platform": {
+          "range": ">=0.1.0",
+          "against": "0.1.0",
+          "satisfied": true
+        },
+        "registry": {
+          "range": ">=0.1.0 <0.2.0",
+          "against": "0.1.0",
+          "satisfied": true
+        }
+      },
+      "permissions_declared": [],
+      "permissions_recognized": [],
+      "permissions_unknown": [],
+      "quarantine_exec": false,
+      "contributes": {
+        "keys": [
+          "preset"
+        ],
+        "params": 0,
+        "models": 0,
+        "node": null,
+        "preset": {
+          "schema": "ai-video-platform/preset",
+          "format": 1,
+          "registry_version": "0.1.0",
+          "name": "示例 · 高画质 30fps 出片",
+          "checksum": "djb2:6d77f641",
+          "values": 7
+        },
+        "ui": null
+      },
+      "state": "active",
+      "state_from": "loadAll",
+      "reason": "已注入（签名通过）",
+      "applies": true,
+      "applied": {
+        "params": 0,
+        "models": 0,
+        "presets": 1,
+        "themes": 0,
+        "panels": 0
+      },
+      "errors": [],
+      "warnings": [
+        {
+          "path": "$.permissions",
+          "code": "DEFAULT_DENY",
+          "message": "未声明权限 → 全部按拒绝处理"
+        }
+      ],
+      "manifest": {
+        "schema": "ai-video-platform/plugin",
+        "id": "sample-preset-pack",
+        "name": "示例 · 参数预设包",
+        "version": "1.0.0",
+        "type": "preset",
+        "description": "演示 preset 类插件：values 由 core/engine.js exportPreset 生成并带 djb2 校验和；registry_version 锁 0.1.0，跨版本导入会被拒。",
+        "author": "ai-video-platform 示例",
+        "engines": {
+          "platform": ">=0.1.0",
+          "registry": ">=0.1.0 <0.2.0"
+        },
+        "permissions": [],
+        "contributes": {
+          "preset": {
+            "schema": "ai-video-platform/preset",
+            "format": 1,
+            "registry_version": "0.1.0",
+            "name": "示例 · 高画质 30fps 出片",
+            "author": "ai-video-platform 示例",
+            "device": "T0（8G 笔记本）",
+            "created": "2026-11-16T09:31:39.694Z",
+            "checksum": "djb2:6d77f641",
+            "values": {
+              "ex.codec": "H.265",
+              "kf.cfg": 5.5,
+              "kf.sampler": "dpmpp_3m_sde",
+              "kf.steps": 32,
+              "lk.grain": 18,
+              "lk.lut": "青橙",
+              "mo.fps": 30
+            }
+          }
+        },
+        "signature": {
+          "key_id": "avp-dev-local",
+          "alg": "ed25519",
+          "sig": "7B8y+m3rOSsZ8RV9JOEafIbDkA2wAommPT4sbcQENs/5gKj+z84Yh/Ph+5xKt33lygKzxp1/9O1GDG2Bmeg6DQ=="
+        }
+      }
+    },
+    {
+      "id": "sample-ui-pack",
+      "dir": "plugins/packs/sample-ui-pack",
+      "origin": "pack",
+      "listed_in_runtime": true,
+      "name": "示例 · 冷银主题 + 三块快捷面板",
+      "version": "1.0.0",
+      "type": "ui",
+      "description": "演示 ui 类插件：两个主题（冷银 / 暖灰）+ 三个面板分别挂到 stage-sidebar / inspector-right / toolbar。主题 token 由插件管理页真渲染（写 documentElement 的 CSS 变量）；跨模块宿主未接的部分在页面上标「登记不渲染」。",
+      "author": "ai-video-platform 示例",
+      "homepage": "",
+      "engines": {
+        "platform": ">=0.1.0"
+      },
+      "engines_check": {
+        "platform": {
+          "range": ">=0.1.0",
+          "against": "0.1.0",
+          "satisfied": true
+        },
+        "registry": null
+      },
+      "permissions_declared": [],
+      "permissions_recognized": [],
+      "permissions_unknown": [],
+      "quarantine_exec": false,
+      "contributes": {
+        "keys": [
+          "ui"
+        ],
+        "params": 0,
+        "models": 0,
+        "node": null,
+        "preset": null,
+        "ui": {
+          "themes": 2,
+          "panels": 3
+        }
+      },
+      "state": "active",
+      "state_from": "loadAll",
+      "reason": "已注入（签名通过）",
+      "applies": true,
+      "applied": {
+        "params": 0,
+        "models": 0,
+        "presets": 0,
+        "themes": 2,
+        "panels": 3
+      },
+      "errors": [],
+      "warnings": [
+        {
+          "path": "$.permissions",
+          "code": "DEFAULT_DENY",
+          "message": "未声明权限 → 全部按拒绝处理"
+        }
+      ],
+      "manifest": {
+        "schema": "ai-video-platform/plugin",
+        "id": "sample-ui-pack",
+        "name": "示例 · 冷银主题 + 三块快捷面板",
+        "version": "1.0.0",
+        "type": "ui",
+        "description": "演示 ui 类插件：两个主题（冷银 / 暖灰）+ 三个面板分别挂到 stage-sidebar / inspector-right / toolbar。主题 token 由插件管理页真渲染（写 documentElement 的 CSS 变量）；跨模块宿主未接的部分在页面上标「登记不渲染」。",
+        "author": "ai-video-platform 示例",
+        "engines": {
+          "platform": ">=0.1.0"
+        },
+        "permissions": [],
+        "contributes": {
+          "ui": {
+            "themes": [
+              {
+                "id": "cool-silver",
+                "title": "冷银（示例）",
+                "tokens": {
+                  "--acc": "#cdd6e4",
+                  "--acc-hover": "#e8edf5",
+                  "--acc-fill": "rgba(205, 214, 228, 0.14)",
+                  "--bg": "#07080b",
+                  "--line2": "rgba(205, 214, 228, 0.22)"
+                }
+              },
+              {
+                "id": "warm-graphite",
+                "title": "暖灰（示例）",
+                "tokens": {
+                  "--acc": "#d2ccc0",
+                  "--acc-hover": "#efe9df",
+                  "--acc-fill": "rgba(210, 204, 192, 0.14)",
+                  "--bg": "#090808",
+                  "--line2": "rgba(210, 204, 192, 0.22)"
+                }
+              }
+            ],
+            "panels": [
+              {
+                "id": "ui-keyframe-quick",
+                "slot": "stage-sidebar",
+                "title": "关键帧速调",
+                "fields": [
+                  {
+                    "key": "kf.steps",
+                    "label": "步数"
+                  },
+                  {
+                    "key": "kf.cfg",
+                    "label": "CFG"
+                  }
+                ]
+              },
+              {
+                "id": "ui-quality-read",
+                "slot": "inspector-right",
+                "title": "画质读数",
+                "fields": [
+                  {
+                    "key": "lk.grain",
+                    "label": "颗粒"
+                  },
+                  {
+                    "key": "mo.fps",
+                    "label": "帧率",
+                    "readonly": true
+                  }
+                ]
+              },
+              {
+                "id": "ui-export-chip",
+                "slot": "toolbar",
+                "title": "导出提醒",
+                "fields": [
+                  {
+                    "key": "ex.codec",
+                    "label": "编码"
+                  }
+                ]
+              }
+            ]
+          }
+        },
+        "signature": {
+          "key_id": "avp-dev-local",
+          "alg": "ed25519",
+          "sig": "aC6Tw3bDygsx+ebXAapI/6yHMKyIIorMJDKyAB7VeW2NFXTRWo9XejxvpmNIPiYmzxzGRddtRu90TH0p90SmBg=="
+        }
+      }
+    },
+    {
+      "id": "fixture-bad-manifest",
+      "dir": "plugins/fixtures/bad-manifest",
+      "origin": "fixture",
+      "listed_in_runtime": false,
+      "name": "故意坏掉的 manifest（selftest 用）",
+      "version": "1.0.0",
+      "type": "wat",
+      "description": "",
+      "author": "",
+      "homepage": "",
+      "engines": {},
+      "engines_check": {
+        "platform": null,
+        "registry": null
+      },
+      "permissions_declared": [
+        "fs:read",
+        "root"
+      ],
+      "permissions_recognized": [
+        "fs:read"
+      ],
+      "permissions_unknown": [
+        "root"
+      ],
+      "quarantine_exec": false,
+      "contributes": {
+        "keys": [
+          "node",
+          "params"
+        ],
+        "params": 2,
+        "models": 0,
+        "node": {
+          "id": "bad-node",
+          "title": "坏节点",
+          "stage": "keyframe",
+          "inputs": 0,
+          "outputs": 0
+        },
+        "preset": null,
+        "ui": null
+      },
+      "state": "rejected",
+      "state_from": "validatePluginDir",
+      "reason": "$.engines: 缺少必填字段 engines",
+      "applies": false,
+      "applied": null,
+      "errors": [
+        {
+          "path": "$.engines",
+          "code": "REQUIRED_MISSING",
+          "message": "缺少必填字段 engines"
+        },
+        {
+          "path": "$.type",
+          "code": "ENUM_MISMATCH",
+          "message": "取值必须是 model | node | preset | ui 之一，实际 \"wat\""
+        },
+        {
+          "path": "$.permissions[1]",
+          "code": "ENUM_MISMATCH",
+          "message": "取值必须是 fs:read | net | exec | gpu 之一，实际 \"root\""
+        },
+        {
+          "path": "$.contributes.params[1].impact.quality",
+          "code": "TOO_LARGE",
+          "message": "1.5 > 1"
+        },
+        {
+          "path": "$.signature",
+          "code": "PLUGIN_UNSIGNED",
+          "message": "manifest 没有 signature：无法证明内容未被改动（可信清单有 1 把公钥）；类型 wat 不在可降级清单（ui/preset）内，缺签不放行 → 拒载并隔离"
+        },
+        {
+          "path": "$.contributes.params[0].key",
+          "code": "KEY_CONFLICT",
+          "message": "参数 key \"kf.steps\" 与既有注册表冲突"
+        },
+        {
+          "path": "$.contributes.params[1].stage",
+          "code": "STAGE_UNKNOWN",
+          "message": "stage \"nonsense\" 不存在，可用：character, storyboard, keyframe, motion, voice, look, export"
+        },
+        {
+          "path": "$.contributes.params[1].impact.quality",
+          "code": "IMPACT_RANGE",
+          "message": "quality 必须是 0..1 的数字，实际 1.5"
+        }
+      ],
+      "warnings": [],
+      "manifest": {
+        "schema": "ai-video-platform/plugin",
+        "id": "fixture-bad-manifest",
+        "name": "故意坏掉的 manifest（selftest 用）",
+        "version": "1.0.0",
+        "type": "wat",
+        "permissions": [
+          "fs:read",
+          "root"
+        ],
+        "contributes": {
+          "node": {
+            "id": "bad-node",
+            "title": "坏节点",
+            "stage": "keyframe"
+          },
+          "params": [
+            {
+              "key": "kf.steps",
+              "stage": "keyframe",
+              "type": "int",
+              "default": 24,
+              "min": 8,
+              "max": 50,
+              "step": 1,
+              "label": "撞车的参数",
+              "hint": "key 与既有注册表重复，必须被拒。",
+              "tier": "L3",
+              "impact": {
+                "vram": 0,
+                "time": 0.02,
+                "quality": 0.1
+              },
+              "bind": {
+                "target": "Detail Polish",
+                "widget": "steps"
+              }
+            },
+            {
+              "key": "kf.impact_test",
+              "stage": "nonsense",
+              "type": "int",
+              "default": 5,
+              "min": 0,
+              "max": 10,
+              "step": 1,
+              "label": "越界 impact",
+              "hint": "impact.quality=1.5 超出 0..1，stage 也不存在。",
+              "tier": "L3",
+              "impact": {
+                "vram": 0,
+                "time": 0,
+                "quality": 1.5
+              },
+              "bind": {
+                "target": "Detail Polish",
+                "widget": "x"
+              }
+            }
+          ]
+        }
+      }
+    },
+    {
+      "id": "fixture-exec-quarantine",
+      "dir": "plugins/fixtures/exec-quarantine",
+      "origin": "fixture",
+      "listed_in_runtime": false,
+      "name": "声明 exec 的插件（selftest 用）",
+      "version": "1.0.0",
+      "type": "node",
+      "description": "manifest 合法但声明了 exec：只登记为 needs-review，不注入运行时。",
+      "author": "",
+      "homepage": "",
+      "engines": {
+        "platform": ">=0.1.0"
+      },
+      "engines_check": {
+        "platform": {
+          "range": ">=0.1.0",
+          "against": "0.1.0",
+          "satisfied": true
+        },
+        "registry": null
+      },
+      "permissions_declared": [
+        "fs:read",
+        "exec"
+      ],
+      "permissions_recognized": [
+        "fs:read",
+        "exec"
+      ],
+      "permissions_unknown": [],
+      "quarantine_exec": true,
+      "contributes": {
+        "keys": [
+          "node",
+          "params"
+        ],
+        "params": 1,
+        "models": 0,
+        "node": {
+          "id": "exec-node",
+          "title": "需要外部进程的节点",
+          "stage": "motion",
+          "inputs": 0,
+          "outputs": 0
+        },
+        "preset": null,
+        "ui": null
+      },
+      "state": "needs-review",
+      "state_from": "validatePluginDir",
+      "reason": "声明 exec 权限，等待人工审核（不注入运行时）",
+      "applies": false,
+      "applied": null,
+      "errors": [],
+      "warnings": [
+        {
+          "path": "$.permissions",
+          "code": "EXEC_QUARANTINED",
+          "message": "声明了 exec：包已登记但未注入运行时，需人工审核后由宿主构建期手动放行"
+        }
+      ],
+      "manifest": {
+        "schema": "ai-video-platform/plugin",
+        "id": "fixture-exec-quarantine",
+        "name": "声明 exec 的插件（selftest 用）",
+        "version": "1.0.0",
+        "type": "node",
+        "description": "manifest 合法但声明了 exec：只登记为 needs-review，不注入运行时。",
+        "engines": {
+          "platform": ">=0.1.0"
+        },
+        "permissions": [
+          "fs:read",
+          "exec"
+        ],
+        "contributes": {
+          "node": {
+            "id": "exec-node",
+            "title": "需要外部进程的节点",
+            "stage": "motion"
+          },
+          "params": [
+            {
+              "key": "mo.exec_marker",
+              "stage": "motion",
+              "type": "enum",
+              "default": "关",
+              "options": [
+                "关",
+                "开"
+              ],
+              "label": "外部工具开关",
+              "hint": "示例：声明 exec 后本参数不会进运行时，直到人工审核放行。",
+              "tier": "L4",
+              "impact": {
+                "vram": 0,
+                "time": 0.05,
+                "quality": 0
+              },
+              "bind": {
+                "target": "External Tool",
+                "widget": "toggle"
+              }
+            }
+          ]
+        },
+        "signature": {
+          "key_id": "avp-dev-local",
+          "alg": "ed25519",
+          "sig": "yoTI/2trxCMd05O7euMTKmT9EB8cVxa4dx+eNfHngdo3GHoM0Ouwj9407pzE8PJOHwoL5BAcbiL5RbR50PuxAA=="
+        }
+      }
+    },
+    {
+      "id": "fixture-version-fail",
+      "dir": "plugins/fixtures/version-fail",
+      "origin": "fixture",
+      "listed_in_runtime": false,
+      "name": "版本不满足的插件（selftest 用）",
+      "version": "1.0.0",
+      "type": "node",
+      "description": "要求平台 >=9.0.0，当前 0.1.0 必须拒绝加载并给出原因。",
+      "author": "",
+      "homepage": "",
+      "engines": {
+        "platform": ">=9.0.0"
+      },
+      "engines_check": {
+        "platform": {
+          "range": ">=9.0.0",
+          "against": "0.1.0",
+          "satisfied": false
+        },
+        "registry": null
+      },
+      "permissions_declared": [],
+      "permissions_recognized": [],
+      "permissions_unknown": [],
+      "quarantine_exec": false,
+      "contributes": {
+        "keys": [
+          "node",
+          "params"
+        ],
+        "params": 1,
+        "models": 0,
+        "node": {
+          "id": "future-node",
+          "title": "未来节点",
+          "stage": "keyframe",
+          "inputs": 0,
+          "outputs": 0
+        },
+        "preset": null,
+        "ui": null
+      },
+      "state": "rejected",
+      "state_from": "validatePluginDir",
+      "reason": "$.signature: manifest 没有 signature：无法证明内容未被改动（可信清单有 1 把公钥）；类型 node 不在可降级清单（ui/preset）内，缺签不放行 → 拒载并隔离",
+      "applies": false,
+      "applied": null,
+      "errors": [
+        {
+          "path": "$.signature",
+          "code": "PLUGIN_UNSIGNED",
+          "message": "manifest 没有 signature：无法证明内容未被改动（可信清单有 1 把公钥）；类型 node 不在可降级清单（ui/preset）内，缺签不放行 → 拒载并隔离"
+        },
+        {
+          "path": "$.engines.platform",
+          "code": "VERSION_UNSATISFIED",
+          "message": "平台版本 0.1.0 不满足插件要求 >=9.0.0"
+        }
+      ],
+      "warnings": [
+        {
+          "path": "$.permissions",
+          "code": "DEFAULT_DENY",
+          "message": "未声明权限 → 全部按拒绝处理"
+        }
+      ],
+      "manifest": {
+        "schema": "ai-video-platform/plugin",
+        "id": "fixture-version-fail",
+        "name": "版本不满足的插件（selftest 用）",
+        "version": "1.0.0",
+        "type": "node",
+        "description": "要求平台 >=9.0.0，当前 0.1.0 必须拒绝加载并给出原因。",
+        "engines": {
+          "platform": ">=9.0.0"
+        },
+        "permissions": [],
+        "contributes": {
+          "node": {
+            "id": "future-node",
+            "title": "未来节点",
+            "stage": "keyframe"
+          },
+          "params": [
+            {
+              "key": "kf.future_marker",
+              "stage": "keyframe",
+              "type": "bool",
+              "default": false,
+              "label": "未来开关",
+              "hint": "只为验证版本门禁，正常环境永远不会被加载。",
+              "tier": "L4",
+              "impact": {
+                "vram": 0,
+                "time": 0,
+                "quality": 0
+              },
+              "bind": {
+                "target": "Future",
+                "widget": "toggle"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ]
+}

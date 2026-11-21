@@ -1,0 +1,2208 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>工作流画布 · VisInter-Agent v0.1</title>
+<style>
+/*__TOKENS__*/
+  /* 视觉基线抄自 web/params.src.html：同一套暗色科技感 token，保证两个界面并排演示不违和 */
+/* 碑铭衬线：Cinzel（SIL OFL，本地 woff2，见 assets/fonts/LICENSE-Cinzel.txt）。
+   中文无 Cinzel 字形，自然落到宋体/思源宋体——碑铭感靠字距与字重，不靠假字体。 */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-700.woff2") format("woff2");
+}
+
+/* :root 已收口到 ui/tokens.css（构建期内联） */
+
+/* ── 基础层：七个界面共用的最小复位与排版基调 ───────────────────── */
+/* 底：深黑 + 双冷色光晕（左上蓝灰 / 右下紫灰），玻璃的「景」；fixed 不随滚动漂移 */
+html {
+  background:
+    radial-gradient(56% 46% at 10% 4%, var(--amb-blue) 0%, rgba(98, 118, 158, 0) 72%),
+    radial-gradient(52% 44% at 92% 98%, var(--amb-purple) 0%, rgba(126, 106, 160, 0) 72%),
+    var(--bg);
+  background-attachment: fixed;
+}
+body {
+  background: transparent;
+  color: var(--text);
+  font: var(--fz)/var(--lh) var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* 胶片颗粒：极细噪点铺满视口，不拦截指针；4% 透明度只够"感觉到"不够"看到" */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background: url("../assets/grain.png") repeat;
+  background-size: 160px 160px;
+}
+
+/* 碑铭体：平台名、卡片标题、章节题字共用 */
+.serif {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+/* 数字等宽：所有数值读数都用它 */
+.num, kbd, code, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点环：冷银描边 + 一圈极淡银光，键盘可达 */
+:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(200, 205, 212, 0.12);
+}
+
+/* 滚动条：细、暗、银灰thumb，hover 提亮；不用系统默认蓝条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+*::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* 选区：银的低透明填充，不用系统蓝 */
+::selection { background: var(--acc-fill); color: var(--acc-hover); }
+
+/* ── 通用玻璃类：与 ui/tokens.css 同一配方 ─────────────────────── */
+.glass-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.glass-card.hoverable {
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.glass-card.hoverable:hover {
+  background: var(--glass-hover); border-color: var(--glass-line-hover); transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.glass-btn {
+  background: rgba(255, 255, 255, 0.10); border: 1px solid var(--line); border-radius: var(--r2); color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+}
+.glass-btn:hover { background: rgba(255, 255, 255, 0.14); border-color: var(--glass-line-hover); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+.glass-input {
+  background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r2); color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), background var(--t) var(--ease);
+}
+.glass-input:focus { outline: none; border-color: var(--glass-line-hover); background: rgba(255, 255, 255, 0.07); box-shadow: var(--glow); }
+.glass-input::placeholder { color: var(--text-dim2); }
+@media (max-width: 900px) { /* :root 已收口到 ui/tokens.css（构建期内联） */ }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: transparent;
+    color: var(--text);
+    font: 13px/1.55 "Microsoft YaHei UI", "PingFang SC", system-ui, sans-serif;
+    overflow: hidden;
+  }
+  button, select, input, textarea { font-family: inherit; }
+  #app { display: grid; grid-template-rows: auto minmax(0, 1fr) 26px; height: 100vh; }
+
+  /* ── 顶栏：悬浮玻璃条（margin 16 / 圆角 16 / blur 20）── */
+  header {
+    display: flex; align-items: center; gap: 12px; padding: 0 14px; min-width: 0;
+    margin: var(--sp4) var(--sp4) 0; min-height: 44px;
+    border: 1px solid var(--line); border-radius: var(--r3);
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+    position: relative; z-index: 5;
+  }
+  .brand { display: flex; align-items: center; gap: 9px; font-family: var(--serif); font-weight: 700; letter-spacing: .14em; color: var(--acc); white-space: nowrap; }
+  .brand .mark {
+    width: 22px; height: 22px; border-radius: var(--r2); display: grid; place-items: center;
+    background: var(--panel2); border: 1px solid var(--line2);
+  }
+  .brand small { color: var(--dim2); font-weight: 400; font-family: var(--mono); font-size: 11px; }
+  .spacer { flex: 1; min-width: 6px; }
+
+  .seg { display: flex; border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; background: var(--panel2); flex: none; -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite); }
+  .seg button {
+    background: transparent; color: var(--dim); border: 0; padding: 7px 13px; cursor: pointer;
+    font-size: 12.5px; display: flex; align-items: center; gap: 7px; white-space: nowrap;
+  }
+  .seg button:hover { color: var(--text); background: var(--panel3); }
+  .seg button.on {
+    background: var(--panel4); color: var(--acc);
+    box-shadow: inset 0 -2px 0 var(--acc);
+  }
+  kbd {
+    font: 10px var(--mono); color: var(--dim2); border: 1px solid var(--line2); border-bottom-width: 2px;
+    border-radius: var(--r); padding: 0 4px; background: var(--panel2);
+  }
+  .seg button.on kbd { color: var(--acc); border-color: var(--line2); }
+
+  select, input[type=number], input[type=text], textarea {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2);
+    padding: 5px 8px; font: 12px var(--mono); outline: none; width: 100%;
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+    transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+  }
+  select:focus, input:focus, textarea:focus { border-color: var(--glass-line-hover); box-shadow: var(--glow); }
+  .btn {
+    border: 1px solid var(--line); background: rgba(255, 255, 255, 0.10); color: var(--text); border-radius: var(--r2);
+    padding: 6px 11px; font-size: 12px; cursor: pointer; white-space: nowrap; letter-spacing: .06em;
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+    transition: border-color var(--t) var(--ease), background var(--t) var(--ease), box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+  }
+  .btn:hover { border-color: var(--glass-line-hover); background: rgba(255, 255, 255, 0.14); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+  .btn.acc { border-color: var(--acc-dim); color: var(--acc-hover); background: var(--panel3); letter-spacing: .1em; }
+  .btn.acc:hover { border-color: var(--acc-hover); color: var(--acc-hover); box-shadow: var(--glow); }
+  .btn.mini { padding: 3px 8px; font-size: 11px; border-radius: var(--r2); }
+
+  /* ── 视图容器：三视图叠放，同一份 state 换渲染 ── */
+  main { position: relative; min-height: 0; }
+  .view { position: absolute; inset: 0; display: none; min-height: 0; }
+  .view.on { display: grid; }
+
+  /* ═══════ 向导视图 ═══════ */
+  #view-wizard { grid-template-columns: 236px minmax(0, 1fr); }
+  #wSteps {
+    border-right: 1px solid var(--line); background: var(--glass); padding: 12px 10px; overflow-y: auto;
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  }
+  .wsteps-title { font: 10.5px var(--mono); color: var(--dim2); letter-spacing: 1px; text-transform: uppercase; padding: 0 6px 8px; }
+  .wstep {
+    display: grid; grid-template-columns: 24px 1fr; gap: 2px 9px; align-items: center;
+    padding: 9px 9px; border-radius: var(--r2); cursor: pointer; border: 1px solid transparent; margin-bottom: 4px;
+    color: var(--dim);
+  }
+  .wstep:hover { background: var(--bg); color: var(--text); }
+  .wstep.on { background: var(--panel2); border-color: var(--line2); color: var(--text); }
+  .wstep.done .wstep-n { background: var(--panel); color: var(--acc); border-color: var(--line2); }
+  .wstep-n {
+    width: 24px; height: 24px; border-radius: var(--r2); display: grid; place-items: center; grid-row: span 2;
+    font: 700 11px var(--mono); background: var(--panel2); color: var(--acc2); border: 1px solid var(--line2);
+  }
+  .wstep.on .wstep-n { background: var(--panel2); color: var(--acc); border-color: var(--line2); }
+  .wstep-name { font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .wstep-meta { font: 10.5px var(--mono); color: var(--dim2); display: flex; gap: 6px; }
+  .wstep-meta .dirty { color: var(--acc); }
+
+  #wBody { overflow-y: auto; padding: 18px 22px 150px; }
+  .wcard {
+    max-width: 940px; margin: 0 auto; background: var(--panel);
+    border: 1px solid var(--line); border-radius: var(--r3); padding: 18px 20px 16px;
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+  .wcard-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 4px; }
+  .stage-chip {
+    width: 34px; height: 34px; border-radius: var(--r2); display: grid; place-items: center; flex: none;
+    font: 700 13px var(--mono); color: var(--bg-deep);
+    background: var(--panel); box-shadow: none;
+  }
+  .wcard-head h1 { margin: 0; font-family: var(--serif); font-size: 18px; letter-spacing: .14em; color: var(--acc); }
+  .wcard-head .en { font: 11px var(--mono); color: var(--dim2); letter-spacing: .6px; }
+  .wcard-say {
+    color: var(--acc); font-size: 13.5px; line-height: 1.7; margin: 10px 0 4px;
+    padding-left: 12px; border-left: 2px solid var(--line2);
+  }
+  .wcard-callout { color: var(--dim); font-size: 11.5px; margin: 6px 0 14px; padding-left: 14px; }
+  .wparams { display: grid; gap: 9px; }
+  .wp {
+    display: grid; grid-template-columns: minmax(0, 1fr) 268px; gap: 10px 16px; align-items: center;
+    padding: 11px 13px; border: 1px solid var(--line); border-radius: var(--r2);
+    background: var(--panel2);
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  }
+  .wp.hit { border-color: var(--line2); background: var(--panel3); }
+  .wp-label { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+  .wp-label b { font-size: 13px; font-weight: 600; }
+  .wp-plain { color: var(--dim); font-size: 11.5px; margin-top: 2px; }
+  .wp-val { font: 11px var(--mono); color: var(--acc2); }
+  .wp-ctrl { display: flex; align-items: center; gap: 8px; }
+  .wp-ctrl input[type=range] { flex: 1; accent-color: var(--acc); min-width: 0; }
+  .wp-ctrl .num { width: 68px; flex: none; text-align: right; }
+  .wp.wide { grid-template-columns: minmax(0, 1fr); }
+  .wp.wide textarea { min-height: 52px; resize: vertical; font-family: "Microsoft YaHei UI", monospace; }
+
+  .wfoot { display: flex; align-items: center; gap: 10px; margin-top: 16px; flex-wrap: wrap; }
+  .wfoot .grow { flex: 1; }
+  .rec { display: flex; align-items: center; gap: 6px; font-size: 11.5px; color: var(--dim); }
+  .rec-chip {
+    border: 1px solid var(--line); background: var(--bg); color: var(--dim); border-radius: var(--r2);
+    padding: 4px 11px; font-size: 11.5px; cursor: pointer; display: flex; gap: 6px; align-items: center;
+  }
+  .rec-chip:hover { color: var(--text); border-color: var(--line2); }
+  .rec-chip.on { color: var(--acc); border-color: var(--line2); background: var(--bg); }
+  .wprogress { max-width: 940px; margin: 14px auto 0; display: flex; gap: 5px; }
+  .wprogress i { height: 3px; flex: 1; border-radius: var(--r2); background: var(--panel2); }
+  .wprogress i.on { background: var(--panel); box-shadow: none; }
+
+  /* ═══════ 参数视图 ═══════ */
+  #view-params { grid-template-columns: 202px minmax(0, 1fr); }
+  #pRail { border-right: 1px solid var(--line); background: var(--glass); overflow-y: auto; padding: 10px 8px; -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur); }
+  .rail-item {
+    display: flex; align-items: center; gap: 9px; padding: 9px 10px; border-radius: var(--r2); cursor: pointer;
+    color: var(--dim); border: 1px solid transparent; margin-bottom: 4px;
+  }
+  .rail-item:hover { background: var(--bg); color: var(--text); }
+  .rail-item.on { background: var(--acc-fill); border-color: var(--line2); color: var(--acc-hover); box-shadow: inset 2px 0 0 var(--acc); }
+  .rail-code {
+    width: 22px; height: 22px; border-radius: var(--r2); display: grid; place-items: center;
+    font: 700 11px var(--mono); background: var(--panel2); color: var(--acc2); flex: none;
+  }
+  .rail-item.on .rail-code { background: var(--panel2); color: var(--acc); }
+  .rail-name { flex: 1; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .rail-n { font: 11px var(--mono); color: var(--dim2); flex: none; }
+  .rail-n.warn { color: var(--warn); }
+
+  #pBoard { overflow-y: auto; padding: 14px 18px 160px; }
+  #pBoard > .board-head, #pBoard > #paramList { max-width: 1280px; margin-left: auto; margin-right: auto; }
+  .board-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+  .bh-left { min-width: 240px; flex: 1; }
+  .board-head h1 { font-size: 17px; margin: 0 0 2px; letter-spacing: .3px; display: flex; align-items: center; gap: 8px; }
+  .board-head p { margin: 0; color: var(--dim); font-size: 12px; }
+  .toolbar { display: flex; gap: 8px; align-items: center; margin-left: auto; font-size: 12px; color: var(--dim); white-space: nowrap; }
+  .group-title {
+    display: flex; align-items: center; gap: 8px; margin: 14px 0 8px; color: var(--dim);
+    font: 11px var(--mono); letter-spacing: 1px; text-transform: uppercase;
+  }
+  .group-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+  .group-title b { color: var(--text); font-weight: 500; letter-spacing: 0; text-transform: none; }
+
+  .prow {
+    display: grid; grid-template-columns: minmax(0, 1fr) 252px 118px; gap: 8px 12px; align-items: center;
+    padding: 7px 11px; border: 1px solid var(--line); border-radius: var(--r2); margin-bottom: 5px;
+    background: var(--bg);
+  }
+  .prow:hover { border-color: var(--line2); }
+  .prow.custom { border-color: var(--line2); }
+  .prow.hit { border-color: var(--line2); background: var(--panel); }
+  .prow-meta { min-width: 0; }
+  .prow-top { display: flex; align-items: center; gap: 6px; flex-wrap: wrap; }
+  .lbl { font-size: 12.5px; }
+  .key { font: 10.5px var(--mono); color: var(--dim2); }
+  .hint { color: var(--dim); font-size: 11px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .badge { font: 10px var(--mono); padding: 1px 5px; border-radius: var(--r); border: 1px solid; white-space: nowrap; }
+  .badge.auto { color: var(--acc-dim); border-color: var(--line2); background: var(--panel); cursor: help; }
+  .badge.core { color: var(--acc2); border-color: var(--line2); background: var(--panel); }
+  .badge.diff { color: var(--acc); border-color: var(--line2); background: var(--bg); }
+  .ctrl { display: flex; align-items: center; gap: 7px; }
+  .ctrl input[type=range] { flex: 1; accent-color: var(--acc); min-width: 0; }
+  .num { width: 66px; text-align: right; flex: none; }
+  .unit { font: 11px var(--mono); color: var(--dim2); min-width: 22px; flex: none; }
+  .restore { color: var(--dim2); font-size: 11px; cursor: pointer; text-decoration: underline dotted; white-space: nowrap; flex: none; }
+  .restore:hover { color: var(--acc); }
+  .switch {
+    width: 40px; height: 21px; border-radius: var(--r2); background: var(--panel3); border: 1px solid var(--line);
+    position: relative; cursor: pointer; flex: none;
+  }
+  .switch::after {
+    content: ""; position: absolute; top: 2px; left: 2px; width: 15px; height: 15px; border-radius: 50%;
+    background: var(--panel4); transition: .16s;
+  }
+  .switch.on { background: var(--panel); border-color: var(--line2); }
+  .switch.on::after { left: 21px; background: var(--acc);  }
+  .prow-attach { grid-column: 1 / -1; }
+  .prow-attach textarea { min-height: 42px; resize: vertical; font-family: "Microsoft YaHei UI", monospace; font-size: 12px; }
+
+  /* impact 三联：显存/耗时/质量，条长=相对量级，数字精确 */
+  .impacts { display: flex; gap: 6px; justify-content: flex-end; }
+  .imp { display: flex; flex-direction: column; gap: 3px; width: 34px; }
+  .imp span { font: 10px var(--mono); color: var(--dim2); text-align: center; }
+  .imp i { display: block; height: 3px; border-radius: var(--r2); background: var(--panel2); overflow: hidden; }
+  .imp i > b { display: block; height: 100%; border-radius: var(--r2); }
+  .imp.v i > b { background: var(--acc2); }
+  .imp.t i > b { background: var(--acc-dim); }
+  .imp.q i > b { background: var(--acc); }
+  .imp.zero span { color: var(--text-dim2); }
+
+  .fold { border: 1px solid var(--line); border-radius: var(--r2); background: var(--panel2); margin-top: 6px; }
+  .fold > summary {
+    cursor: pointer; padding: 10px 12px; font-size: 12.5px; color: var(--dim); list-style: none;
+    display: flex; align-items: center; gap: 8px;
+  }
+  .fold > summary::-webkit-details-marker { display: none; }
+  .fold > summary:hover { color: var(--text); }
+  .fold > summary .caret { transition: .15s; color: var(--dim2); font: 10px var(--mono); }
+  .fold[open] > summary .caret { transform: rotate(90deg); }
+  .fold > summary b { color: var(--text); font-weight: 600; }
+  .fold-body { padding: 4px 10px 10px; }
+  .empty { color: var(--dim2); font-size: 11.5px; padding: 4px 2px; }
+
+  /* ═══════ 节点视图 ═══════ */
+  #view-nodes { grid-template-columns: minmax(0, 1fr); position: absolute; }
+  #nodeWrap { position: relative; overflow: hidden; background: var(--bg-deep); }
+  #nodeCanvas { display: block; width: 100%; height: 100%; cursor: grab; }
+  #nodeCanvas.dragging { cursor: grabbing; }
+  #nodeCanvas.linking { cursor: crosshair; }
+  .node-hint {
+    position: absolute; left: 14px; top: 12px; display: flex; flex-direction: column; gap: 5px;
+    font: 11px var(--mono); color: var(--dim2); pointer-events: none; line-height: 1.7;
+  }
+  .node-hint b { color: var(--dim); font-weight: 500; }
+  .node-tools { position: absolute; left: 14px; bottom: 14px; display: flex; gap: 6px; }
+  .legend {
+    position: absolute; left: 14px; bottom: 52px; display: flex; gap: 12px; font: 10.5px var(--mono);
+    color: var(--dim2); background: var(--glass); border: 1px solid var(--line); border-radius: var(--r2); padding: 4px 9px;
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+    box-shadow: var(--shadow-inset);
+  }
+  .legend span { display: flex; align-items: center; gap: 5px; }
+  .legend i { width: 16px; height: 3px; border-radius: var(--r2); display: block; }
+
+  /* 右侧节点参数抽屉：点节点才出现，避免常驻挤占画布 */
+  #nodePanel {
+    position: absolute; right: 12px; top: 12px; width: 344px; max-height: calc(100% - 292px);
+    display: none; flex-direction: column;
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line2); border-radius: var(--r3); box-shadow: var(--shadow-pop), var(--shadow-inset); z-index: 20;
+  }
+  #nodePanel.on { display: flex; }
+  .np-head { display: flex; align-items: center; gap: 9px; padding: 11px 12px; border-bottom: 1px solid var(--line); }
+  .np-head .stage-chip { width: 26px; height: 26px; border-radius: var(--r2); font-size: 11px; box-shadow: none; }
+  .np-head h3 { margin: 0; font-size: 13.5px; flex: 1; }
+  .np-head .x { cursor: pointer; color: var(--dim2); font: 12px var(--mono); padding: 2px 6px; border-radius: var(--r); }
+  .np-head .x:hover { color: var(--bad); background: var(--panel); }
+  .np-body { overflow-y: auto; padding: 9px 11px 11px; }
+  .np-row { padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r2); margin-bottom: 5px; background: var(--panel2); }
+  .np-row.hit { border-color: var(--line2); }
+  .np-row .np-top { display: flex; align-items: center; gap: 6px; margin-bottom: 5px; }
+  .np-row .np-top b { font-size: 12px; font-weight: 500; flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .np-foot { padding: 9px 11px; border-top: 1px solid var(--line); display: flex; gap: 6px; }
+
+  /* ═══════ 实时估算面板（右下固定） ═══════ */
+  #estimator {
+    position: fixed; right: 12px; bottom: 34px; width: 300px; z-index: 40;
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    border: 1px solid var(--line2); border-radius: var(--r3); padding: 10px 12px 11px;
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+    font: 12px var(--mono);
+  }
+  #estimator .est-head { display: flex; align-items: center; gap: 7px; color: var(--dim); font-size: 10.5px; letter-spacing: 1px; text-transform: uppercase; }
+  #estimator .est-head .pulse { width: 6px; height: 6px; border-radius: 50%; background: var(--acc);   }
+  @keyframes beat { 0%, 100% { opacity: 1; } 50% { opacity: .35; } }
+  #estimator .est-head .dev { margin-left: auto; text-transform: none; letter-spacing: 0; color: var(--dim2); font-size: 10px; }
+  .est-vram { display: flex; align-items: baseline; gap: 8px; margin-top: 7px; }
+  .est-vram b { font-size: 26px; font-weight: 700; letter-spacing: -1px; line-height: 1.1; }
+  .est-vram small { font-size: 12px; color: var(--dim2); }
+  .st { font: 10.5px var(--mono); padding: 1px 6px; border-radius: var(--r); border: 1px solid; }
+  .st.ok { color: var(--acc); border-color: var(--line2); background: var(--bg); }
+  .st.warn { color: var(--warn); border-color: var(--line2); background: var(--bg); }
+  .st.block { color: var(--bad); border-color: var(--line2); background: var(--panel); }
+  .bar { height: 6px; border-radius: var(--r2); background: var(--panel2); overflow: hidden; margin: 7px 0 6px; position: relative; }
+  .bar > i { display: block; height: 100%; border-radius: var(--r2); transition: width .16s; }
+  .bar .tick { position: absolute; top: -2px; bottom: -2px; width: 1px; background: var(--line3); }
+  .est-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; margin-top: 6px; font-size: 11px; }
+  .est-grid div { display: flex; justify-content: space-between; gap: 8px; color: var(--dim); border-bottom: 1px dashed var(--panel2); padding-bottom: 2px; }
+  .est-grid b { color: var(--text); font-weight: 500; }
+  .est-grid em { font-style: normal; color: var(--acc2); }
+  .est-alerts { margin-top: 8px; display: flex; flex-direction: column; gap: 4px; max-height: 132px; overflow-y: auto; }
+  .alert { font: 11px/1.45 "Microsoft YaHei UI", sans-serif; padding: 4px 7px; border-radius: var(--r2); display: flex; gap: 6px; align-items: flex-start; }
+  .alert i { font-style: normal; flex: none; font-size: 10px; padding: 0 4px; border-radius: var(--r2); background: #00000040; }
+  .alert.warn { color: var(--warn); background: var(--panel2); border: 1px solid var(--line2); border-left: 3px solid var(--warn); }
+  .alert.warn i { color: var(--warn); }
+  .alert.block { color: var(--bad); background: var(--panel2); border: 1px solid var(--line2); border-left: 3px solid var(--bad); }
+  .alert.block i { color: var(--bad); }
+  .alert.gray { color: var(--text); background: var(--panel); border: 1px solid var(--line2); }
+  .alert.gray i { color: var(--dim); }
+  .est-link { margin-top: 6px; font-size: 10.5px; color: var(--acc-dim); display: flex; gap: 6px; align-items: center; }
+
+  /* ── 底栏 / 提示 ── */
+  footer {
+    border-top: 1px solid var(--line); display: flex; align-items: center; gap: 13px; padding: 0 13px;
+    font: 11px var(--mono); color: var(--dim2); background: var(--glass); overflow: hidden; white-space: nowrap;
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  }
+  footer .live { color: var(--acc); }
+  footer b { color: var(--dim); font-weight: 500; }
+  #toast {
+    position: fixed; left: 50%; transform: translate(-50%, 8px); bottom: 40px; z-index: 60;
+    background: var(--glass); border: 1px solid var(--line2); color: var(--acc);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    padding: 8px 13px; border-radius: var(--r2); font: 12px var(--mono);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+    opacity: 0; transition: .2s; pointer-events: none; max-width: min(520px, 92vw);
+  }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+  #tip {
+    position: fixed; z-index: 70; pointer-events: none; max-width: 320px; opacity: 0; transition: opacity .12s;
+    background: var(--glass); border: 1px solid var(--line2); border-radius: var(--r2); padding: 7px 9px;
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    font: 11.5px/1.55 "Microsoft YaHei UI", sans-serif; color: var(--acc);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+  #tip.on { opacity: 1; }
+  #tip b { color: var(--acc-dim); font-weight: 600; }
+  #tip .was { font: 11px var(--mono); color: var(--dim); }
+  ::-webkit-scrollbar { width: 9px; height: 9px; }
+  ::-webkit-scrollbar-thumb { background: var(--panel2); border-radius: var(--r2); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--panel4); }
+
+  /* ── 移动端：顶栏换行、侧栏横排、参数行单列 ── */
+  @media (max-width: 900px) {
+    #app { grid-template-rows: auto minmax(0, 1fr) 26px; grid-template-columns: minmax(0, 1fr); }
+    header { flex-wrap: wrap; gap: 8px; padding: 8px 12px; margin: 12px 12px 0; }
+    .brand small { display: none; }
+    .spacer { display: none; }
+    #viewSwitch { order: 7; }
+    select#device { width: 100% !important; order: 8; }
+    #view-wizard, #view-params { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    #wSteps, #pRail {
+      display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+      border-right: 0; border-bottom: 1px solid var(--line); padding: 7px 8px; gap: 4px;
+    }
+    .wsteps-title { display: none; }
+    .wstep { flex: none; width: auto; margin-bottom: 0; white-space: nowrap; grid-template-columns: 24px auto; }
+    .wstep-n { grid-row: auto; }
+    .wstep-meta { display: none; }
+    .rail-item { flex: none; width: auto; margin-bottom: 0; white-space: nowrap; }
+    .rail-name { flex: none; }
+    #wBody { padding: 14px 12px 150px; }
+    #pBoard { padding: 12px 12px 160px; }
+    .bh-left { min-width: 0; }
+    .toolbar { margin-left: 0; flex-wrap: wrap; }
+    #nodePanel { width: min(344px, calc(100% - 24px)); }
+    .node-hint { display: none; }
+    #estimator { width: min(300px, calc(100vw - 24px)); }
+    footer { overflow-x: auto; }
+  }
+  @media (max-width: 620px) {
+    .wp { grid-template-columns: minmax(0, 1fr); }
+    .prow { grid-template-columns: minmax(0, 1fr); }
+    .impacts { justify-content: flex-start; }
+    .wcard { padding: 14px 13px 12px; }
+    .seg button { padding: 6px 9px; }
+    .legend { display: none; }
+  }
+
+  /* ═══════════════════════════════════════════════════════════════════
+     玻璃化补丁（画布页）—— 配方本体在 ui/tokens.css 与 ui/glass-skin.css。
+     这里只补「画布页自己的结构」：悬浮工具条、节点抽屉、控件细节、窄屏。
+     令牌只用 :root 里已有的那批，不新增色值 / 圆角档位 / 循环动画。
+     ═══════════════════════════════════════════════════════════════════ */
+
+  /* ── ① 画布工具条：裸按钮直接压在网格上 → 悬浮玻璃条（圆角 16 / blur 20 / 距边 16）──
+     配方挂 .glass-toolbar，这里只管位置与密度，不重写 background/blur/shadow。 */
+  .node-tools {
+    left: var(--sp4);
+    bottom: var(--sp4);
+    gap: var(--sp1);
+    padding: 5px;
+  }
+  .node-tools .btn:hover { box-shadow: var(--glow); }
+
+  /* 参数视图板头工具条：同一口径的短玻璃条，避免和标题挤成一条裸线 */
+  .board-head .toolbar {
+    gap: var(--sp2);
+    padding: 4px 5px 4px var(--sp3);
+    border: 1px solid var(--line);
+    border-radius: var(--r3);
+    background: var(--panel2);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-inset);
+  }
+  .board-head .toolbar .btn:hover { box-shadow: var(--glow); }
+
+  /* ── ② 右侧节点属性抽屉：玻璃卡片 ──
+     配方挂 .glass-card（半透明白 .06 / 1px 亮线 / 16 / blur(20) saturate(1.4) /
+     0 8px 32px 黑阴影 + 顶部内亮线）；这里把原来的 --line2 边框压回常规档，
+     再收紧头/身/脚的留白。 */
+  #nodePanel { border-color: var(--line); }
+  #nodePanel .np-head { padding: 10px var(--sp3); }
+  #nodePanel .np-body { padding: var(--sp2) var(--sp3) var(--sp3); }
+  #nodePanel .np-foot { padding: var(--sp2) var(--sp3); }
+  /* 字段行：膜内一层；hover 只提亮、不上浮（一列十几行上浮会变成果冻） */
+  #nodePanel .np-row {
+    border: 1px solid var(--line);
+    border-radius: var(--r2);
+    background-color: var(--panel2);
+    transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+  }
+  #nodePanel .np-row:hover {
+    background-color: var(--glass-hover);
+    border-color: var(--glass-line-hover);
+    transform: none;
+    box-shadow: none;
+  }
+  /* 保住「被规则改写」那一档的边框层级（否则上面那条 id 选择器会把它压平） */
+  #nodePanel .np-row.hit { border-color: var(--line2); }
+
+  /* ── ③ 画布节点 ──
+     节点与连线是 #nodeCanvas 里的像素（drawNode / drawEdge），DOM 里没有 .node 元素，
+     CSS 触不到它们的边框与圆角。它们的配色在启动时由 TK 从 :root 读成实值
+     （填充 --panel、描边 --line2、hover --line3、选中 --acc、底 --bg-deep），
+     所以凹槽与面板换肤后节点会自动同调；圆角与描边宽度写在 drawNode 里，见交付说明。 */
+
+  /* ── ④ 表单控件：滑块（膜内凹槽轨道 + 冷银拇指）配方在 glass-skin 第 6 节 ──
+     这里只补原生下拉在暗底上的配色，以及开关的 hover。 */
+  select option,
+  select optgroup { background-color: var(--bg-deep); color: var(--text); }
+  .switch { transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease); }
+  .switch:hover { border-color: var(--line2); }
+  .switch.on::after { box-shadow: var(--glow-soft); }
+
+  /* ── ⑤ 窄屏（≤900）：节点抽屉从右侧竖板改底部半屏，画布上半区不被压掉；
+     blur 由 :root 的 --glass-blur 自动降到 12px（上方那条媒体查询），不重复写。 ── */
+  @media (max-width: 900px) {
+    #nodePanel {
+      top: auto;
+      right: var(--sp3);
+      bottom: var(--sp3);
+      left: var(--sp3);
+      width: auto;
+      max-height: 46%;
+    }
+    /* 工具条挪到画布左上，避开底部抽屉 */
+    .node-tools { top: var(--sp3); bottom: auto; left: var(--sp3); }
+  }
+/*__SKIN__*/
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <a class="btn" data-backlink href="../app/index.html" title="返回平台工作台（各模块页共用的回程路）">← 工作台</a>
+    <div class="brand">
+      <span class="mark">
+        <svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true">
+          <path d="M2 4h5v3H2zM9 4h5v3H9zM2 9h12v3H2z" stroke="var(--acc)" stroke-width="1.3" stroke-linejoin="round"/>
+        </svg>
+      </span>
+      工作流画布 <small>canvas · v0.1</small>
+    </div>
+
+    <div class="seg" id="viewSwitch" role="tablist" aria-label="视图切换">
+      <button data-view="wizard" class="on" role="tab">向导 <kbd>1</kbd></button>
+      <button data-view="params" role="tab">参数 <kbd>2</kbd></button>
+      <button data-view="nodes" role="tab">节点 <kbd>3</kbd></button>
+    </div>
+
+    <select id="device" style="width:246px" aria-label="目标设备"></select>
+    <div class="seg" id="presets" aria-label="预设">
+      <button data-preset="draft">草稿</button>
+      <button data-preset="standard" class="on">标准</button>
+      <button data-preset="cinematic">电影级</button>
+    </div>
+    <div class="spacer"></div>
+    <button class="btn" id="resetBtn" title="把全部参数还原为注册表默认值">全部还原</button>
+    <button class="btn" id="importBtn">导入预设</button>
+    <button class="btn acc" id="exportBtn">导出预设</button>
+    <input type="file" id="fileInput" accept=".json,application/json" style="display:none">
+  </header>
+
+  <main>
+    <!-- ① 向导视图 -->
+    <div class="view on" id="view-wizard">
+      <nav id="wSteps"></nav>
+      <div id="wBody">
+        <div id="wCard"></div>
+        <div class="wprogress" id="wProgress"></div>
+      </div>
+    </div>
+
+    <!-- ② 参数视图 -->
+    <div class="view" id="view-params">
+      <nav id="pRail"></nav>
+      <section id="pBoard">
+        <div class="board-head">
+          <div class="bh-left">
+            <h1 id="boardTitle"></h1>
+            <p id="boardDesc"></p>
+          </div>
+          <div class="toolbar">
+            <span id="boardCount"></span>
+            <button class="btn mini" id="resetStage">还原本板块</button>
+          </div>
+        </div>
+        <div id="paramList"></div>
+      </section>
+    </div>
+
+    <!-- ③ 节点视图 -->
+    <div class="view" id="view-nodes">
+      <div id="nodeWrap" class="glass-well">
+        <canvas id="nodeCanvas"></canvas>
+        <div class="node-hint">
+          <span><b>拖动</b> 移动节点 · <b>滚轮</b> 缩放 · <b>空白拖拽</b> 平移</span>
+          <span>从节点 <b>右侧圆点</b> 拖到另一个节点可自定义数据流</span>
+          <span><b>单击节点</b> 右侧编辑参数 · <b>双击</b> 跳到参数视图 · <b>Shift+拖拽</b> 框选多节点</span>
+        </div>
+        <div class="legend">
+          <span><i style="background:var(--acc)"></i>数据流</span>
+          <span><i style="background:var(--acc)"></i>自定义</span>
+          <span><i style="background:var(--acc)"></i>模型</span>
+        </div>
+        <div class="node-tools glass-toolbar">
+          <button class="btn mini" id="nodeFit">适配画布</button>
+          <button class="btn mini" id="nodeReset">重置布局</button>
+          <button class="btn mini" id="nodeClearLinks">清空自定义连线</button>
+        </div>
+        <aside id="nodePanel" class="glass-card"></aside>
+      </div>
+    </div>
+  </main>
+
+  <!-- 实时估算：三视图共用，固定右下 -->
+  <aside id="estimator" aria-live="polite"></aside>
+
+  <footer>
+    <span>注册表 <b id="fVer"></b></span>
+    <span>参数 <b id="fCount"></b></span>
+    <span>规则 <b id="fRules"></b></span>
+    <span>已改 <b id="fDirty">0</b> 项</span>
+    <span class="live" id="fState"></span>
+    <span style="margin-left:auto">口径：估算（provenance 见 spec/models.catalog.json）· 视图同源：一份 state 三种渲染</span>
+  </footer>
+</div>
+<div id="toast"></div>
+<div id="tip"></div>
+
+<script>/*__ENGINE__*/</script>
+<script>/*__DATA__*/</script>
+<script>
+/*
+  画布应用层
+  ─────────
+  结构上只有一条主干：state → resolve → estimate → 三处渲染。
+  三个视图都不保存自己的参数副本，避免"向导改了参数视图没变"这类经典分裂。
+*/
+(function () {
+  'use strict';
+
+  const AVP = window.AVP, REG = window.__REG, CAT = window.__CATALOG, RULES = window.__RULES;
+  const MAP = AVP.byKey(REG);
+  const DEFAULT_VALUES = AVP.defaults(REG);
+  const $ = (sel, root) => (root || document).querySelector(sel);
+  const $$ = (sel, root) => Array.from((root || document).querySelectorAll(sel));
+  const clamp = (x, a, b) => Math.max(a, Math.min(b, x));
+  const labelOf = (p) => (typeof p.label === 'string' ? p.label : p.key);
+  const esc = (s) => String(s == null ? '' : s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+  const deviceOf = (id) => CAT.devices.find((d) => d.id === id) || CAT.devices[0];
+
+  /* ───────── 状态 ───────── */
+
+  /* Canvas2D 不认 CSS 变量：把 var(--x) 传给 fillStyle 会静默失效（保持上一次颜色或变黑）。
+     所以绘制色必须在启动时读成具体值。只读一次——主题是静态的，不需要监听变化。 */
+  const TK = (() => {
+    const cs = getComputedStyle(document.documentElement);
+    const v = (n, fb) => (cs.getPropertyValue(n) || '').trim() || fb;
+    return {
+      acc: v('--acc', '#c8cdd4'), accDim: v('--acc-dim', '#878c94'),
+      ok: v('--ok', '#7d9b84'), warn: v('--warn', '#b3985a'), bad: v('--bad', '#6b2020'),
+      bgDeep: v('--bg-deep', '#060608'), panel: v('--panel', '#141416'),
+      panel2: v('--panel2', '#1b1b1f'), panel3: v('--panel3', '#232328'),
+      line: v('--line', '#2a2a2f'), line2: v('--line2', '#3a3a41'), line3: v('--line3', '#575761'),
+      text: v('--text', '#b8bec6'), textDim: v('--text-dim', '#8b9098'),
+      tModel: v('--t-model', '#8d84a0'), tLatent: v('--t-latent', '#a08489'),
+      tImage: v('--t-image', '#a09678'), tNumber: v('--t-number', '#7f948c'), tText: v('--t-text', '#84909f'),
+    };
+  })();
+
+  const LS_KEY = 'avp.canvas.v1';
+  const S = {
+    user: Object.assign({}, DEFAULT_VALUES),   // 用户原始输入（唯一持久化的口径）
+    values: Object.assign({}, DEFAULT_VALUES), // 求解后的生效值（界面全部读这个）
+    view: 'wizard',
+    stage: 'character',
+    wizard: 0,
+    device: CAT.devices[0].id,
+    preset: 'standard',
+    expert: false,
+    cam: null,      // 节点视图的平移/缩放，null=等画布尺寸算好后自适应
+    nodes: {},      // 节点位置覆盖（用户拖过的才算）
+    links: [],      // 用户自定义连线
+  };
+
+  let RESOLVED = null, REPORT = null, REWRITE = new Map(), PRESET_APPLIED = 0;
+
+  function saveNow() {
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify({
+        values: S.user, view: S.view, stage: S.stage, wizard: S.wizard,
+        device: S.device, preset: S.preset, expert: S.expert,
+        cam: S.cam, nodes: S.nodes, links: S.links,
+      }));
+    } catch (e) { /* 隐私模式下 localStorage 会抛错，界面不该因此崩掉 */ }
+  }
+  let saveTimer = 0;
+  function saveLater() { clearTimeout(saveTimer); saveTimer = setTimeout(saveNow, 400); }
+
+  function load() {
+    let raw = null;
+    try { raw = localStorage.getItem(LS_KEY); } catch (e) { return; }
+    if (!raw) return;
+    let p;
+    try { p = JSON.parse(raw); } catch (e) { return; }
+    if (!p || typeof p !== 'object') return;
+    // 只认注册表里还存在的 key：注册表升版后旧存档不能把界面带崩
+    for (const k in p.values || {}) {
+      if (!MAP[k]) continue;
+      S.user[k] = AVP.coerce(MAP[k], p.values[k]);
+    }
+    S.values = Object.assign({}, S.user);
+    if (['wizard', 'params', 'nodes'].includes(p.view)) S.view = p.view;
+    if (REG.stages.some((s) => s.id === p.stage)) S.stage = p.stage;
+    if (Number.isInteger(p.wizard)) S.wizard = clamp(p.wizard, 0, REG.stages.length - 1);
+    if (CAT.devices.some((d) => d.id === p.device)) S.device = p.device;
+    if (['draft', 'standard', 'cinematic'].includes(p.preset)) S.preset = p.preset;
+    S.expert = !!p.expert;
+    if (p.cam && isFinite(p.cam.x) && isFinite(p.cam.y) && isFinite(p.cam.k)) S.cam = p.cam;
+    if (p.nodes && typeof p.nodes === 'object') {
+      for (const id in p.nodes) {
+        const n = p.nodes[id];
+        if (n && isFinite(n.x) && isFinite(n.y)) S.nodes[id] = { x: n.x, y: n.y };
+      }
+    }
+    if (Array.isArray(p.links)) {
+      S.links = p.links.filter((l) => l && typeof l.from === 'string' && typeof l.to === 'string').slice(0, 40);
+    }
+  }
+
+  /* ───────── 外壳桥：与工作台共用同一份项目真相 ─────────
+     启动时读外壳活跃项目（avp.shell.store.v1）覆盖本地存档的参数口径；
+     改动后写回，已配置状态按状态机语义打回草稿。无外壳项目时独立运行。 */
+  const SHELL_KEY = 'avp.shell.store.v1';
+  const SHELL_SCHEMA = 'ai-video-platform/shell.store';
+  let BRIDGE = null;
+  let bwTimer = 0;
+
+  function bridgeRead() {
+    try {
+      const raw = localStorage.getItem(SHELL_KEY);
+      if (!raw) return null;
+      const s = JSON.parse(raw);
+      if (!s || s.schema !== SHELL_SCHEMA || !s.projects || !s.active) return null;
+      const p = s.projects[s.active];
+      return p && p.values ? { store: s, project: p } : null;
+    } catch (e) { return null; }
+  }
+
+  function bridgeLoad() {
+    const b = bridgeRead();
+    if (!b) return false;
+    const p = b.project;
+    for (const k in p.values) {
+      if (MAP[k]) S.user[k] = AVP.coerce(MAP[k], p.values[k]);
+    }
+    S.values = Object.assign({}, S.user);
+    if (p.device && CAT.devices.some((d) => d.id === p.device)) S.device = p.device;
+    if (['draft', 'standard', 'cinematic'].includes(p.tier)) S.preset = p.tier;
+    BRIDGE = { id: p.id, name: p.name, state: p.state };
+    return true;
+  }
+
+  function bridgeWrite(note) {
+    if (!BRIDGE) return;
+    const b = bridgeRead();
+    if (!b || b.project.id !== BRIDGE.id) { BRIDGE = null; return; }
+    const p = b.project;
+    p.values = S.user;
+    p.device = S.device;
+    p.updatedAt = new Date().toISOString();
+    if (p.state === 'configured') {
+      p.history = (p.history || []).concat([{ at: p.updatedAt, action: 'restart', label: '新起一轮', from: 'configured', to: 'draft', note: note || '画布改动' }]).slice(-40);
+      p.state = 'draft';
+      BRIDGE.state = 'draft';
+      toast('参数已变更：外壳项目回到「草稿」，需重新确认配置');
+    }
+    try { localStorage.setItem(SHELL_KEY, JSON.stringify(b.store)); } catch (e) { /* 写失败不阻断调参 */ }
+  }
+
+  function bridgeQueue(note) {
+    if (!BRIDGE) return;
+    clearTimeout(bwTimer);
+    bwTimer = setTimeout(() => bridgeWrite(note), 300);
+  }
+
+  /* ───────── 求解：唯一入口 ───────── */
+
+  function compute() {
+    const d = deviceOf(S.device);
+    RESOLVED = AVP.resolve(REG, RULES, S.user, { ctx: { usable_mib: d.usable_mib, device: d.id } });
+    // 生效值单独放 S.values：控件、估算、节点都读它；S.user 保持用户原样，用于持久化和"已自定义"判断
+    S.values = RESOLVED.values;
+    REPORT = AVP.estimate(REG, CAT, S.values, { device: d.id });
+    REWRITE = new Map();
+    for (const t of RESOLVED.trace) {
+      if (!t.target) continue;
+      // 同一目标被多遍规则反复改时，保留最后一次（最靠近最终值）的说明
+      REWRITE.set(t.target, { id: t.id, from: t.from, to: t.to, why: t.why || '' });
+    }
+  }
+
+  // 250ms 内必须看到新数字：拖滑块会连发 input，所以用 130ms 防抖 + 尾调用，
+  // 既不会每帧重算也不会让用户觉得"卡住没反应"
+  let updateTimer = 0;
+  function scheduleUpdate(source) {
+    finalizeEdit(source);
+    if (updateTimer) return;
+    updateTimer = setTimeout(() => {
+      updateTimer = 0;
+      compute();
+      syncBoundControls(source);
+      refreshMarks();
+      renderEstimator();
+      renderChrome();
+      scheduleWizardNumbers();
+      saveLater();
+      markCanvasDirty();
+    }, 130);
+  }
+
+  /* ───────── 小工具：toast / tip ───────── */
+
+  let toastTimer = 0;
+  function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('on'), 2400);
+  }
+
+  const tipEl = $('#tip');
+  function showTip(html, x, y) {
+    tipEl.textContent = html;
+    tipEl.classList.add('on');
+    const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    tipEl.style.left = clamp(x + 14, 8, window.innerWidth - w - 10) + 'px';
+    tipEl.style.top = clamp(y - h - 10, 8, window.innerHeight - h - 10) + 'px';
+  }
+  function hideTip() { tipEl.classList.remove('on'); }
+
+  // 联动说明走同一个 tooltip：点/悬浮被改写的参数都能看到"哪条规则、从多少改到多少"
+  document.addEventListener('mouseover', (e) => {
+    const el = e.target.closest && e.target.closest('[data-tip]');
+    if (!el) return;
+    showTip(el.getAttribute('data-tip'), e.clientX, e.clientY);
+  });
+  document.addEventListener('mousemove', (e) => {
+    if (!tipEl.classList.contains('on')) return;
+    const el = e.target.closest && e.target.closest('[data-tip]');
+    if (!el) { hideTip(); return; }
+    const w = tipEl.offsetWidth, h = tipEl.offsetHeight;
+    tipEl.style.left = clamp(e.clientX + 14, 8, window.innerWidth - w - 10) + 'px';
+    tipEl.style.top = clamp(e.clientY - h - 10, 8, window.innerHeight - h - 10) + 'px';
+  });
+  document.addEventListener('mouseout', (e) => {
+    const el = e.target.closest && e.target.closest('[data-tip]');
+    if (el && !(e.relatedTarget && el.contains(e.relatedTarget))) hideTip();
+  });
+
+  /* ───────── 控件工厂（向导 / 参数 / 节点抽屉共用一套） ───────── */
+
+  function fmtVal(p, v) {
+    if (p.type === 'bool') return v ? '开' : '关';
+    if (p.type === 'float') return String(v);
+    return String(v) + (p.unit ? ' ' + p.unit : '');
+  }
+
+  /* 采样器/调度器：存储值是机读枚举，界面显示业界写法（DPM++ 2M SDE Karras） */
+  const SAMPLER_LABEL = { euler: 'Euler', euler_a: 'Euler a', dpmpp_2m: 'DPM++ 2M', dpmpp_2m_sde: 'DPM++ 2M SDE', dpmpp_3m_sde: 'DPM++ 3M SDE', uni_pc: 'UniPC', lcm: 'LCM', ddim: 'DDIM' };
+  const SCHED_LABEL = { normal: 'Normal', karras: 'Karras', exponential: 'Exponential', sgm_uniform: 'SGM Uniform', beta: 'Beta' };
+  const enumLabel = (key, x) => key.endsWith('.sampler') ? (SAMPLER_LABEL[x] || x) : key.endsWith('.scheduler') ? (SCHED_LABEL[x] || x) : x;
+
+  function controlHtml(p, v, opts) {
+    const o = opts || {};
+    const key = p.key, id = o.idPrefix ? o.idPrefix + key : '';
+    if (p.type === 'bool') {
+      return `<div class="switch${v ? ' on' : ''}" role="switch" aria-checked="${v ? 'true' : 'false'}" data-key="${key}" data-type="bool"${id ? ` id="${id}"` : ''}></div>`;
+    }
+    if (p.type === 'enum') {
+      const opts2 = (p.options || []).map((x) => `<option value="${esc(x)}"${x === v ? ' selected' : ''}>${esc(enumLabel(key, x))}</option>`).join('');
+      return `<select data-key="${key}" data-type="enum"${id ? ` id="${id}"` : ''}>${opts2}</select>`;
+    }
+    if (p.type === 'seed') {
+      return `<input type="number" class="num" data-key="${key}" data-type="seed" value="${v}" step="1"${id ? ` id="${id}"` : ''}>`;
+    }
+    if (p.type === 'text') {
+      return `<textarea data-key="${key}" data-type="text" rows="2"${id ? ` id="${id}"` : ''}>${esc(v)}</textarea>`;
+    }
+    return `<div class="ctrl">
+      <input type="range" data-key="${key}" data-type="${p.type}" min="${p.min}" max="${p.max}" step="${p.step}" value="${v}"${id ? ` id="${id}"` : ''}>
+      <input type="number" class="num" data-key="${key}" data-type="${p.type}" min="${p.min}" max="${p.max}" step="${p.step}" value="${v}">
+      <span class="unit">${esc(p.unit || '')}</span>
+    </div>`;
+  }
+
+  // 显存/耗时/质量三联：条长给量级感，数字给精度（注册表 impact 是相对权重，不是绝对值）
+  function impactHtml(p) {
+    const im = p.impact || { vram: 0, time: 0, quality: 0 };
+    const one = (cls, label, x) => `<div class="imp ${cls}${x ? '' : ' zero'}" data-tip="${label}影响权重 ${x}${x ? '（相对量级，用来横向比较参数代价）' : '（该参数只改语义，不改算力）'}">
+      <span>${x ? Number(x).toFixed(2).replace(/^0/, '') : '·'}</span>
+      <i><b style="width:${clamp(Math.round(x * 260), 0, 100)}%"></b></i></div>`;
+    return `<div class="impacts" data-tip="impact 三联：显存 / 耗时 / 质量。注册表里的相对权重，用来横向比较参数代价">${one('v', '显存', im.vram || 0)}${one('t', '耗时', im.time || 0)}${one('q', '质量', im.quality || 0)}</div>`;
+  }
+
+  const boundRoots = new WeakSet();
+  function bindControls(root) {
+    if (!root || boundRoots.has(root)) return;
+    boundRoots.add(root);
+    root.addEventListener('input', (e) => {
+      const el = e.target;
+      if (!el.dataset || !el.dataset.key) return;
+      if (el.dataset.type === 'bool') return; // bool 交给 click，input 事件里处理会和 click 打架
+      setParam(el.dataset.key, el.value, el);
+    });
+    root.addEventListener('change', (e) => {
+      const el = e.target;
+      if (!el.dataset || !el.dataset.key) return;
+      if (el.tagName === 'SELECT' || el.dataset.type === 'text') setParam(el.dataset.key, el.value, el);
+    });
+    root.addEventListener('click', (e) => {
+      const t = e.target;
+      if (t.classList && t.classList.contains('switch') && t.dataset.key) {
+        setParam(t.dataset.key, !t.classList.contains('on'), t);
+        return;
+      }
+      const rs = t.closest && t.closest('[data-restore]');
+      if (rs) { setParam(rs.dataset.restore, MAP[rs.dataset.restore].default, null); return; }
+    });
+  }
+
+  function setParam(key, raw, src) {
+    const p = MAP[key];
+    if (!p) return;
+    const v = AVP.coerce(p, raw);
+    if (S.user[key] === v) return;
+    S.user[key] = v;
+    S.values[key] = v;
+    // 控件自己已经是最新值，其余同 key 控件（滑块+数字框 / 向导+参数视图同时挂载）靠这里同步
+    syncBoundControls(src);
+    scheduleUpdate(src);
+    bridgeQueue('画布改动 ' + key);
+  }
+
+  // 记录本次编辑的控件，防抖回算后不回写它——否则用户正在拖的滑块会被"校正"回去
+  let editingEl = null;
+  function finalizeEdit(src) { if (src) editingEl = src; }
+
+  function syncBoundControls(except) {
+    $$('[data-key]').forEach((el) => {
+      if (el === except) return;
+      // 正在输入的那个框不覆盖，否则光标会被重置、数字会跳
+      if (el === editingEl && document.activeElement === el) return;
+      const k = el.dataset.key;
+      const p = MAP[k];
+      if (!p) return;
+      const v = S.values[k];
+      if (el.dataset.type === 'bool') {
+        const on = !!v;
+        if (el.classList.contains('on') !== on) {
+          el.classList.toggle('on', on);
+          el.setAttribute('aria-checked', on ? 'true' : 'false');
+        }
+        return;
+      }
+      if (el.tagName === 'SELECT' || el.tagName === 'TEXTAREA') {
+        if (document.activeElement === el) return;
+        if (el.value !== String(v)) el.value = v;
+        return;
+      }
+      if (document.activeElement === el) return;
+      const s = String(v);
+      if (el.value !== s) el.value = s;
+    });
+    // 数值回写后，向导/抽屉里的"当前值"文本也要跟着走
+    $$('[data-val]').forEach((el) => {
+      const p = MAP[el.dataset.val];
+      if (p) el.textContent = fmtVal(p, S.values[p.key]);
+    });
+    if (editingEl && document.activeElement !== editingEl) editingEl = null;
+  }
+
+  /* ───────── 联动可视化 ───────── */
+
+  function ruleTip(key) {
+    const r = REWRITE.get(key);
+    if (!r) return '';
+    const p = MAP[key];
+    const from = p ? fmtVal(p, r.from) : r.from;
+    const to = p ? fmtVal(p, r.to) : r.to;
+    return `规则 ${r.id} 把你的值从 ${from} 改成 ${to}${r.why ? ' —— ' + r.why : ''}`;
+  }
+
+  function refreshMarks() {
+    $$('[data-row]').forEach((row) => {
+      const k = row.dataset.row;
+      const p = MAP[k];
+      const hit = REWRITE.has(k);
+      row.classList.toggle('hit', hit);
+      row.classList.toggle('custom', p && S.user[k] !== p.default);
+      const badge = $('[data-auto]', row);
+      if (badge) {
+        badge.style.display = hit ? '' : 'none';
+        badge.dataset.tip = hit ? ruleTip(k) : '';
+        badge.textContent = hit ? '联动 ' + REWRITE.get(k).id : '';
+      }
+      const diff = $('[data-diff]', row);
+      if (diff) diff.style.display = p && S.user[k] !== p.default ? '' : 'none';
+      row.removeAttribute('data-tip');
+      if (hit) row.setAttribute('data-tip', ruleTip(k));
+    });
+    if (curDirty) renderFooterNumbers();
+  }
+
+  function dirtyKeys() {
+    return Object.keys(S.user).filter((k) => MAP[k] && S.user[k] !== DEFAULT_VALUES[k]);
+  }
+
+  /* ───────── 右下实时估算 ───────── */
+
+  const STATE_TEXT = { ok: '显存安全', warn: '接近上限', block: '超出预算' };
+
+  function renderEstimator() {
+    if (!REPORT) return;
+    const v = REPORT.vram, t = REPORT.time, q = REPORT.quality;
+    const pct = clamp(v.ratio * 100, 0, 999);
+    const barColor = v.state === 'ok' ? 'var(--acc)' : v.state === 'warn' ? 'var(--warn)' : 'var(--bad)';
+    const d = deviceOf(S.device);
+    const alerts = [];
+    if (v.state === 'block') {
+      alerts.push(`<div class="alert block"><i>BLOCK</i><span>显存 ${v.peak_mib}MiB / 可用 ${v.usable_mib}MiB（${(v.ratio * 100).toFixed(0)}%），当前组合跑不起来。先降关键帧分辨率或换 <b>GGUF-Q4</b>。</span></div>`);
+    } else if (v.state === 'warn') {
+      alerts.push(`<div class="alert warn"><i>WARN</i><span>显存 ${(v.ratio * 100).toFixed(0)}%，余量只剩 ${v.headroom_mib}MiB，桌面占一点就爆。</span></div>`);
+    }
+    (RESOLVED.warnings || []).forEach((w) => {
+      const lv = w.level === 'red' || w.level === 'block' ? 'block' : w.level === 'yellow' || w.level === 'warn' ? 'warn' : 'gray';
+      alerts.push(`<div class="alert ${lv}"><i>${lv === 'block' ? 'BLOCK' : lv === 'warn' ? 'WARN' : 'NOTE'}</i><span>${esc(w.text)}</span></div>`);
+    });
+    const shown = alerts.slice(0, 5);
+    const more = alerts.length - shown.length;
+
+    $('#estimator').innerHTML = `
+      <div class="est-head"><span class="pulse"></span>实时估算<span class="dev">${esc(d.id)} · ${esc(d.name)}</span></div>
+      <div class="est-vram">
+        <b style="color:${v.state === 'ok' ? 'var(--acc)' : v.state === 'warn' ? 'var(--warn)' : 'var(--bad-ink)'}">${pct.toFixed(1)}<small>%</small></b>
+        <small>显存 ${v.peak_mib} / ${v.usable_mib} MiB</small>
+        <span class="st ${v.state}" style="margin-left:auto">${STATE_TEXT[v.state]}</span>
+      </div>
+      <div class="bar"><i style="width:${clamp(pct, 0, 100)}%;background:${barColor}"></i><span class="tick" style="left:${(v.safety * 100).toFixed(1)}%" title="安全线 ${(v.safety * 100).toFixed(0)}%"></span></div>
+      <div class="est-grid">
+        <div><span>单格</span><b>${t.shot_sec}<em> s</em></b></div>
+        <div><span>单集</span><b>${t.episode_min}<em> min</em></b></div>
+        <div><span>质量分</span><b>${q.score}</b></div>
+        <div><span>主导阶段</span><b>${esc(v.dominant || '-')}</b></div>
+      </div>
+      <div class="est-alerts">${shown.join('')}${more > 0 ? `<div class="alert gray"><i>+${more}</i><span>另有 ${more} 条提示，改到对应参数后会自动消失</span></div>` : ''}</div>
+      <div class="est-link" data-tip="联动改写：求解器按 ${RULES.rules.length} 条规则重算后，与你的原值不同的参数数量。悬浮带「联动」徽标的参数可看具体规则。">
+        <span>↻</span>联动改写 ${REWRITE.size} 项 · 已自定义 ${dirtyKeys().length} 项
+      </div>`;
+  }
+
+  /* ───────── 顶栏 / 底栏 ───────── */
+
+  let curDirty = false;
+  function renderFooterNumbers() {
+    $('#fDirty').textContent = dirtyKeys().length;
+  }
+
+  function renderChrome() {
+    $$('#viewSwitch button').forEach((b) => b.classList.toggle('on', b.dataset.view === S.view));
+    $$('#presets button').forEach((b) => b.classList.toggle('on', b.dataset.preset === S.preset));
+    $('#device').value = S.device;
+    $('#fVer').textContent = REG.version;
+    $('#fCount').textContent = REG.counts.total;
+    $('#fRules').textContent = RULES.rules.length;
+    curDirty = true;
+    renderFooterNumbers();
+    const st = REPORT ? REPORT.vram.state : 'ok';
+    $('#fState').textContent = `显存 ${(REPORT.vram.ratio * 100).toFixed(1)}% · ${STATE_TEXT[st]}`;
+    document.title = `画布 ${(REPORT.vram.ratio * 100).toFixed(0)}% · ${STATE_TEXT[st]}`;
+  }
+
+  /* ───────── 视图 / 板块切换 ───────── */
+
+  function setView(v) {
+    S.view = v;
+    $$('.view').forEach((el) => el.classList.toggle('on', el.id === 'view-' + v));
+    renderChrome();
+    if (v === 'nodes') {
+      ensureNodeCanvas();
+      if (!cv.raf) loop();
+      requestAnimationFrame(() => { resizeCanvas(); markCanvasDirty(); });
+    } else if (v === 'wizard') {
+      renderWizard();
+    } else {
+      renderRail();
+      renderBoard();
+    }
+    saveLater();
+  }
+
+  function setStage(id, opts) {
+    if (!REG.stages.some((s) => s.id === id)) return;
+    S.stage = id;
+    const idx = REG.stages.findIndex((s) => s.id === id);
+    if (!opts || opts.syncWizard !== false) S.wizard = idx;
+    renderRail();
+    renderBoard();
+    if (S.view === 'wizard') renderWizard();
+    if (S.view === 'nodes' && nodeState.open && nodeState.open.stage === id) renderNodePanel(reg_stage(id));
+    saveLater();
+  }
+  function reg_stage(id) { return REG.stages.find((s) => s.id === id); }
+
+  /* ───────── 启动 ───────── */
+  load();
+  const linked = bridgeLoad();
+  compute();
+  if (linked) toast('已衔接外壳项目「' + BRIDGE.name + '」：参数与设备档已载入');
+
+  // 设备下拉：把每档可用显存写在标签里，避免用户不知道 T0 只有 6.9G 可用
+  $('#device').innerHTML = CAT.devices
+    .map((d) => `<option value="${esc(d.id)}">${esc(d.id)} · ${esc(d.name)} · 可用 ${(d.usable_mib / 1024).toFixed(1)}G</option>`)
+    .join('');
+  $('#device').value = S.device;
+
+  $('#viewSwitch').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-view]');
+    if (b) setView(b.dataset.view);
+  });
+  $('#presets').addEventListener('click', (e) => {
+    const b = e.target.closest('button[data-preset]');
+    if (!b) return;
+    const res = AVP.applyPreset(REG, b.dataset.preset);
+    let n = 0;
+    for (const k of res.applied) { S.user[k] = res.values[k]; S.values[k] = res.values[k]; n++; }
+    S.preset = b.dataset.preset;
+    compute(); syncBoundControls(null); refreshMarks(); renderEstimator(); renderChrome();
+    if (S.view === 'wizard') renderWizard(); else renderBoard();
+    saveLater();
+    bridgeQueue('画布套用预设 ' + b.dataset.preset);
+    toast(`已套用「${b.textContent}」预设：${n} 个参数按 ${b.dataset.preset} 档取值`);
+  });
+  $('#device').addEventListener('change', (e) => {
+    S.device = e.target.value;
+    compute(); renderEstimator(); renderChrome(); renderRail(); renderBoard();
+    if (S.view === 'wizard') renderWizard();
+    if (S.view === 'nodes') markCanvasDirty();
+    saveLater();
+    bridgeQueue('画布设备档变更');
+  });
+  $('#resetBtn').addEventListener('click', () => {
+    S.user = Object.assign({}, DEFAULT_VALUES);
+    S.values = Object.assign({}, DEFAULT_VALUES);
+    compute(); syncBoundControls(null); refreshMarks(); renderEstimator(); renderChrome();
+    if (S.view === 'wizard') renderWizard(); else renderBoard();
+    saveLater();
+    bridgeQueue('画布全部还原');
+    toast('已还原全部 258 个参数');
+  });
+
+  /* ───────── 预设导入导出（纯本地 Blob，不联网） ───────── */
+
+  $('#exportBtn').addEventListener('click', () => {
+    const preset = AVP.exportPreset(REG, S.values, { name: 'canvas-' + Date.now(), device: S.device });
+    const blob = new Blob([JSON.stringify(preset, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `avp-preset-${S.device}-${(REPORT.vram.ratio * 100).toFixed(0)}pct.json`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 1500);
+    toast(`已导出预设（${Object.keys(preset.values || {}).length} 参数 · checksum ${preset.checksum}）`);
+  });
+
+  $('#importBtn').addEventListener('click', () => $('#fileInput').click());
+  $('#fileInput').addEventListener('change', (e) => {
+    const f = e.target.files && e.target.files[0];
+    if (!f) return;
+    const rd = new FileReader();
+    rd.onload = () => {
+      let preset = null;
+      try { preset = JSON.parse(String(rd.result)); } catch (err) { toast('导入失败：不是合法 JSON'); return; }
+      let res;
+      try { res = AVP.importPreset(REG, preset); } catch (err) { toast('导入失败：' + err.message); return; }
+      S.user = Object.assign({}, res.values);
+      S.values = Object.assign({}, res.values);
+      compute(); syncBoundControls(null); refreshMarks(); renderEstimator(); renderChrome();
+      if (S.view === 'wizard') renderWizard(); else renderBoard();
+      saveLater();
+      bridgeQueue('画布导入预设');
+      toast(`已导入：${Object.keys(preset.values || {}).length} 参数${res.unknown.length ? ` · 忽略 ${res.unknown.length} 个未知键` : ''}${res.checksum_ok ? ' · 校验通过' : ' · 校验不匹配（仍已应用）'}`);
+    };
+    rd.readAsText(f, 'utf-8');
+    e.target.value = '';
+  });
+
+  /* 键盘：1/2/3 切视图；向导视图里 ←/→ 进退一步；Esc 关抽屉 */
+  document.addEventListener('keydown', (e) => {
+    const tag = (e.target.tagName || '').toLowerCase();
+    if (tag === 'input' || tag === 'textarea' || tag === 'select') return;
+    if (e.key === '1') setView('wizard');
+    else if (e.key === '2') setView('params');
+    else if (e.key === '3') setView('nodes');
+    else if (e.key === 'Escape') {
+      closeNodePanel();
+      if (cv.sel.size) { cv.sel.clear(); markCanvasDirty(); }
+    }
+    else if (S.view === 'wizard' && e.key === 'ArrowRight') stepWizard(1);
+    else if (S.view === 'wizard' && e.key === 'ArrowLeft') stepWizard(-1);
+  });
+
+  window.addEventListener('beforeunload', saveNow);
+
+/* ══════════ 向导视图 ══════════
+     向导只做一件事：把 258 个参数收敛成"每步 4 个决定 + 一句人话"。
+     哪 4 个是写死的——按"小白真的会犹豫的那几项"挑，而不是按组件顺序挑。 */
+
+  const STEP_KEYS = {
+    character: ['ch.subject', 'ch.style', 'ch.face_shape', 'ch.consistency'],
+    storyboard: ['sb.duration', 'sb.grid_count', 'sb.rhythm', 'sb.shot_scale'],
+    keyframe: ['kf.resolution', 'kf.ratio', 'kf.steps', 'kf.refine_scale'],
+    motion: ['mo.mode', 'mo.camera', 'mo.strength', 'mo.duration'],
+    voice: ['vo.voice_id', 'vo.emotion', 'vo.speed', 'vo.lipsync'],
+    look: ['lk.lut', 'lk.lut_strength', 'lk.grain', 'lk.sharpen'],
+    export: ['ex.resolution', 'ex.fps', 'ex.bitrate', 'ex.codec'],
+  };
+
+  const STEP_SAY = {
+    character: '先把主角定下来：一句话写清长相和衣服，再选画风。这一步定了，后面每一格都是这张脸。',
+    storyboard: '告诉系统这一集多长、切成几格。格数越多节奏越碎，成本也按格数直接乘上去。',
+    keyframe: '画质的主战场。分辨率决定细节，步数决定耐心——超过 32 步基本都是白花钱。',
+    motion: '让画面动起来。视差最省，局部 i2v 最像电影，但也最吃显存。',
+    voice: '配音和口型。音色对了情绪才对；口型只在特写镜头里看得出来，远景不值得花这份算力。',
+    look: '统一观感：调色、颗粒、锐化。跨镜头的一致性靠这一步，不是靠把每张图重画一遍。',
+    export: '按平台交付。竖屏还是横屏、码率给多少，决定了别人手机上看到的是不是糊的。',
+  };
+
+  const STEP_NOTE = {
+    character: '一致性权重超过 1.2 构图会变僵；动效里的运动强度还会自动把它往上抬（规则 identity-under-motion）。',
+    storyboard: '总时长 ÷ 格数 = 每格时长，要和动效里的"单格时长"对得上，否则会出现空镜或截断。',
+    keyframe: '8G 卡上关键帧就是显存主导项；2048 长边在 T0 会直接 block。',
+    motion: '8G 卡跑 720p 的局部 i2v 会超预算 25%+，估算面板会亮黄条提醒。',
+    voice: '口型驱动同时吃显存和时间；只在特写占比高的片子里开。',
+    look: 'LUT 强度过 90 会吃掉肤色层次；颗粒几乎是免费的电影感，是最划算的一项。',
+    export: '4K 交付走的是超分链而不是原生生成，单集成片会占 1.5–3GB 磁盘。',
+  };
+
+  // 只说"这项是干嘛的"，不复述取值范围——范围看控件本身更直观
+  const PLAIN = {
+    'ch.subject': '一句话交代年龄、脸型、发型、服装、场景，会直接拼进提示词。',
+    'ch.style': '画风决定后面所有格子的笔触，中途换画风等于重拍。',
+    'ch.face_shape': '这一项进提示词，和一致性权重配合才保得住脸。',
+    'ch.consistency': '越高越像同一个人，但构图会更死板。',
+    'sb.duration': '这一集成片多长，单位秒。',
+    'sb.grid_count': '切成几格；格数 × 单格时长 ≈ 总时长。',
+    'sb.rhythm': '快=短格多切换，慢=长镜头。',
+    'sb.shot_scale': '整集偏特写还是偏全景，影响口型和动效值不值。',
+    'kf.resolution': '长边像素；2048 在 8G 卡上必爆显存。',
+    'kf.ratio': '横屏 16:9，抖音/B站竖屏选 9:16。',
+    'kf.steps': '采样步数，32 步以上收益急剧下降。',
+    'kf.refine_scale': '二次放大倍率，1.5 是性价比拐点。',
+    'mo.mode': '静帧最省，局部 i2v 最贵也最像电影。',
+    'mo.camera': '镜头怎么走，只改观感，不改成本。',
+    'mo.strength': '运动幅度；越强越容易掉脸（会自动抬高一致性权重）。',
+    'mo.duration': '每格多少秒，和分镜格数要对得上。',
+    'vo.voice_id': '音色决定年龄感和性别感。',
+    'vo.emotion': '这一集的整体语气。',
+    'vo.speed': '语速，0.9–1.1 之间最自然。',
+    'vo.lipsync': '开=口型对齐，吃算力；远景镜头可以关。',
+    'lk.lut': '一键定调，跨镜头统一主要靠它。',
+    'lk.lut_strength': '调色强度，过 90 会吃掉肤色层次。',
+    'lk.grain': '胶片颗粒，几乎不花时间。',
+    'lk.sharpen': '锐化，压片之后细节靠它撑住。',
+    'ex.resolution': '成片分辨率；4K 走超分链而不是原生生成。',
+    'ex.fps': '帧率；24 有电影感，60 适合运动镜头。',
+    'ex.bitrate': '码率决定压片后还剩多少细节。',
+    'ex.codec': 'H.265 省一半体积，但老设备解码吃力。',
+  };
+
+  // 推荐值分档：有 presets 的参数听求解器的，没有的用这张兜底表，
+  // 否则"本步推荐值"在某些板块会一个参数都不动
+  const REC = {
+    draft: {
+      'ch.age': 22, 'ch.style': '赛璐璐', 'ch.consistency': 0.75,
+      'sb.duration': 30, 'sb.grid_count': 16, 'sb.rhythm': '快', 'sb.shot_scale': '中景',
+      'kf.resolution': 1024, 'kf.steps': 12, 'kf.refine_scale': 1.2,
+      'mo.mode': '视差', 'mo.camera': '推', 'mo.strength': 0.4, 'mo.duration': 1,
+      'vo.emotion': '平静', 'vo.speed': 1, 'vo.lipsync': false,
+      'lk.lut': '无', 'lk.lut_strength': 50, 'lk.grain': 0, 'lk.sharpen': 20,
+      'ex.resolution': '720p', 'ex.fps': 24, 'ex.bitrate': 8, 'ex.codec': 'H.264',
+    },
+    standard: {
+      'ch.age': 24, 'ch.style': '厚涂', 'ch.consistency': 0.85,
+      'sb.duration': 36, 'sb.grid_count': 24, 'sb.rhythm': '中', 'sb.shot_scale': '中景',
+      'kf.resolution': 1536, 'kf.steps': 24, 'kf.refine_scale': 1.5,
+      'mo.mode': '视差', 'mo.camera': '推', 'mo.strength': 0.55, 'mo.duration': 1.5,
+      'vo.emotion': '温柔', 'vo.speed': 1, 'vo.lipsync': true,
+      'lk.lut': '东方暖调', 'lk.lut_strength': 70, 'lk.grain': 12, 'lk.sharpen': 30,
+      'ex.resolution': '1080p', 'ex.fps': 24, 'ex.bitrate': 12, 'ex.codec': 'H.264',
+    },
+    cinematic: {
+      'ch.age': 24, 'ch.style': '厚涂', 'ch.consistency': 1,
+      'sb.duration': 45, 'sb.grid_count': 32, 'sb.rhythm': '慢', 'sb.shot_scale': '特写',
+      'kf.resolution': 2048, 'kf.steps': 36, 'kf.refine_scale': 1.8,
+      'mo.mode': '局部i2v', 'mo.camera': '环绕', 'mo.strength': 0.7, 'mo.duration': 2,
+      'vo.emotion': '温柔', 'vo.speed': 1, 'vo.lipsync': true,
+      'lk.lut': '胶片', 'lk.lut_strength': 85, 'lk.grain': 25, 'lk.sharpen': 40,
+      'ex.resolution': '1440p', 'ex.fps': 30, 'ex.bitrate': 20, 'ex.codec': 'H.265',
+    },
+  };
+  const REC_LABEL = { draft: '草稿', standard: '标准', cinematic: '电影级' };
+
+  function wizardRow(p) {
+    const v = S.values[p.key];
+    const wide = p.type === 'text';
+    const hit = REWRITE.has(p.key);
+    return `<div class="wp${wide ? ' wide' : ''}${hit ? ' hit' : ''}" data-row="${p.key}">
+      <div>
+        <div class="wp-label">
+          <b>${esc(labelOf(p))}</b>
+          <span class="wp-val" data-val="${p.key}">${esc(fmtVal(p, v))}</span>
+          <span class="badge auto" data-auto style="display:none"></span>
+        </div>
+        <div class="wp-plain">${esc(PLAIN[p.key] || p.hint || '')}</div>
+      </div>
+      <div class="wp-ctrl">${controlHtml(p, v)}<span class="restore" data-restore="${p.key}">还原</span></div>
+    </div>`;
+  }
+
+  function renderWizard() {
+    S.wizard = clamp(S.wizard, 0, REG.stages.length - 1);
+    const idx = S.wizard;
+    const st = REG.stages[idx];
+    S.stage = st.id;
+    const keys = (STEP_KEYS[st.id] || []).filter((k) => MAP[k]);
+
+    $('#wSteps').innerHTML = '<div class="wsteps-title">七步出片</div>' + REG.stages.map((s, i) => {
+      const ks = STEP_KEYS[s.id] || [];
+      const d = ks.filter((k) => MAP[k] && S.user[k] !== MAP[k].default).length;
+      return `<div class="wstep${i === idx ? ' on' : ''}${i < idx ? ' done' : ''}" data-wizard="${i}" data-stage-id="${s.id}">
+        <span class="wstep-n">${s.code}</span>
+        <span class="wstep-name">${esc(s.name)}</span>
+        <span class="wstep-meta"><span>${i + 1}/7</span><span class="dirty">${d ? '已调 ' + d : ''}</span></span>
+      </div>`;
+    }).join('');
+
+    $('#wCard').innerHTML = `
+      <div class="wcard">
+        <div class="wcard-head">
+          <div class="stage-chip">${st.code}</div>
+          <div style="flex:1;min-width:0">
+            <h1>第 ${idx + 1} 步 · ${esc(st.name)}</h1>
+            <div class="en">${esc(st.en)} · 全板块 ${st.count} 参数，本步只露 ${keys.length} 项</div>
+          </div>
+          <span class="badge core">L3 精简</span>
+        </div>
+        <div class="wcard-say">${esc(STEP_SAY[st.id] || st.desc)}</div>
+        <div class="wcard-callout">注意：${esc(STEP_NOTE[st.id] || '')}</div>
+        <div class="wparams">${keys.map((k) => wizardRow(MAP[k])).join('')}</div>
+        <div class="wfoot">
+          <button class="btn" data-nav="-1"${idx === 0 ? ' disabled' : ''}>← 上一步</button>
+          <button class="btn acc" data-nav="1"${idx === REG.stages.length - 1 ? ' disabled' : ''}>下一步 →</button>
+          <span class="grow"></span>
+          <span class="rec">本步推荐值
+            ${['draft', 'standard', 'cinematic'].map((lv) => `<button class="rec-chip${S.preset === lv ? ' on' : ''}" data-rec="${lv}">${REC_LABEL[lv]}</button>`).join('')}
+          </span>
+        </div>
+        <div class="empty" style="margin-top:10px">推荐值只改本步这 ${keys.length} 个参数，其余 ${REG.counts.total - keys.length} 个保持你现有的设置；要整表切换用顶栏预设。</div>
+      </div>`;
+
+    $('#wProgress').innerHTML = REG.stages.map((s, i) => `<i class="${i <= idx ? 'on' : ''}"></i>`).join('');
+    bindControls($('#wCard'));
+    refreshMarks();
+  }
+
+  function refreshWizardStepMeta() {
+    $$('.wstep').forEach((el) => {
+      const ks = STEP_KEYS[el.dataset.stageId] || [];
+      const d = ks.filter((k) => MAP[k] && S.user[k] !== MAP[k].default).length;
+      const n = $('.dirty', el);
+      if (n) n.textContent = d ? '已调 ' + d : '';
+    });
+    $$('.wstep').forEach((el, i) => el.classList.toggle('done', i < S.wizard));
+  }
+
+  // 防抖回算后只刷新计数，不重建卡片——重建会把用户正在拖的滑块从手里抽走
+  function scheduleWizardNumbers() {
+    if (S.view === 'wizard') refreshWizardStepMeta();
+  }
+
+  function stepWizard(d) {
+    S.wizard = clamp(S.wizard + d, 0, REG.stages.length - 1);
+    renderWizard();
+    saveLater();
+  }
+
+  function applyRec(level, stage) {
+    // 走求解器的 applyPreset 口径（它是预设的唯一来源），再对"没有 presets 的 L3"用 REC 兜底
+    const res = AVP.applyPreset(REG, level);
+    const keys = STEP_KEYS[stage] || [];
+    let n = 0;
+    for (const k of keys) {
+      const p = MAP[k];
+      if (!p) continue;
+      const hasPreset = p.presets && p.presets[level] !== undefined;
+      const fallback = REC[level] && REC[level][k] !== undefined ? REC[level][k] : S.values[k];
+      const nv = AVP.coerce(p, hasPreset ? res.values[k] : fallback);
+      if (S.user[k] !== nv) { S.user[k] = nv; S.values[k] = nv; n++; }
+    }
+    S.preset = level;
+    compute(); syncBoundControls(null); refreshMarks(); renderEstimator(); renderChrome();
+    renderWizard();
+    saveLater();
+    toast(`本步已套用「${REC_LABEL[level]}」：${n} 个参数变化`);
+  }
+
+  $('#wSteps').addEventListener('click', (e) => {
+    const it = e.target.closest('[data-wizard]');
+    if (!it) return;
+    S.wizard = Number(it.dataset.wizard);
+    renderWizard();
+    saveLater();
+  });
+
+  $('#wCard').addEventListener('click', (e) => {
+    const nav = e.target.closest('[data-nav]');
+    if (nav) { stepWizard(Number(nav.dataset.nav)); return; }
+    const rec = e.target.closest('[data-rec]');
+    if (rec) { applyRec(rec.dataset.rec, REG.stages[S.wizard].id); return; }
+  });
+
+  /* ══════════ 参数视图 ══════════ */
+
+  function renderRail() {
+    $('#pRail').innerHTML = REG.stages.map((s) => {
+      const list = REG.params.filter((p) => p.stage === s.id);
+      const hit = list.filter((p) => REWRITE.has(p.key)).length;
+      return `<div class="rail-item${s.id === S.stage ? ' on' : ''}" data-stage="${s.id}">
+        <span class="rail-code">${s.code}</span>
+        <span class="rail-name">${esc(s.name)}</span>
+        <span class="rail-n${hit ? ' warn' : ''}">${hit ? hit + '↻' : list.length}</span>
+      </div>`;
+    }).join('');
+  }
+
+  function prowHtml(p) {
+    const v = S.values[p.key];
+    const hit = REWRITE.has(p.key);
+    const custom = v !== p.default;
+    if (p.type === 'text') {
+      return `<div class="prow" data-row="${p.key}">
+        <div class="prow-meta">
+          <div class="prow-top">
+            <span class="lbl">${esc(labelOf(p))}</span>
+            <span class="badge core">${p.tier}</span>
+            <span class="badge auto" data-auto style="display:none"></span>
+            <span class="badge diff" data-diff style="display:none">已自定义</span>
+            <span class="key">${p.key}</span>
+          </div>
+        </div>
+        <div class="prow-attach">
+          <textarea data-key="${p.key}" data-type="text" rows="2">${esc(v)}</textarea>
+          <div style="display:flex;gap:10px;margin-top:4px;align-items:center">
+            <span class="hint" style="flex:1;white-space:normal">${esc(p.hint || '')}</span>
+            <span class="restore" data-restore="${p.key}">还原</span>
+          </div>
+        </div>
+      </div>`;
+    }
+    return `<div class="prow" data-row="${p.key}">
+      <div class="prow-meta">
+        <div class="prow-top">
+          <span class="lbl">${esc(labelOf(p))}</span>
+          <span class="badge core">${p.tier}</span>
+          <span class="badge auto" data-auto style="display:none"></span>
+          <span class="badge diff" data-diff style="display:none">已自定义</span>
+          <span class="key">${p.key}</span>
+        </div>
+        <div class="hint">${esc(p.hint || '')}</div>
+      </div>
+      <div class="ctrl">${controlHtml(p, v)}<span class="restore" data-restore="${p.key}">还原</span></div>
+      ${impactHtml(p)}
+    </div>`;
+  }
+
+  function renderBoard() {
+    const st = reg_stage(S.stage);
+    $('#boardTitle').innerHTML = `<span class="stage-chip" style="width:26px;height:26px;border-radius: 3px;font-size:11px;box-shadow:none">${st.code}</span>${esc(st.name)}`;
+    $('#boardDesc').textContent = st.desc;
+    $('#boardCount').textContent = `${st.count} 参数 · L3 ${st.l3_count}`;
+
+    const list = REG.params.filter((p) => p.stage === S.stage);
+    const l3 = list.filter((p) => p.tier === 'L3');
+    const l4 = list.filter((p) => p.tier !== 'L3');
+
+    $('#paramList').innerHTML =
+      `<div class="group-title"><b>核心参数 L3</b><span>${l3.length} 项 · 向导里露的就是这几项</span></div>` +
+      l3.map(prowHtml).join('') +
+      `<details class="fold" id="expertFold"${S.expert ? ' open' : ''}>
+        <summary><span class="caret">▶</span><b>专家参数</b><span>L4 · ${l4.length} 项裸参，改动直接进求解器</span></summary>
+        <div class="fold-body" id="foldBody"><div class="empty">展开后渲染…</div></div>
+      </details>`;
+
+    // 懒渲染：L4 的 DOM 只在真正展开时建，切板块回来自动回到收起状态
+    const fold = $('#expertFold');
+    const paint = () => {
+      if (!fold.open) return;
+      const body = $('#foldBody');
+      if (body.dataset.done) return;
+      body.innerHTML = l4.map(prowHtml).join('');
+      body.dataset.done = '1';
+      refreshMarks();
+    };
+    fold.addEventListener('toggle', () => {
+      S.expert = fold.open;
+      paint();
+      saveLater();
+    });
+    paint();
+    refreshMarks();
+  }
+
+  bindControls($('#paramList'));
+  $('#pRail').addEventListener('click', (e) => {
+    const it = e.target.closest('[data-stage]');
+    if (it) setStage(it.dataset.stage);
+  });
+  $('#resetStage').addEventListener('click', () => {
+    let n = 0;
+    for (const k in S.values) {
+      const p = MAP[k];
+      if (!p || p.stage !== S.stage) continue;
+      if (S.user[k] !== p.default) { S.user[k] = p.default; S.values[k] = p.default; n++; }
+    }
+    compute(); syncBoundControls(null); renderBoard(); renderEstimator(); renderChrome(); saveLater();
+    toast(`本板块已还原 ${n} 个参数`);
+  });
+
+/* ══════════ 节点视图（Canvas2D） ══════════
+     这里是"连线"的地方：7 个板块 + 3 个模型 + 1 个输出，全部画在 canvas 上。
+     不用 DOM 节点是因为要同时支持拖动、缩放、平移和贝塞尔连线，
+     DOM 方案光是 reflow 就会在拖动时掉帧。 */
+
+  const NODES = [
+    { id: 'character', kind: 'stage' },
+    { id: 'storyboard', kind: 'stage' },
+    { id: 'keyframe', kind: 'stage' },
+    { id: 'motion', kind: 'stage' },
+    { id: 'voice', kind: 'stage' },
+    { id: 'look', kind: 'stage' },
+    { id: 'export', kind: 'stage' },
+    { id: 'm.keyframe', kind: 'model', param: 'kf.model', title: '关键帧模型', for: 'keyframe' },
+    { id: 'm.motion', kind: 'model', param: 'mo.i2v_model', title: 'i2v 模型', for: 'motion' },
+    { id: 'm.voice', kind: 'model', param: 'vo.lipsync_model', title: '口型模型', for: 'voice' },
+    { id: 'output', kind: 'out', title: '成片输出' },
+  ];
+
+  // 世界坐标（不是屏幕坐标）：缩放平移只改 S.cam，不动这些数
+  const BASE_POS = {
+    character: [40, 210], storyboard: [250, 210], keyframe: [470, 210],
+    motion: [700, 108], voice: [700, 320], look: [930, 210],
+    export: [1130, 210], output: [1318, 210],
+    'm.keyframe': [470, 392], 'm.motion': [706, 16], 'm.voice': [706, 442],
+  };
+  const SIZE = { stage: [172, 70], model: [156, 54], out: [150, 62] };
+
+  const DATA_LINKS = [
+    ['character', 'storyboard'], ['storyboard', 'keyframe'],
+    ['keyframe', 'motion'], ['keyframe', 'voice'],
+    ['motion', 'look'], ['voice', 'look'], ['look', 'export'], ['export', 'output'],
+    ['m.keyframe', 'keyframe'], ['m.motion', 'motion'], ['m.voice', 'voice'],
+  ];
+
+  const cv = { el: null, g: null, w: 0, h: 0, dpr: 1, ready: false, dirty: true, raf: 0, drag: null, pan: null, link: null, hover: null, hoverPort: null, sel: new Set(), marquee: null };
+  const nodeState = { open: null };
+
+  function nodeOf(id) { return NODES.find((n) => n.id === id); }
+  function nodeSize(n) { return SIZE[n.kind]; }
+  function nodePos(id) {
+    const p = S.nodes[id] || BASE_POS[id] || [0, 0];
+    return { x: p[0], y: p[1] };
+  }
+  function nodeRect(n) {
+    const p = nodePos(n.id), sz = nodeSize(n);
+    return { x: p.x, y: p.y, w: sz[0], h: sz[1] };
+  }
+  function links() {
+    return DATA_LINKS.map(([from, to]) => ({ from, to, custom: false }))
+      .concat(S.links.map((l) => ({ from: l.from, to: l.to, custom: true })));
+  }
+  function nodeTitle(n) {
+    if (n.kind === 'stage') { const st = reg_stage(n.id); return st.code + ' · ' + st.name; }
+    if (n.kind === 'model') return n.title;
+    return n.title;
+  }
+  function nodeSub(n) {
+    if (n.kind === 'stage') {
+      const st = reg_stage(n.id);
+      return `${st.count} 参数 · L3 ${st.l3_count}`;
+    }
+    if (n.kind === 'model') return String(S.values[n.param]);
+    return `${S.values['ex.resolution']} · ${S.values['ex.codec']} · ${S.values['ex.fps']}fps`;
+  }
+  /* 三类节点靠**底色明度**区分，不靠彩色（ComfyUI 也是这个路子）：
+     板块节点最暗（--panel，主体内容）、模型节点中（--panel2）、输出节点最亮（--panel3，是终点）。 */
+  function nodeColor(n) {
+    if (n.kind === 'model') return { line: TK.line, fill: TK.panel2, stroke: TK.line2 };
+    if (n.kind === 'out') return { line: TK.line, fill: TK.panel3, stroke: TK.line2 };
+    return { line: TK.line, fill: TK.panel, stroke: TK.line2 };
+  }
+
+  function markCanvasDirty() { cv.dirty = true; }
+
+  function ensureNodeCanvas() {
+    if (cv.ready) return;
+    cv.el = $('#nodeCanvas');
+    cv.g = cv.el.getContext('2d');
+    cv.ready = true;
+    const ro = new ResizeObserver(() => { resizeCanvas(); markCanvasDirty(); });
+    ro.observe(cv.el.parentElement || cv.el);
+    bindNodeEvents();
+    resizeCanvas();
+    loop();
+  }
+
+  function resizeCanvas() {
+    if (!cv.ready) return;
+    const box = cv.el.getBoundingClientRect();
+    cv.dpr = window.devicePixelRatio || 1;
+    cv.w = Math.max(320, Math.round(box.width));
+    cv.h = Math.max(240, Math.round(box.height));
+    cv.el.width = Math.round(cv.w * cv.dpr);
+    cv.el.height = Math.round(cv.h * cv.dpr);
+    cv.g.setTransform(cv.dpr, 0, 0, cv.dpr, 0, 0);
+    if (!S.cam) fitView(false);
+    markCanvasDirty();
+  }
+
+  function fitView(animate) {
+    let x0 = 1e9, y0 = 1e9, x1 = -1e9, y1 = -1e9;
+    for (const n of NODES) {
+      const r = nodeRect(n);
+      x0 = Math.min(x0, r.x); y0 = Math.min(y0, r.y);
+      x1 = Math.max(x1, r.x + r.w); y1 = Math.max(y1, r.y + r.h);
+    }
+    const bwd = x1 - x0, bhd = y1 - y0;
+    const k = clamp(Math.min((cv.w - 96) / bwd, (cv.h - 120) / bhd), 0.42, 1.15);
+    S.cam = { k, x: (cv.w - bwd * k) / 2 - x0 * k, y: (cv.h - bhd * k) / 2 - y0 * k + 6 };
+    if (animate === false) markCanvasDirty(); else markCanvasDirty();
+    saveLater();
+  }
+
+  function toWorld(clientX, clientY) {
+    const r = cv.el.getBoundingClientRect();
+    return { x: (clientX - r.left - S.cam.x) / S.cam.k, y: (clientY - r.top - S.cam.y) / S.cam.k };
+  }
+
+  function hitTest(w) {
+    for (let i = NODES.length - 1; i >= 0; i--) {
+      const n = NODES[i], r = nodeRect(n);
+      const port = { x: r.x + r.w, y: r.y + r.h / 2 };
+      const pr = 11 / S.cam.k;
+      if (Math.hypot(w.x - port.x, w.y - port.y) < pr) return { node: n, rect: r, port: true };
+      if (w.x >= r.x && w.x <= r.x + r.w && w.y >= r.y && w.y <= r.y + r.h) return { node: n, rect: r, port: false };
+    }
+    return null;
+  }
+
+  function rounded(g, x, y, w, h, r) {
+    g.beginPath();
+    g.moveTo(x + r, y);
+    g.arcTo(x + w, y, x + w, y + h, r);
+    g.arcTo(x + w, y + h, x, y + h, r);
+    g.arcTo(x, y + h, x, y, r);
+    g.arcTo(x, y, x + w, y, r);
+    g.closePath();
+  }
+
+  function drawEdge(g, from, to, custom, phase) {
+    const a = nodeRect(from), b = nodeRect(to);
+    const x1 = a.x + a.w, y1 = a.y + a.h / 2;
+    const x2 = b.x, y2 = b.y + b.h / 2;
+    const dx = Math.max(46, Math.abs(x2 - x1) * 0.48);
+    const c1x = x1 + dx, c2x = x2 - dx;
+    const col = custom ? 'rgba(50, 50, 50, 0.85)' : from.kind === 'model' ? 'rgba(50, 50, 50, 0.6)' : 'rgba(50, 50, 50, 0.55)';
+    g.save();
+    g.strokeStyle = col;
+    g.lineWidth = custom ? 2 : 1.6;
+    if (from.kind === 'model' || custom) g.setLineDash([7, 6]);
+    g.lineDashOffset = -phase;
+    g.beginPath();
+    g.moveTo(x1, y1);
+    g.bezierCurveTo(c1x, y1, c2x, y2, x2, y2);
+    g.stroke();
+    g.setLineDash([]);
+    // 箭头：始终指向目标节点左侧，表示"数据往这边流"
+    const ang = Math.atan2(y2 - y1, x2 - x1);
+    g.fillStyle = col;
+    g.beginPath();
+    g.moveTo(x2, y2);
+    g.lineTo(x2 - 9 * Math.cos(ang - 0.38), y2 - 9 * Math.sin(ang - 0.38));
+    g.lineTo(x2 - 9 * Math.cos(ang + 0.38), y2 - 9 * Math.sin(ang + 0.38));
+    g.closePath();
+    g.fill();
+    g.restore();
+  }
+
+  function drawNode(g, n) {
+    const r = nodeRect(n);
+    const c = nodeColor(n);
+    const active = nodeState.open === n.id;
+    const hover = cv.hover === n.id;
+    g.save();
+    // 选中态靠描边表达，不用发光阴影：阴影在暗底上会把节点边缘糊掉，且是"展示品"语法
+    g.beginPath();
+    rounded(g, r.x, r.y, r.w, r.h, 3);
+    g.fillStyle = c.fill;
+    g.fill();
+    g.lineWidth = active ? 2 : 1;
+    g.strokeStyle = active ? TK.acc : hover ? TK.line3 : c.stroke;
+    g.stroke();
+    g.restore();
+
+    // 左侧类型徽标：底色统一 --panel3，字母颜色承载类型信息
+    g.save();
+    rounded(g, r.x + 10, r.y + 12, 22, 22, 2);
+    g.fillStyle = TK.panel3;
+    g.fill();
+    g.fillStyle = n.kind === 'model' ? TK.tModel : n.kind === 'out' ? TK.ok : TK.acc;
+    g.font = '700 12px ui-monospace, Consolas, monospace';
+    g.textAlign = 'center';
+    g.textBaseline = 'middle';
+    const badge = n.kind === 'stage' ? reg_stage(n.id).code : n.kind === 'model' ? 'M' : '▶';
+    g.fillText(badge, r.x + 21, r.y + 23.5);
+    g.restore();
+
+    g.save();
+    g.textAlign = 'left';
+    g.textBaseline = 'alphabetic';
+    g.fillStyle = TK.text;
+    g.font = '600 12.5px "Microsoft YaHei UI", system-ui, sans-serif';
+    g.fillText(nodeTitle(n), r.x + 40, r.y + 23);
+    g.fillStyle = n.kind === 'model' ? TK.tModel : TK.textDim;
+    g.font = '11px ui-monospace, Consolas, monospace';
+    const sub = nodeSub(n);
+    g.save();
+    g.beginPath();
+    g.rect(r.x + 40, r.y + 28, r.w - 48, 17);
+    g.clip();
+    g.fillText(sub, r.x + 40, r.y + 40);
+    g.restore();
+    g.restore();
+
+    // 结算指标：只对真正占显存的阶段显示，其余留空避免"每个节点都在报数"的噪音
+    if (n.kind === 'stage' && REPORT) {
+      const s = REPORT.vram.stages.find((x) => x.stage === n.id);
+      if (s && s.peak_mib > 0) {
+        g.save();
+        g.fillStyle = TK.acc;
+        g.globalAlpha = 0.85;
+        g.font = '10.5px ui-monospace, Consolas, monospace';
+        g.textAlign = 'left';
+        g.fillText(s.peak_mib + ' MiB', r.x + 40, r.y + r.h - 12);
+        g.restore();
+      }
+    }
+
+    // 被规则改写的参数数：右上角小徽标，点开节点就能看到具体是哪一个
+    if (n.kind === 'stage') {
+      const hits = REG.params.filter((p) => p.stage === n.id && REWRITE.has(p.key)).length;
+      if (hits) {
+        g.save();
+        rounded(g, r.x + r.w - 30, r.y + 9, 22, 15, 2);
+        g.fillStyle = TK.panel3;
+        g.fill();
+        g.fillStyle = TK.text;
+        g.font = '10px ui-monospace, Consolas, monospace';
+        g.textAlign = 'center';
+        g.textBaseline = 'middle';
+        g.fillText('↻' + hits, r.x + r.w - 19, r.y + 17);
+        g.restore();
+      }
+    }
+
+    // 端口：右侧实心（输出），左侧空心（输入）
+    const pr = 4.6;
+    g.save();
+    g.beginPath();
+    g.arc(r.x + r.w, r.y + r.h / 2, pr, 0, Math.PI * 2);
+    g.fillStyle = n.kind === 'model' ? TK.tModel : n.kind === 'out' ? TK.ok : TK.acc;
+    g.fill();
+    g.beginPath();
+    g.arc(r.x, r.y + r.h / 2, pr, 0, Math.PI * 2);
+    g.fillStyle = TK.bgDeep;
+    g.fill();
+    g.strokeStyle = TK.line2;
+    g.lineWidth = 1.4;
+    g.stroke();
+    g.restore();
+  }
+
+  let flowPhase = 0;
+  function draw() {
+    const g = cv.g;
+    cv.dirty = false;
+    g.clearRect(0, 0, cv.w, cv.h);
+    const cam = S.cam;
+    // 背景点阵：跟着平移缩放一起走，给"画布"的空间感
+    const step = 34 * cam.k;
+    g.save();
+    g.fillStyle = TK.line;
+    for (let x = cam.x % step; x < cv.w; x += step) {
+      for (let y = cam.y % step; y < cv.h; y += step) {
+        g.fillRect(x, y, 1.2, 1.2);
+      }
+    }
+    g.restore();
+
+    g.save();
+    g.translate(cam.x, cam.y);
+    g.scale(cam.k, cam.k);
+    for (const l of links()) {
+      const from = nodeOf(l.from), to = nodeOf(l.to);
+      if (!from || !to) continue;
+      drawEdge(g, from, to, l.custom, flowPhase);
+    }
+    if (cv.link) {
+      const from = nodeOf(cv.link.from);
+      if (from) {
+        const a = nodeRect(from);
+        const x1 = a.x + a.w, y1 = a.y + a.h / 2;
+        const x2 = cv.link.x, y2 = cv.link.y;
+        g.save();
+        g.strokeStyle = 'rgba(50, 50, 50, 0.9)';
+        g.lineWidth = 1.8;
+        g.setLineDash([5, 5]);
+        g.beginPath();
+        g.moveTo(x1, y1);
+        g.bezierCurveTo(x1 + 60, y1, x2 - 60, y2, x2, y2);
+        g.stroke();
+        g.restore();
+      }
+    }
+    for (const n of NODES) drawNode(g, n);
+    // 多选描边：冷银外框 + 淡银光，选中集合一眼可辨
+    if (cv.sel.size) {
+      g.save();
+      g.strokeStyle = TK.acc;
+      g.lineWidth = 1.4;
+      g.shadowColor = 'rgba(200, 205, 212, 0.35)';
+      g.shadowBlur = 10;
+      for (const id of cv.sel) {
+        const n = nodeOf(id);
+        if (!n) continue;
+        const r = nodeRect(n);
+        g.strokeRect(r.x - 3, r.y - 3, r.w + 6, r.h + 6);
+      }
+      g.restore();
+    }
+    // 框选进行中的虚线银框
+    if (cv.marquee) {
+      const m = cv.marquee;
+      const x = Math.min(m.x0, m.x), y = Math.min(m.y0, m.y);
+      const w = Math.abs(m.x - m.x0), h = Math.abs(m.y - m.y0);
+      g.save();
+      g.fillStyle = 'rgba(200, 205, 212, 0.07)';
+      g.fillRect(x, y, w, h);
+      g.strokeStyle = TK.acc;
+      g.lineWidth = 1;
+      g.setLineDash([4, 4]);
+      g.strokeRect(x, y, w, h);
+      g.restore();
+    }
+    g.restore();
+
+    if (!NODES.length) return;
+  }
+
+  function loop() {
+    if (!cv.ready) return;
+    if (S.view !== 'nodes') { cv.raf = 0; return; }
+    // 只有交互中才逐帧重绘；静止时靠 dirty 标记，空转不做无用的全画布重画
+    if (cv.dirty || cv.drag || cv.link || cv.pan || cv.hover || cv.marquee) {
+      flowPhase = (flowPhase + 0.45) % 14;
+      draw();
+    }
+    cv.raf = requestAnimationFrame(loop);
+  }
+
+  function bindNodeEvents() {
+    const el = cv.el;
+    el.addEventListener('pointerdown', (e) => {
+      if (e.button !== 0) return;
+      const w = toWorld(e.clientX, e.clientY);
+      const hit = hitTest(w);
+      // Shift：点节点增删选中；空白处起框选。框选与单节点拖拽互不干扰
+      if (e.shiftKey) {
+        if (hit) {
+          if (cv.sel.has(hit.node.id)) cv.sel.delete(hit.node.id); else cv.sel.add(hit.node.id);
+          markCanvasDirty();
+          return;
+        }
+        cv.marquee = { x0: w.x, y0: w.y, x: w.x, y: w.y };
+        el.setPointerCapture(e.pointerId);
+        markCanvasDirty();
+        return;
+      }
+      if (hit && hit.port && hit.node.kind !== 'out') {
+        cv.link = { from: hit.node.id, x: w.x, y: w.y };
+        el.classList.add('linking');
+        el.setPointerCapture(e.pointerId);
+        markCanvasDirty();
+        return;
+      }
+      if (hit) {
+        const r = hit.rect;
+        cv.drag = { id: hit.node.id, dx: w.x - r.x, dy: w.y - r.y, moved: false, sx: e.clientX, sy: e.clientY };
+        // 拖住已选中的节点 = 整组平移：记录每个选中节点的起点，随动同一位移
+        if (cv.sel.has(hit.node.id) && cv.sel.size > 1) {
+          cv.drag.gx0 = r.x; cv.drag.gy0 = r.y;
+          cv.drag.group = Array.from(cv.sel).map((id) => {
+            const n = nodeOf(id);
+            const rr = n ? nodeRect(n) : r;
+            return { id: id, x: rr.x, y: rr.y };
+          });
+        }
+        nodeState.open = hit.node.id;
+        renderNodePanel(hit.node);
+        $('#nodePanel').classList.add('on');
+        el.classList.add('dragging');
+        el.setPointerCapture(e.pointerId);
+        markCanvasDirty();
+        return;
+      }
+      if (cv.sel.size) { cv.sel.clear(); markCanvasDirty(); }
+      cv.pan = { sx: e.clientX, sy: e.clientY, cx: S.cam.x, cy: S.cam.y };
+      el.classList.add('dragging');
+      el.setPointerCapture(e.pointerId);
+    });
+
+    el.addEventListener('pointermove', (e) => {
+      const w = toWorld(e.clientX, e.clientY);
+      if (cv.marquee) {
+        cv.marquee.x = w.x; cv.marquee.y = w.y;
+        markCanvasDirty();
+        return;
+      }
+      if (cv.link) {
+        cv.link.x = w.x; cv.link.y = w.y;
+        const hit = hitTest(w);
+        cv.hover = hit && hit.node.id !== cv.link.from ? hit.node.id : null;
+        markCanvasDirty();
+        return;
+      }
+      if (cv.drag) {
+        if (Math.abs(e.clientX - cv.drag.sx) + Math.abs(e.clientY - cv.drag.sy) > 3) cv.drag.moved = true;
+        const nx = Math.round(w.x - cv.drag.dx), ny = Math.round(w.y - cv.drag.dy);
+        if (cv.drag.group) {
+          const ddx = nx - cv.drag.gx0, ddy = ny - cv.drag.gy0;
+          for (const gp of cv.drag.group) S.nodes[gp.id] = [gp.x + ddx, gp.y + ddy];
+        } else {
+          S.nodes[cv.drag.id] = [nx, ny];
+        }
+        markCanvasDirty();
+        return;
+      }
+      if (cv.pan) {
+        S.cam.x = cv.pan.cx + (e.clientX - cv.pan.sx);
+        S.cam.y = cv.pan.cy + (e.clientY - cv.pan.sy);
+        markCanvasDirty();
+        return;
+      }
+      const hit = hitTest(w);
+      const h = hit ? hit.node.id : null;
+      if (h !== cv.hover) { cv.hover = h; markCanvasDirty(); }
+      el.style.cursor = hit && hit.port ? 'crosshair' : hit ? 'grab' : 'default';
+    });
+
+    const finish = (e) => {
+      if (cv.marquee) {
+        const m = cv.marquee;
+        cv.marquee = null;
+        const x1 = Math.min(m.x0, m.x), x2 = Math.max(m.x0, m.x);
+        const y1 = Math.min(m.y0, m.y), y2 = Math.max(m.y0, m.y);
+        if (x2 - x1 > 4 || y2 - y1 > 4) {
+          for (const n of NODES) {
+            const r = nodeRect(n);
+            if (r.x < x2 && r.x + r.w > x1 && r.y < y2 && r.y + r.h > y1) cv.sel.add(n.id);
+          }
+          toast(cv.sel.size ? `框选命中 ${cv.sel.size} 个节点 · 拖任一选中节点整组移动 · Esc 清空` : '框选没有命中节点');
+        }
+        markCanvasDirty();
+      }
+      if (cv.link) {
+        const w = toWorld(e.clientX, e.clientY);
+        const hit = hitTest(w);
+        if (hit && hit.node.id !== cv.link.from) {
+          const dup = links().some((l) => l.from === cv.link.from && l.to === hit.node.id);
+          if (dup) toast('这条连线已经存在');
+          else {
+            S.links.push({ from: cv.link.from, to: hit.node.id });
+            saveLater();
+            toast(`已连线 ${cv.link.from} → ${hit.node.id}`);
+          }
+        }
+        cv.link = null;
+        el.classList.remove('linking');
+        markCanvasDirty();
+      }
+      if (cv.drag) {
+        const d = cv.drag;
+        cv.drag = null;
+        el.classList.remove('dragging');
+        if (!d.moved) {
+          const n = nodeOf(d.id);
+          if (n) { nodeState.open = n.id; renderNodePanel(n); $('#nodePanel').classList.add('on'); }
+        } else saveLater();
+      }
+      if (cv.pan) { cv.pan = null; el.classList.remove('dragging'); saveLater(); }
+    };
+    el.addEventListener('pointerup', finish);
+    el.addEventListener('pointercancel', finish);
+
+    el.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const r = el.getBoundingClientRect();
+      const mx = e.clientX - r.left, my = e.clientY - r.top;
+      const before = { x: (mx - S.cam.x) / S.cam.k, y: (my - S.cam.y) / S.cam.k };
+      const k = clamp(S.cam.k * (e.deltaY < 0 ? 1.1 : 0.9), 0.35, 2.6);
+      S.cam.k = k;
+      S.cam.x = mx - before.x * k;
+      S.cam.y = my - before.y * k;
+      markCanvasDirty();
+      saveLater();
+    }, { passive: false });
+
+    // 双击节点 = 跳到参数视图继续深调，符合"专家从图进入表单"的动线
+    el.addEventListener('dblclick', (e) => {
+      const hit = hitTest(toWorld(e.clientX, e.clientY));
+      if (!hit) return;
+      const n = hit.node;
+      const stageId = n.kind === 'stage' ? n.id : n.for;
+      if (stageId) { setStage(stageId); setView('params'); }
+      else { setStage('export'); setView('params'); }
+    });
+
+    window.addEventListener('resize', () => { resizeCanvas(); markCanvasDirty(); });
+  }
+
+  $('#nodeFit').addEventListener('click', () => { fitView(); });
+  $('#nodeReset').addEventListener('click', () => {
+    S.nodes = {};
+    S.cam = null;
+    fitView();
+    saveLater();
+    toast('已恢复默认布局');
+  });
+  $('#nodeClearLinks').addEventListener('click', () => {
+    S.links = [];
+    markCanvasDirty();
+    saveLater();
+    toast('已清空自定义连线（数据流主线保留）');
+  });
+
+  /* ── 节点右侧参数抽屉 ── */
+
+  function npRow(p) {
+    const v = S.values[p.key];
+    return `<div class="np-row" data-row="${p.key}">
+      <div class="np-top"><b>${esc(labelOf(p))}</b>
+        <span class="badge core">${p.tier || 'L4'}</span>
+        <span class="badge auto" data-auto style="display:none"></span>
+      </div>
+      ${controlHtml(p, v)}
+    </div>`;
+  }
+
+  function renderNodePanel(n) {
+    if (!n) return;
+    let head = '', body = '', footStage = '';
+    if (n.kind === 'stage') {
+      const st = reg_stage(n.id);
+      const l3 = REG.params.filter((p) => p.stage === n.id && p.tier === 'L3');
+      const l4n = REG.params.filter((p) => p.stage === n.id && p.tier !== 'L3').length;
+      head = `<div class="stage-chip">${st.code}</div><h3>${esc(st.name)}</h3>`;
+      body = `<div class="empty" style="margin-bottom:7px">${esc(st.desc)}</div>` + l3.map(npRow).join('') +
+        `<div class="empty">另有 ${l4n} 个 L4 专家参数，去参数视图展开调。</div>`;
+      footStage = st.id;
+    } else if (n.kind === 'model') {
+      const p = MAP[n.param];
+      head = `<div class="stage-chip">M</div><h3>${esc(n.title)}</h3>`;
+      body = `<div class="empty" style="margin-bottom:7px">驱动「${esc(reg_stage(n.for).name)}」的本地模型；换模型等于换显存账本。</div>` + (p ? npRow(p) : '');
+      footStage = n.for;
+    } else {
+      head = `<div class="stage-chip">▶</div><h3>成片输出</h3>`;
+      body = ['ex.resolution', 'ex.fps', 'ex.codec', 'ex.bitrate'].map((k) => npRow(MAP[k])).join('');
+      footStage = 'export';
+    }
+    $('#nodePanel').innerHTML = `
+      <div class="np-head">${head}<span class="x" data-close>✕</span></div>
+      <div class="np-body">${body}</div>
+      <div class="np-foot"><button class="btn mini acc" data-goto="${footStage}">在参数视图展开</button>
+        <button class="btn mini" data-close>关闭</button></div>`;
+    refreshMarks();
+  }
+
+  function closeNodePanel() {
+    nodeState.open = null;
+    $('#nodePanel').classList.remove('on');
+    markCanvasDirty();
+  }
+
+  $('#nodePanel').addEventListener('click', (e) => {
+    if (e.target.closest('[data-close]')) { closeNodePanel(); return; }
+    const go = e.target.closest('[data-goto]');
+    if (go) { setStage(go.dataset.goto); setView('params'); }
+  });
+  bindControls($('#nodePanel'));
+
+  /* ── 自检钩子：给 canvas/selftest.mjs 与人工调试用 ── */
+  window.__AVPUI = {
+    get values() { return S.values; },
+    get userValues() { return S.user; },
+    get report() { return REPORT; },
+    get state() { return S; },
+    get rulesHit() { return Array.from(REWRITE.keys()); },
+    counts: REG.counts,
+    stages: REG.stages.map((s) => s.id),
+    setParam, setView, setStage,
+    applyRec,
+    checkRender: () => ({
+      wizardCards: $$('#wCard .wp').length,
+      paramsRows: $$('#paramList .prow').length,
+      stages: REG.stages.length,
+      nodes: NODES.length,
+    }),
+  };
+
+  /* ── 启动：先把当前视图渲出来（视图偏好来自上次会话） ── */
+  renderRail();
+  renderBoard();
+  renderWizard();
+  renderEstimator();
+  renderChrome();
+  setView(S.view);
+})();
+</script>
+</body>
+</html>

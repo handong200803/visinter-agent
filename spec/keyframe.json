@@ -1,0 +1,17 @@
+{
+  "schema": "ai-video-platform/keyframe@1",
+  "note": "关键帧选优：五维本地打分，权重可调（专家模式）；无人脸场景把 Sface 权重按比例分给其余维",
+  "weights": { "Sface": 0.2, "Ssharp": 0.3, "Sstyle": 0.25, "Scomp": 0.15, "Sbad": 0.1 },
+  "thresholds": {
+    "accept_total": 0.45,
+    "reject_degenerate": true,
+    "max_retry_rounds": 1,
+    "regenerate_on_all_low": true
+  },
+  "candidates": { "default": 4, "min": 3, "max": 6, "seed_stride": 7919 },
+  "providers": {
+    "kolors": { "label": "Kolors（中文原生）", "lang": "zh", "width": 832, "height": 1216, "steps": 28, "cfg": 5.0 },
+    "sd15": { "label": "SD1.5（英文）", "lang": "en", "width": 640, "height": 384, "steps": 24, "cfg": 7.0 }
+  },
+  "fallback_note": "无 Kolors 时用 SD1.5（必须英文提示词）；两者都不可用则报 KF_NO_T2I_BACKEND，不静默跳过关键帧直接出视频"
+}

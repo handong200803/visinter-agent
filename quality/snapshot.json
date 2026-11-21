@@ -1,0 +1,1278 @@
+{
+  "tool": "avp-qc-snap",
+  "schema": "quality.snapshot/1",
+  "generated_at": "2026-11-19T15:15:51.966Z",
+  "env": {
+    "ffmpeg": "9.0.2-full_build-www.gyan.dev",
+    "ffprobe": "9.0.2-full_build-www.gyan.dev",
+    "ffmpeg_bin": "ffmpeg",
+    "ffprobe_bin": "ffprobe",
+    "cache_root": "D:/缓存/avp/repair-check-yG4Ukf",
+    "fixture_dir": "D:\\缓存\\avp\\repair-check-yG4Ukf\\avp\\qc\\fixtures",
+    "node": "v24.21.0",
+    "platform": "win32"
+  },
+  "sources": {
+    "snapshot": "quality/snapshot.json",
+    "report": "quality/report.js build()",
+    "frames": "quality/frames.js analyze()",
+    "probe": "quality/probe.js probe()",
+    "fixtures": "quality/fixtures.js generate()"
+  },
+  "thresholds": {
+    "items": [
+      {
+        "key": "width",
+        "value": 160,
+        "type": "number",
+        "group": "分析",
+        "meaning": "分析宽度：解码后降采样到 160px 宽灰度帧，据此算锐度与帧差",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "scaleFlags",
+        "value": "area",
+        "type": "string",
+        "group": "分析",
+        "meaning": "降采样算法：area=盒式平均（抗锯齿，但会抹掉一部分高频）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "blackY",
+        "value": 24,
+        "type": "number",
+        "group": "判定",
+        "meaning": "黑帧判定：YAVG ≤ 24（limited range 黑=16，留 8 级编码噪声余量）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "whiteY",
+        "value": 235,
+        "type": "number",
+        "group": "判定",
+        "meaning": "白帧判定：YAVG ≥ 235（limited range 白=235）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "flickerHard",
+        "value": 20,
+        "type": "number",
+        "group": "判定",
+        "meaning": "亮度跳变硬阈值：相邻帧 YAVG 差 ≥ 20 级（≈8% 画幅亮度）即判可感知闪/切",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "flowRaw",
+        "value": 3,
+        "type": "number",
+        "group": "判定",
+        "meaning": "帧差显示映射：平均绝对差 3 级即让 flowResidual 顶格 0.32",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "flowHard",
+        "value": 6,
+        "type": "number",
+        "group": "判定",
+        "meaning": "帧差打分硬阈值：平均绝对差 ≥ 6 级（硬切/大运动）时运动项得分归零",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "flowCap",
+        "value": 0.32,
+        "type": "number",
+        "group": "判定",
+        "meaning": "flowResidual 的上限，与 inspector 折线除数保持一致",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "sharpLo",
+        "value": 6,
+        "type": "number",
+        "group": "判定",
+        "meaning": "拉普拉斯方差 log 归一化的下界（实测模糊段方差≈2.5）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "sharpHi",
+        "value": 400,
+        "type": "number",
+        "group": "判定",
+        "meaning": "拉普拉斯方差 log 归一化的上界（实测 720p 网格素材正常帧≈130-190）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "sharpBlurAt",
+        "value": 0.22,
+        "type": "number",
+        "group": "判定",
+        "meaning": "锐度归一值低于此判模糊，分数封顶 45",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "freezeMinSec",
+        "value": 0.1,
+        "type": "number",
+        "group": "冻结",
+        "meaning": "连续静止 ≥ 0.1s 才算冻结（30fps 即 3 帧）；单帧重复属正常动画",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "blackMinSec",
+        "value": 0.02,
+        "type": "number",
+        "group": "冻结",
+        "meaning": "交给 blackdetect 的最短黑场时长，0.02s 起抓，1 帧也不放过",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "staticEps",
+        "value": 0.05,
+        "type": "number",
+        "group": "冻结",
+        "meaning": "相邻帧平均绝对差 < 0.05 视为像素级完全相同",
+        "note": "声明的默认值：当前判定链路用的是 anchorEps（frames.js:229），本值只出现在 thresholds 输出里（frames.js:333），未参与逐帧判定。",
+        "dormant": true,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "anchorEps",
+        "value": 0.4,
+        "type": "number",
+        "group": "冻结",
+        "meaning": "与\"静止候选段\"锚点的平均绝对差 < 0.4 视为画面没动（实测静帧噪声 0~0.2，慢运动每帧 0.13 但会累计超限）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "timeoutMs",
+        "value": 600000,
+        "type": "number",
+        "group": "运行",
+        "meaning": "单次 ffmpeg 解码超时，超时返回 E_FFMPEG_TIMEOUT 而不是挂死",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      },
+      {
+        "key": "statsFile",
+        "value": "stats.txt",
+        "type": "string",
+        "group": "运行",
+        "meaning": "signalstats 逐帧输出的临时文件名（相对 work 目录，绕开 Windows 盘符在 filtergraph 里的转义坑）",
+        "note": null,
+        "dormant": false,
+        "source": "quality/frames.js DEFAULTS"
+      }
+    ],
+    "extra": [
+      {
+        "key": "scoreWeights",
+        "value": "sharp 0.45 · flicker 0.35 · flow 0.20",
+        "ref": "frames.js:243",
+        "meaning": "综合分权重：锐度是\"能不能用\"的第一判据，闪烁是\"能不能播\"的硬伤，帧差只做辅助"
+      },
+      {
+        "key": "statusCut",
+        "value": "ok ≥ 80 · warn ≥ 65 · bad < 65",
+        "ref": "frames.js:253",
+        "meaning": "三档分数切点，与 inspector 前端判定逐字一致（避免后台说 ok、前端标红）"
+      },
+      {
+        "key": "scoreClamp",
+        "value": "结构缺陷封顶：黑 10 / 白 15 / 模糊 45 / 冻结 30 / 跳变 60",
+        "ref": "frames.js:247-252,297",
+        "meaning": "命中结构性缺陷时分数直接被压到上限以内，不靠权重算——权重算不出\"整帧全黑\"这种事"
+      },
+      {
+        "key": "minStaticFrames",
+        "value": "max(3, round(fps × freezeMinSec))",
+        "ref": "frames.js:283",
+        "meaning": "冻结段的最短帧数，由 fps 与 freezeMinSec 推出，不另设常量"
+      },
+      {
+        "key": "anchorEps",
+        "value": 0.4,
+        "ref": "frames.js:229",
+        "meaning": "冻结判定的实际门限（与锚点比对）。它没有写进 analyze() 的 thresholds 输出（frames.js:331-335），下游要读只能回读 DEFAULTS"
+      },
+      {
+        "key": "warningBy",
+        "value": "阈值改动路径：改 DEFAULTS → 重跑 node tools/snap_quality.mjs → 重跑 selftest",
+        "ref": "docs/06-quality.md §2",
+        "meaning": "阈值是硬编码默认值：页面上所有阈值只读，改判定的唯一入口是改代码"
+      }
+    ],
+    "note": "阈值是硬编码默认值，改阈值要改 quality/frames.js 的 DEFAULTS 后重跑本脚本。"
+  },
+  "gaps": [
+    {
+      "id": "blur-calib",
+      "title": "模糊门限未做真机标定",
+      "detail": "sharpBlurAt 0.22 对「轻微虚焦」是否够灵敏未标定；测试素材的模糊段锐度归零是 gblur sigma=14 的阈值效应，不代表真实失焦的水平。",
+      "ref": "docs/06-quality.md §7-1"
+    },
+    {
+      "id": "no-flow",
+      "title": "flowResidual 不是真光流",
+      "detail": "它是相邻帧平均绝对差，会把握拍/快速平移当成高残差，靠 flowHard 归零兜住，不精确。",
+      "ref": "docs/06-quality.md §7-2"
+    },
+    {
+      "id": "no-audio",
+      "title": "无音频质检",
+      "detail": "probe 只取音频参数（codec / 采样率 / 声道），astats 未接，不做响度、削波、静音检测。",
+      "ref": "docs/06-quality.md §7-3"
+    },
+    {
+      "id": "no-color",
+      "title": "无色彩质检",
+      "detail": "不做色偏、色带（banding）、gamma 异常检测；inspector 里的「色带断层」负向词目前没有指标支撑。",
+      "ref": "docs/06-quality.md §7-4"
+    },
+    {
+      "id": "no-bbox",
+      "title": "缺陷定位到帧，不定位到区域",
+      "detail": "defect 只说 blur / flicker / dark / white / freeze，不给 bbox；框选重绘靠人工在 inspector 里拖框。",
+      "ref": "docs/06-quality.md §7-5"
+    },
+    {
+      "id": "no-parallel",
+      "title": "批量不做并行",
+      "detail": "batch 逐条串行跑 ffmpeg，多片时 CPU 有空闲，未做 worker 池。",
+      "ref": "docs/06-quality.md §7-6"
+    }
+  ],
+  "report_fields": [
+    {
+      "key": "summary.status",
+      "type": "{ok,warn,bad}",
+      "note": "逐帧状态计数，页面顶部三枚徽标"
+    },
+    {
+      "key": "summary.mean / p5 / p95 / min / max",
+      "type": "number",
+      "note": "分数分布。p5 用线性插值，比单帧最小值稳（转场/编码抖动会拉低极值）"
+    },
+    {
+      "key": "summary.worst[]",
+      "type": "array",
+      "note": "分数最低的 N 帧，带 reasons（人话理由）与 suggestion（修复建议）"
+    },
+    {
+      "key": "summary.segments[]",
+      "type": "array",
+      "note": "连续问题帧按同一缺陷合并成段：start/end/frames/defect/defect_cn/score_avg"
+    },
+    {
+      "key": "summary.problem_frames",
+      "type": "number",
+      "note": "status ≠ ok 的帧数"
+    },
+    {
+      "key": "summary.redraw_plan[]",
+      "type": "array",
+      "note": "worst 的前 N 条压成「帧号 + 理由 + 建议」，直接当重绘工单"
+    },
+    {
+      "key": "detect",
+      "type": "object",
+      "note": "blackdetect / freezedetect 区间（交叉验证）+ 逐帧命中的帧号集合"
+    },
+    {
+      "key": "thresholds",
+      "type": "object",
+      "note": "本次实际生效的阈值（可被 opts 覆盖，与 DEFAULTS 对照）"
+    },
+    {
+      "key": "frames[]",
+      "type": "array",
+      "note": "逐帧契约：frame/score/sharp/flicker/flowResidual/defect/status/extra，inspector/index.html 直接吃这份"
+    }
+  ],
+  "capabilities": {
+    "implemented": [
+      "黑场 / 黑帧",
+      "白屏 / 白帧",
+      "冻结（freeze）",
+      "模糊（锐度）",
+      "亮度跳变（闪烁）",
+      "参数合规（元数据自洽）",
+      "综合分三档"
+    ],
+    "not_implemented": [
+      "音频静音 / 响度 / 削波",
+      "色彩（色偏 / 色带 / gamma）",
+      "缺陷区域定位（bbox）",
+      "批量并行"
+    ]
+  },
+  "mode": "real",
+  "mode_note": "本机 ffmpeg 9.0.2-full_build-www.gyan.dev 可用，全部数字来自真实解码：fixtures 合成 → ffprobe → 单次 ffmpeg 逐帧分析 → report 汇总。",
+  "mode_caveat": "样片是 ffmpeg 现场合成的测试素材（缺陷定点注入、帧号已知），不是真实拍摄/生成影片；阈值在真机素材上的灵敏度见\"已知缺口\"。",
+  "fixture_spec": {
+    "dir": "D:\\缓存\\avp\\repair-check-yG4Ukf\\avp\\qc\\fixtures",
+    "fps": 30,
+    "expected": {
+      "black": [
+        20,
+        24
+      ],
+      "white": [
+        40,
+        42
+      ],
+      "blur": [
+        60,
+        89
+      ],
+      "freeze": [
+        100,
+        119
+      ]
+    },
+    "expected_cn": "注入帧号（30fps）：黑 20–24 · 白 40–42 · 模糊 60–89 · 冻结 100–119",
+    "made_now": [
+      "good-720p30.mp4",
+      "bad-720p30.mp4"
+    ],
+    "note": "good 为 3.0s / 90 帧带 AAC 静音轨；bad 为 4.0s / 120 帧且无音轨（fixtures.js 生成时未加音频输入）。"
+  },
+  "samples": [
+    {
+      "id": "bad",
+      "label": "坏片 · 定点注入缺陷",
+      "role": "bad",
+      "file": "bad-720p30.mp4",
+      "ok": true,
+      "bytes": 139906,
+      "fps": 30,
+      "frames": 120,
+      "analysisSize": "160×284",
+      "verdict": {
+        "key": "fail",
+        "label": "不通过",
+        "tone": "bad",
+        "rule": "bad > 0 → 不通过"
+      },
+      "headline": "先修第 20 帧（t=0.667s）：整帧接近全黑（YAVG=16）",
+      "top_fix": {
+        "frame": 20,
+        "t": 0.667,
+        "defect": "dark",
+        "defect_cn": "黑帧",
+        "reason": "整帧接近全黑（YAVG=16）；亮度跳变 65.92 级（相邻帧 YAVG 差）",
+        "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败"
+      },
+      "probe": {
+        "codec": "h264",
+        "profile": "High",
+        "pixFmt": "yuv420p",
+        "displayWidth": 720,
+        "displayHeight": 1280,
+        "fps": 30,
+        "avgFps": 30,
+        "duration": 4,
+        "nbFrames": 120,
+        "framesSource": "nb_frames",
+        "colorRange": null,
+        "colorSpace": null,
+        "hdr": false,
+        "rotation": 0,
+        "audio": null,
+        "format": "mov,mp4,m4a,3gp,3g2,mj2",
+        "sizeBytes": 139906,
+        "ffprobe": "9.0.2-full_build-www.gyan.dev",
+        "tookMs": 91
+      },
+      "summary": {
+        "mean": 64.3,
+        "p5": 14.8,
+        "p95": 94.1,
+        "min": 1,
+        "max": 95,
+        "frames": 120,
+        "problems": 60,
+        "status": {
+          "ok": 60,
+          "warn": 0,
+          "bad": 60
+        },
+        "segments": [
+          {
+            "start": 20,
+            "end": 24,
+            "frames": 5,
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "score_avg": 8,
+            "t0": 0.667,
+            "t1": 0.8,
+            "grade": "bad"
+          },
+          {
+            "start": 25,
+            "end": 25,
+            "frames": 1,
+            "defect": "flicker",
+            "defect_cn": "亮度跳变",
+            "score_avg": 40,
+            "t0": 0.833,
+            "t1": 0.833,
+            "grade": "bad"
+          },
+          {
+            "start": 40,
+            "end": 42,
+            "frames": 3,
+            "defect": "white",
+            "defect_cn": "白帧",
+            "score_avg": 10,
+            "t0": 1.333,
+            "t1": 1.4,
+            "grade": "bad"
+          },
+          {
+            "start": 43,
+            "end": 43,
+            "frames": 1,
+            "defect": "flicker",
+            "defect_cn": "亮度跳变",
+            "score_avg": 41,
+            "t0": 1.433,
+            "t1": 1.433,
+            "grade": "bad"
+          },
+          {
+            "start": 60,
+            "end": 89,
+            "frames": 30,
+            "defect": "blur",
+            "defect_cn": "模糊",
+            "score_avg": 45,
+            "t0": 2,
+            "t1": 2.967,
+            "grade": "bad"
+          },
+          {
+            "start": 100,
+            "end": 119,
+            "frames": 20,
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "score_avg": 30,
+            "t0": 3.333,
+            "t1": 3.967,
+            "grade": "bad"
+          }
+        ],
+        "worst": [
+          {
+            "frame": 20,
+            "score": 1,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 65.92,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）",
+              "亮度跳变 65.92 级（相邻帧 YAVG 差）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.667,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 40,
+            "score": 1,
+            "status": "bad",
+            "defect": "white",
+            "defect_cn": "白帧",
+            "yavg": 235,
+            "lapVar": 0,
+            "flicker": 157.33,
+            "reasons": [
+              "整帧接近全白（YAVG=235）",
+              "亮度跳变 157.33 级（相邻帧 YAVG 差）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 1.333,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 21,
+            "score": 10,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.7,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 22,
+            "score": 10,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.733,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 23,
+            "score": 10,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.767,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 24,
+            "score": 10,
+            "status": "bad",
+            "defect": "dark",
+            "defect_cn": "黑帧",
+            "yavg": 16,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全黑（YAVG=16）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 0.8,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 41,
+            "score": 15,
+            "status": "bad",
+            "defect": "white",
+            "defect_cn": "白帧",
+            "yavg": 235,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全白（YAVG=235）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 1.367,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 42,
+            "score": 15,
+            "status": "bad",
+            "defect": "white",
+            "defect_cn": "白帧",
+            "yavg": 235,
+            "lapVar": 0,
+            "flicker": 0,
+            "reasons": [
+              "整帧接近全白（YAVG=235）"
+            ],
+            "suggestion": "整帧重绘：这一帧等于空镜头/过曝，通常是采样或解码失败",
+            "t": 1.4,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 100,
+            "score": 30,
+            "status": "bad",
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "yavg": 74.04,
+            "lapVar": 289.25,
+            "flicker": 0.04,
+            "reasons": [
+              "与前序帧完全相同，画面停止变化"
+            ],
+            "suggestion": "重绘该帧并补运动：复制帧不能用作关键帧",
+            "t": 3.333,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 101,
+            "score": 30,
+            "status": "bad",
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "yavg": 74.07,
+            "lapVar": 289.32,
+            "flicker": 0.03,
+            "reasons": [
+              "与前序帧完全相同，画面停止变化"
+            ],
+            "suggestion": "重绘该帧并补运动：复制帧不能用作关键帧",
+            "t": 3.367,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 102,
+            "score": 30,
+            "status": "bad",
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "yavg": 74.04,
+            "lapVar": 289.14,
+            "flicker": 0.03,
+            "reasons": [
+              "与前序帧完全相同，画面停止变化"
+            ],
+            "suggestion": "重绘该帧并补运动：复制帧不能用作关键帧",
+            "t": 3.4,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 103,
+            "score": 30,
+            "status": "bad",
+            "defect": "freeze",
+            "defect_cn": "卡帧",
+            "yavg": 74.05,
+            "lapVar": 289.13,
+            "flicker": 0,
+            "reasons": [
+              "与前序帧完全相同，画面停止变化"
+            ],
+            "suggestion": "重绘该帧并补运动：复制帧不能用作关键帧",
+            "t": 3.433,
+            "t_note": "frame ÷ fps"
+          }
+        ],
+        "worst_shown": 12
+      },
+      "detect": {
+        "black": [
+          {
+            "startFrame": 20,
+            "endFrame": 24,
+            "start": 0.667,
+            "end": 0.833,
+            "duration": 0.167,
+            "open": false
+          }
+        ],
+        "freeze": [
+          {
+            "startFrame": 20,
+            "endFrame": 24,
+            "start": 0.667,
+            "end": 0.833,
+            "duration": 0.167,
+            "open": false
+          },
+          {
+            "startFrame": 40,
+            "endFrame": 42,
+            "start": 1.333,
+            "end": 1.433,
+            "duration": 0.1,
+            "open": false
+          },
+          {
+            "startFrame": 99,
+            "endFrame": 119,
+            "start": 3.3,
+            "end": 3.967,
+            "duration": 0.667,
+            "open": true
+          }
+        ],
+        "staticRuns": [
+          {
+            "start": 21,
+            "end": 24,
+            "frames": 4,
+            "anchor": 20
+          },
+          {
+            "start": 100,
+            "end": 119,
+            "frames": 20,
+            "anchor": 99
+          }
+        ],
+        "black_frames": 5,
+        "white_frames": 3,
+        "frozen_frames": 24
+      },
+      "checks": [
+        {
+          "id": "black",
+          "name": "黑场 / 黑帧",
+          "status": "bad",
+          "threshold": "YAVG ≤ 24",
+          "thresholdKey": "blackY",
+          "actual": "5 帧（20–24） · blackdetect 0.667s–0.833s",
+          "basis": "frames.js:247 —— 每帧平均亮度 yavg ≤ blackY 判黑帧，分数封顶 10；blackdetect 区间只做交叉验证，不覆盖逐帧结论。",
+          "hits": 5
+        },
+        {
+          "id": "white",
+          "name": "白屏 / 白帧",
+          "status": "bad",
+          "threshold": "YAVG ≥ 235",
+          "thresholdKey": "whiteY",
+          "actual": "3 帧（40–42）",
+          "basis": "frames.js:248 —— yavg ≥ whiteY 判白帧（过曝/空镜），分数封顶 15。",
+          "hits": 3
+        },
+        {
+          "id": "freeze",
+          "name": "冻结（freeze）",
+          "status": "bad",
+          "threshold": "与锚点差 ≥ 0.4 视为画面变化；连续静止 ≥ 0.1s 判冻结",
+          "thresholdKey": "anchorEps",
+          "actual": "24 帧（21–24、100–119） · 静止段 2 段 · freezedetect 交叉验证 0.667s–0.833s，1.333s–1.433s，3.3s–3.967s",
+          "basis": "frames.js:283-300 —— 以\"静止候选段锚点\"累计帧差（只看相邻差区分不了编码噪声与慢速运镜），命中后分数封顶 30 并改写 defect=freeze。门限 anchorEps 未写进 thresholds 输出，本行从 DEFAULTS 回读。",
+          "hits": 24
+        },
+        {
+          "id": "blur",
+          "name": "模糊（锐度）",
+          "status": "bad",
+          "threshold": "sharp < 0.22 判模糊（log 归一，上下界 6/400）",
+          "thresholdKey": "sharpBlurAt",
+          "actual": "30 帧（60–89）判模糊 · 全片最低 sharp 0",
+          "basis": "frames.js:249 —— 拉普拉斯方差 log 归一后的 sharpNorm 低于 sharpBlurAt 判模糊，分数封顶 45。",
+          "hits": 30
+        },
+        {
+          "id": "flicker",
+          "name": "亮度跳变（闪烁）",
+          "status": "bad",
+          "threshold": "相邻帧 |ΔYAVG| ≥ 20",
+          "thresholdKey": "flickerHard",
+          "actual": "4 帧越线 · 全片最大跳变 157.98 级",
+          "basis": "frames.js:251 —— flicker ≥ flickerHard 判可感知闪/切，分数封顶 60；闪烁在权重里占 0.35，因为它直接决定能不能播。",
+          "hits": 4
+        },
+        {
+          "id": "params",
+          "name": "参数合规（元数据自洽）",
+          "status": "ok",
+          "threshold": "帧数必须可溯源；fps 与 avg_fps 必须一致",
+          "thresholdKey": null,
+          "actual": "帧数来源 nb_frames / nb_read_frames（实测），fps 与 avg_fps 一致",
+          "basis": "probe.js:140-178 —— 只把 ffprobe 结果翻译成稳定字段，并把帧数标注为容器声明还是数出来的；回退到 duration×fps 时属估算，页面按 warn 处理。",
+          "subs": [
+            {
+              "k": "画面",
+              "v": "720×1280 · h264 High · yuv420p"
+            },
+            {
+              "k": "帧率",
+              "v": "30 fps（avg 30）"
+            },
+            {
+              "k": "帧数",
+              "v": "120 帧 · 来源 nb_frames"
+            },
+            {
+              "k": "色彩",
+              "v": "range=未标注 · space=未标注"
+            },
+            {
+              "k": "音轨",
+              "v": "无音频流"
+            },
+            {
+              "k": "容器",
+              "v": "mov,mp4,m4a,3gp,3g2,mj2 · 137KB"
+            }
+          ],
+          "hits": 0
+        },
+        {
+          "id": "audio",
+          "name": "音频静音",
+          "status": "na",
+          "implemented": false,
+          "threshold": "未接入（astats 未接）",
+          "thresholdKey": null,
+          "actual": "该片无音频流，静音检查无从进行",
+          "basis": "docs/06-quality.md §7 缺口 3 —— probe.js 只取音频参数，frames.js 不含任何音频指标；本行如实标「未实现」，不冒充通过。",
+          "hits": null
+        },
+        {
+          "id": "bands",
+          "name": "综合分三档（status）",
+          "status": "bad",
+          "threshold": "ok ≥ 80 · warn ≥ 65 · bad < 65",
+          "thresholdKey": "statusCut",
+          "actual": "ok 60 / warn 0 / bad 60 · 问题帧 60/120",
+          "basis": "frames.js:253 —— 综合分 = sharp×0.45 + flicker×0.35 + flow×0.20，再按三档切；切点与 inspector 前端逐字一致。",
+          "hits": 60
+        }
+      ],
+      "coverage": [
+        {
+          "defect": "dark",
+          "defect_cn": "黑帧",
+          "expect": "20–24",
+          "total": 5,
+          "hit": 5
+        },
+        {
+          "defect": "white",
+          "defect_cn": "白帧",
+          "expect": "40–42",
+          "total": 3,
+          "hit": 3
+        },
+        {
+          "defect": "blur",
+          "defect_cn": "模糊",
+          "expect": "60–89",
+          "total": 30,
+          "hit": 30
+        },
+        {
+          "defect": "freeze",
+          "defect_cn": "冻结",
+          "expect": "100–119",
+          "total": 20,
+          "hit": 20
+        }
+      ],
+      "timing": {
+        "ffmpegMs": 547
+      },
+      "generated_from": "probe → frames → report（单次 ffmpeg 解码）"
+    },
+    {
+      "id": "good",
+      "label": "正常片 · 无注入",
+      "role": "good",
+      "file": "good-720p30.mp4",
+      "ok": true,
+      "bytes": 106994,
+      "fps": 30,
+      "frames": 90,
+      "analysisSize": "160×284",
+      "verdict": {
+        "key": "pass",
+        "label": "通过",
+        "tone": "ok",
+        "rule": "bad = 0 且 warn = 0 → 通过"
+      },
+      "headline": "无问题帧（90 帧全部 ok）",
+      "top_fix": null,
+      "probe": {
+        "codec": "h264",
+        "profile": "High",
+        "pixFmt": "yuv420p",
+        "displayWidth": 720,
+        "displayHeight": 1280,
+        "fps": 30,
+        "avgFps": 30,
+        "duration": 3,
+        "nbFrames": 90,
+        "framesSource": "nb_frames",
+        "colorRange": null,
+        "colorSpace": null,
+        "hdr": false,
+        "rotation": 0,
+        "audio": {
+          "codec": "aac",
+          "sampleRate": 48000,
+          "channels": 2,
+          "channelLayout": "stereo",
+          "bitrate": 2289
+        },
+        "format": "mov,mp4,m4a,3gp,3g2,mj2",
+        "sizeBytes": 106994,
+        "ffprobe": "9.0.2-full_build-www.gyan.dev",
+        "tookMs": 67
+      },
+      "summary": {
+        "mean": 93.9,
+        "p5": 93,
+        "p95": 95,
+        "min": 93,
+        "max": 95,
+        "frames": 90,
+        "problems": 0,
+        "status": {
+          "ok": 90,
+          "warn": 0,
+          "bad": 0
+        },
+        "segments": [],
+        "worst": [
+          {
+            "frame": 1,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 86.22,
+            "lapVar": 250.16,
+            "flicker": 0.14,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.033,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 2,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.95,
+            "lapVar": 250.66,
+            "flicker": 0.27,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.067,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 3,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.74,
+            "lapVar": 251.49,
+            "flicker": 0.21,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.1,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 4,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.42,
+            "lapVar": 252.12,
+            "flicker": 0.32,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.133,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 5,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.28,
+            "lapVar": 252.71,
+            "flicker": 0.14,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.167,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 6,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 85.01,
+            "lapVar": 253.38,
+            "flicker": 0.27,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.2,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 7,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 84.81,
+            "lapVar": 254.02,
+            "flicker": 0.2,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.233,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 8,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 84.48,
+            "lapVar": 254.88,
+            "flicker": 0.33,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.267,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 9,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 84.31,
+            "lapVar": 255.34,
+            "flicker": 0.17,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.3,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 10,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 84.02,
+            "lapVar": 256.12,
+            "flicker": 0.29,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.333,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 12,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 83.6,
+            "lapVar": 257.59,
+            "flicker": 0.28,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.4,
+            "t_note": "frame ÷ fps"
+          },
+          {
+            "frame": 13,
+            "score": 93,
+            "status": "ok",
+            "defect": null,
+            "defect_cn": null,
+            "yavg": 83.39,
+            "lapVar": 258.42,
+            "flicker": 0.21,
+            "reasons": [],
+            "suggestion": "整帧重绘或框选问题区域",
+            "t": 0.433,
+            "t_note": "frame ÷ fps"
+          }
+        ],
+        "worst_shown": 12
+      },
+      "detect": {
+        "black": [],
+        "freeze": [],
+        "staticRuns": [],
+        "black_frames": 0,
+        "white_frames": 0,
+        "frozen_frames": 0
+      },
+      "checks": [
+        {
+          "id": "black",
+          "name": "黑场 / 黑帧",
+          "status": "ok",
+          "threshold": "YAVG ≤ 24",
+          "thresholdKey": "blackY",
+          "actual": "0 帧 · blackdetect 0 段",
+          "basis": "frames.js:247 —— 每帧平均亮度 yavg ≤ blackY 判黑帧，分数封顶 10；blackdetect 区间只做交叉验证，不覆盖逐帧结论。",
+          "hits": 0
+        },
+        {
+          "id": "white",
+          "name": "白屏 / 白帧",
+          "status": "ok",
+          "threshold": "YAVG ≥ 235",
+          "thresholdKey": "whiteY",
+          "actual": "0 帧",
+          "basis": "frames.js:248 —— yavg ≥ whiteY 判白帧（过曝/空镜），分数封顶 15。",
+          "hits": 0
+        },
+        {
+          "id": "freeze",
+          "name": "冻结（freeze）",
+          "status": "ok",
+          "threshold": "与锚点差 ≥ 0.4 视为画面变化；连续静止 ≥ 0.1s 判冻结",
+          "thresholdKey": "anchorEps",
+          "actual": "0 帧 · 静止段 0 段 · freezedetect 交叉验证 0 段",
+          "basis": "frames.js:283-300 —— 以\"静止候选段锚点\"累计帧差（只看相邻差区分不了编码噪声与慢速运镜），命中后分数封顶 30 并改写 defect=freeze。门限 anchorEps 未写进 thresholds 输出，本行从 DEFAULTS 回读。",
+          "hits": 0
+        },
+        {
+          "id": "blur",
+          "name": "模糊（锐度）",
+          "status": "ok",
+          "threshold": "sharp < 0.22 判模糊（log 归一，上下界 6/400）",
+          "thresholdKey": "sharpBlurAt",
+          "actual": "0 帧判模糊 · 全片最低 sharp 0.884",
+          "basis": "frames.js:249 —— 拉普拉斯方差 log 归一后的 sharpNorm 低于 sharpBlurAt 判模糊，分数封顶 45。",
+          "hits": 0
+        },
+        {
+          "id": "flicker",
+          "name": "亮度跳变（闪烁）",
+          "status": "ok",
+          "threshold": "相邻帧 |ΔYAVG| ≥ 20",
+          "thresholdKey": "flickerHard",
+          "actual": "0 帧越线 · 全片最大跳变 0.34 级",
+          "basis": "frames.js:251 —— flicker ≥ flickerHard 判可感知闪/切，分数封顶 60；闪烁在权重里占 0.35，因为它直接决定能不能播。",
+          "hits": 0
+        },
+        {
+          "id": "params",
+          "name": "参数合规（元数据自洽）",
+          "status": "ok",
+          "threshold": "帧数必须可溯源；fps 与 avg_fps 必须一致",
+          "thresholdKey": null,
+          "actual": "帧数来源 nb_frames / nb_read_frames（实测），fps 与 avg_fps 一致",
+          "basis": "probe.js:140-178 —— 只把 ffprobe 结果翻译成稳定字段，并把帧数标注为容器声明还是数出来的；回退到 duration×fps 时属估算，页面按 warn 处理。",
+          "subs": [
+            {
+              "k": "画面",
+              "v": "720×1280 · h264 High · yuv420p"
+            },
+            {
+              "k": "帧率",
+              "v": "30 fps（avg 30）"
+            },
+            {
+              "k": "帧数",
+              "v": "90 帧 · 来源 nb_frames"
+            },
+            {
+              "k": "色彩",
+              "v": "range=未标注 · space=未标注"
+            },
+            {
+              "k": "音轨",
+              "v": "aac 48000Hz 2ch stereo"
+            },
+            {
+              "k": "容器",
+              "v": "mov,mp4,m4a,3gp,3g2,mj2 · 104KB"
+            }
+          ],
+          "hits": 0
+        },
+        {
+          "id": "audio",
+          "name": "音频静音",
+          "status": "na",
+          "implemented": false,
+          "threshold": "未接入（astats 未接）",
+          "thresholdKey": null,
+          "actual": "仅记录音轨参数：aac 48000Hz 2ch",
+          "basis": "docs/06-quality.md §7 缺口 3 —— probe.js 只取音频参数，frames.js 不含任何音频指标；本行如实标「未实现」，不冒充通过。",
+          "hits": null
+        },
+        {
+          "id": "bands",
+          "name": "综合分三档（status）",
+          "status": "ok",
+          "threshold": "ok ≥ 80 · warn ≥ 65 · bad < 65",
+          "thresholdKey": "statusCut",
+          "actual": "ok 90 / warn 0 / bad 0 · 问题帧 0/90",
+          "basis": "frames.js:253 —— 综合分 = sharp×0.45 + flicker×0.35 + flow×0.20，再按三档切；切点与 inspector 前端逐字一致。",
+          "hits": 0
+        }
+      ],
+      "coverage": null,
+      "timing": {
+        "ffmpegMs": 395
+      },
+      "generated_from": "probe → frames → report（单次 ffmpeg 解码）"
+    }
+  ],
+  "cross_check": [
+    {
+      "defect": "dark",
+      "defect_cn": "黑帧",
+      "expect": "20–24",
+      "total": 5,
+      "hit": 5
+    },
+    {
+      "defect": "white",
+      "defect_cn": "白帧",
+      "expect": "40–42",
+      "total": 3,
+      "hit": 3
+    },
+    {
+      "defect": "blur",
+      "defect_cn": "模糊",
+      "expect": "60–89",
+      "total": 30,
+      "hit": 30
+    },
+    {
+      "defect": "freeze",
+      "defect_cn": "冻结",
+      "expect": "100–119",
+      "total": 20,
+      "hit": 20
+    }
+  ]
+}

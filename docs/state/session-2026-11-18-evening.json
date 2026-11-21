@@ -1,0 +1,56 @@
+{
+  "schema": "ai-video-platform/session",
+  "at": "2026-11-18T13:36:00Z",
+  "session": "接续完成桌面上寒冬工作台的任务（DSH，2026-11-18 20:17 起）",
+  "node": {
+    "used": "C:\\Users\\mechrevo\\Desktop\\ds-harness-desktop\\runtime\\node\\node.exe (v24.19.0)",
+    "note": "PATH 首位 D:\\个人知识库\\node.exe 在本机对写操作返回 EPERM，会让依赖落盘的验收假失败；本轮全部验收改用 runtime node"
+  },
+  "gates": {
+    "build_all": "成功 7 · 失败 0 · 2.2s",
+    "selftest_all": "PASS 9 · FAIL 0 · SKIP 0 · 5.1s",
+    "lint_ui": "7 页全绿",
+    "e2e": "通过 52 · 失败 0",
+    "module_selftests": { "server": "195 / 0", "market": "91 / 0", "plugins": "50 / 0" }
+  },
+  "delivered": [
+    {
+      "card": "卡 ④ · 显存真值探测",
+      "files": ["server/gpu.js", "server/app.js", "server/selftest.js", "docs/02-backend.md"],
+      "evidence": "nvidia-smi 实测 RTX 5060 Laptop / 8151MiB / cc12.0 / 576.80；采样 used=4754 → usable=2885（total-used-512）；provenance=measured；无 GPU 机器靠假探针断言 ok:false + reason",
+      "state_file": "docs/state/device-probe-2026-11-18.json"
+    },
+    {
+      "card": "卡 ⑦ · 模板 → 工作流编译贯通 + 版本目录",
+      "files": ["market/store.js", "market/pack.js", "market/spec/template.schema.json", "tools/tpl.mjs", "docs/07-market.md"],
+      "evidence": "store/tpl/<id>/<version>.avptpl 版本目录成型（oriental-ink-portrait 有 1.1.0/1.2.0 两版）；market selftest 91/0；e2e 仍 52/0"
+    },
+    {
+      "card": "卡 ⑧ · 插件 Ed25519 签名 + ui 真渲染",
+      "files": ["plugins/loader.js", "plugins/schema/plugin.schema.json", "plugins/keys/*", "plugins/packs/sample-ui-pack/*", "plugins/plugins.src.html", "plugins/selftest.js", "tools/plugin.mjs", "docs/04-plugins.md"],
+      "evidence": "规范化正文 + Ed25519 验签；改一字节→PLUGIN_BAD_SIGNATURE、未知 key→PLUGIN_UNKNOWN_KEY、ui 缺签降级 unsigned、model 缺签拒载；ui 主题真写 :root 变量、面板真挂 slot；selftest 50/0"
+    },
+    {
+      "card": "卡 ⑩ · 文档补齐",
+      "files": ["docs/05-inspector.md", "docs/14-blueprint-gap.md", "docs/12-handoff.md"],
+      "evidence": "逐帧检视器说明 + 蓝图 28 行偏差表；docs 内 13 条相对链接 0 死链"
+    },
+    {
+      "card": "bugscan #11 · 解析低置信阻断确认卡",
+      "files": ["web/params.src.html", "app/index.src.html", "docs/10-params-ui.md"],
+      "evidence": "规则轨时弹 #lcCard（#lcBack/#lcGo），确认后 confirmedByUser:true + ISO 时间进任务 note/作品库；Esc/Enter 均走返回且不提交；浏览器实测 job 记录 confirmedByUser: true @ 2026-11-18T13:00:16.798Z"
+    },
+    {
+      "card": "角色设定自动提取（用户本轮新增需求）",
+      "files": ["server/character.js", "server/recommend.js", "server/selftest.js", "web/params.src.html", "docs/16-character-autofill.md"],
+      "evidence": "浏览器实测：提示词『轮渡上20岁左右女生，格子围巾，深色大衣，侧脸看海，电影感』→ ch.subject/ch.age(20)/ch.outfit_1 自动回填并标「AI提取」（title=evidence）；两人物提示词弹 #chPick 候选卡（男孩 / 女孩在雪地木屋前），未选不写 subject；选中后角标转「已自定义」；服务端 12 条断言覆盖年龄/服装去重/冲突/留痕/Qwen 越界值 rejected"
+    }
+  ],
+  "honest_limits": [
+    "Qwen 通路本轮真实失败：账户欠费（QWEN_HTTP_ERROR / Arrearage），AI 推荐实际走规则轨；角色提取的 Qwen 分支只经 mergeQwen 单测与接口契约验证，未拿到真实模型返回",
+    "角色提取是短句级启发式：不做指代消解，封闭服装词库外的服装不会抽出（留空不填错）",
+    "插件 ui 主题只在 plugins/index.html 生效，app/web/canvas/inspector 尚未订阅（页面已显式标「跨模块宿主 → 登记不渲染」）",
+    "preview 阶段无 git，回滚靠各卡的锚点说明与 D:\\云盘 母本副本"
+  ],
+  "synced_to_cloud": "2026-11-18T13:34:46Z robocopy code 3（130 文件更新 / 60 跳过 / 0 失败）"
+}

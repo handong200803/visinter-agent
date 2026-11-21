@@ -1,0 +1,40 @@
+{
+  "schema": "ai-video-platform/plugin",
+  "id": "sample-model-pack",
+  "name": "示例 · 新增模型/量化",
+  "version": "1.0.0",
+  "type": "model",
+  "description": "演示 model 类插件：往 keyframe 组里加一个 32B 图像模型的 Q4 量化标定条目。所有 resident_mib 都是推算值（provenance=estimate），不是真机实测。",
+  "author": "ai-video-platform 示例",
+  "engines": {
+    "platform": ">=0.1.0",
+    "registry": ">=0.1.0"
+  },
+  "permissions": [
+    "gpu"
+  ],
+  "contributes": {
+    "models": [
+      {
+        "group": "keyframe",
+        "id": "FLUX.2-dev-GGUF-Q4",
+        "params_b": 32,
+        "resident_mib": {
+          "fp16": 18500,
+          "fp8": 9400,
+          "gguf_q4": 6900,
+          "int4": 6200
+        },
+        "t_factor": 1.45,
+        "license": "需核实",
+        "provenance": "estimate",
+        "note": "按 32B×0.5B/Q4 权重 + 文本编码器/VAE + 激活余量与分块装载折算；t_factor 相对 Qwen-Image 20B 按参数比 1.6 打折到 1.45。许可证未核实，先标需核实。"
+      }
+    ]
+  },
+  "signature": {
+    "key_id": "avp-dev-local",
+    "alg": "ed25519",
+    "sig": "E35A3NbeHAYGf96N0sD4ltEpOqFGLHPB788jHiiB0IsGaeERPkVk5ZHybRarekmoQHHrjTkRcqNMwuQIuEOfDQ=="
+  }
+}

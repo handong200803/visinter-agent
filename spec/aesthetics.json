@@ -1,0 +1,115 @@
+{
+  "version": "2026-11-18.1",
+  "note": "抖音氛围感审美层（灰境方案）：8 题材配方 + 可拼接词库 + 分题材画质参数。作用于 M3 选帧提示词 / M8 filmic 调色 / M9 声音 / M6 审美闸。sampler/CFG/步数/HD 为请求口径（云端 qwen-image 不暴露 → applicable:false）；分辨率/画幅真生效。",
+  "words": {
+    "light": [
+      "逆光，发丝金边轮廓光，rim light，主体边缘亮线",
+      "golden hour 暖橙低角度阳光，光柱中尘埃悬浮，丁达尔效应",
+      "45° 柔和侧光，伦勃朗光，面部明暗过渡自然",
+      "霓虹混合光，背景散景光斑，车灯光晕，夜雾",
+      "体积雾，薄烟，空气透视，柔光散射"
+    ],
+    "color": ["青橙对比", "银灰冷调", "暖棕胶片", "红黑复古", "低饱和电影感", "暗部保留细节", "高光柔化溢出", "肤色自然通透"],
+    "lens": ["慢推", "慢拉", "环绕", "侧向平移", "跟拍", "固定机位", "特写", "近景", "中景", "全景", "85mm 浅景深 f/1.8，背景柔和虚化", "35mm 环境纪实", "三分法", "环境留白", "前景遮挡", "侧脸/背影/回眸"],
+    "texture": ["胶片细颗粒", "halation 光晕", "轻暗角", "轻微色散", "真实皮肤纹理", "空气透视", "高光柔和 bloom", "电影摄影质感"],
+    "negative": "塑料皮肤，过度磨皮，蜡像感，卡通动漫感，过饱和，平光死板，噪点马赛克，肢体畸形，多指，悬浮头，面部崩坏，文字乱码，水印，过曝死白，死黑一片，画面抖动"
+  },
+  "themes": [
+    {
+      "id": "sunset_gold", "name": "日落金色人像/公路", "keywords": ["日落", "黄昏", "金色", "公路", "逆光", "夕阳", "背影"],
+      "scene": "黄昏旷野/公路，人物背影或侧脸，暖橙逆光，发丝金边，尘土在光柱里悬浮",
+      "light": "golden hour 逆光，轮廓光 rim light，暖金主光，阴影带冷青平衡",
+      "color": "暖金、微褪色、橙青对比，暗部偏青",
+      "lens": "慢推或侧向跟拍，85mm 浅景深，背景暖色光斑",
+      "texture": "Kodak Portra 400 胶片感，细颗粒，高光柔和溢出，自然肤色",
+      "motion": "缓步前行/回眸，动作缓慢，风拂发丝",
+      "neg": "塑料皮肤，过度磨皮，过饱和，平光死板",
+      "params": { "cfg": 5.8, "steps": 27, "res": "1080*1608", "hd": 0.4, "negStrength": 0.85, "sampler": "DPM++ 2M SDE Karras" },
+      "ratio": "9:16", "duration": 12, "soundMood": "warm-nostalgic", "grade": "sunset"
+    },
+    {
+      "id": "night_neon", "name": "冷调夜景街拍/霓虹", "keywords": ["夜景", "霓虹", "街拍", "夜晚", "城市", "雨夜", "赛博"],
+      "scene": "夜晚街道/街边，人物行走或驻足，城市霓虹在背景晕成光斑",
+      "light": "霓虹与路灯混合光，侧逆光勾轮廓，面部补柔光，车灯光晕 halation",
+      "color": "青橙/青品红电影夜景，低饱和暗调，暗部不死黑",
+      "lens": "手持微晃跟拍或平移，浅景深背景光斑",
+      "texture": "胶片颗粒，轻色散，夜雾光晕，湿润地面反光",
+      "motion": "慢走、回眸、发丝被风扬起",
+      "neg": "死黑一片，过曝死白，过饱和，塑料皮肤",
+      "params": { "cfg": 6.4, "steps": 25, "res": "1080*1608", "hd": 0.4, "negStrength": 0.9, "sampler": "DPM++ 3M SDE Karras" },
+      "ratio": "9:16", "duration": 12, "soundMood": "cold-urban", "grade": "nightneon"
+    },
+    {
+      "id": "forest_snow", "name": "清冷森林/雪境", "keywords": ["雪", "森林", "雪境", "晨雾", "杉树", "清冷", "冬"],
+      "scene": "雪林、晨雾、杉树，人物驻足或独行，空气透视",
+      "light": "冷色漫射光，透过树梢的微弱光束，雾中体积感",
+      "color": "银灰、冷蓝、低饱和，高反差保留暗部细节",
+      "lens": "慢推、环绕空镜过渡，全景+中景",
+      "texture": "细颗粒，薄雾，空气透视，冷调颗粒",
+      "motion": "缓步、呼气白雾、衣摆微动",
+      "neg": "过饱和，暖糖果色，塑料皮肤，平光死板",
+      "params": { "cfg": 6.7, "steps": 23, "res": "1080*1608", "hd": 0.35, "negStrength": 0.8, "sampler": "DPM++ 2M SDE Karras" },
+      "ratio": "9:16", "duration": 12, "soundMood": "cold-quiet", "grade": "snow"
+    },
+    {
+      "id": "guofeng_hanfu", "name": "古风/汉服氛围", "keywords": ["古风", "汉服", "古建", "长廊", "竹林", "水墨", "国风"],
+      "scene": "古建、长廊、竹林、水边，人物衣袂飘动",
+      "light": "柔和侧光/窗格光，逆光剪影，体积雾",
+      "color": "低饱和青灰/暖棕，水墨留白感",
+      "lens": "慢摇、跟随背影、特写衣袖与发饰",
+      "texture": "柔光、织物纹理、轻颗粒",
+      "motion": "转身、抬袖、缓步，动作舒展缓慢",
+      "neg": "现代街服，霓虹招牌，塑料铠甲，过饱和",
+      "params": { "cfg": 6.2, "steps": 25, "res": "1080*1608", "hd": 0.35, "negStrength": 0.85, "sampler": "DPM++ 2M SDE Karras" },
+      "ratio": "9:16", "duration": 12, "soundMood": "oriental-calm", "grade": "guofeng"
+    },
+    {
+      "id": "window_portrait", "name": "清感人像（室内窗边）", "keywords": ["窗边", "室内", "咖啡馆", "白墙", "窗光", "清感", "侧坐"],
+      "scene": "窗边、咖啡馆、白墙，人物侧坐或靠窗望外",
+      "light": "单一天窗/窗光侧照，伦勃朗光，柔和明暗过渡",
+      "color": "暖白/米棕，低对比，肤色通透",
+      "lens": "近景特写，浅景深，固定或极慢推",
+      "texture": "真实皮肤纹理，柔焦高光，细颗粒，轻暗角",
+      "motion": "眨眼、侧头、手搭窗边，微动作",
+      "neg": "过度磨皮，蜡像感，硬闪光，过饱和",
+      "params": { "cfg": 5.6, "steps": 28, "res": "1080*1608", "hd": 0.45, "negStrength": 0.85, "sampler": "DPM++ 3M SDE Karras" },
+      "ratio": "9:16", "duration": 10, "soundMood": "soft-intimate", "grade": "window"
+    },
+    {
+      "id": "retro_film", "name": "复古胶片日常", "keywords": ["复古", "胶片", "老街", "日常", "抓拍", "怀旧", "褪色"],
+      "scene": "老街、日常物件、随手抓拍感生活片段",
+      "light": "自然散射光，偶有阳光洒落",
+      "color": "褪色暖棕/红黑复古，略低饱和",
+      "lens": "平移、定格抓拍、轻微手持",
+      "texture": "明显胶片颗粒、halation、轻色散、暗角",
+      "motion": "自然生活动作，动静结合",
+      "neg": "过度磨皮，数码锐化感，过饱和，塑料皮肤",
+      "params": { "cfg": 6.2, "steps": 25, "res": "1080*1608", "hd": 0.35, "negStrength": 0.85, "sampler": "DPM++ 2M SDE Karras" },
+      "ratio": "9:16", "duration": 12, "soundMood": "nostalgic-lofi", "grade": "retro"
+    },
+    {
+      "id": "sea_lonely", "name": "海边/旷野孤独感", "keywords": ["海边", "旷野", "孤独", "海滩", "荒原", "长路", "渺小"],
+      "scene": "空旷海滩、荒原、长路，人物渺小立于环境中",
+      "light": "低角度天光/薄云漫射，剪影或半剪影",
+      "color": "冷灰/淡蓝灰，大面积留白",
+      "lens": "大全景缓推，人物占比小，环境占比大",
+      "texture": "空气透视，薄雾，细颗粒",
+      "motion": "静立、远望、缓慢走动",
+      "neg": "拥挤构图，过饱和，暖糖果色，塑料皮肤",
+      "params": { "cfg": 6.8, "steps": 23, "res": "1080*1608", "hd": 0.35, "negStrength": 0.8, "sampler": "DPM++ 2M SDE Karras" },
+      "ratio": "9:16", "duration": 15, "soundMood": "vast-ambient", "grade": "sea"
+    },
+    {
+      "id": "noir", "name": "暗调电影 Noir", "keywords": ["noir", "暗调", "雨夜", "阴影", "黑白", "高反差", "悬疑"],
+      "scene": "雨夜街巷、暗光室内，人物半隐于阴影",
+      "light": "低调高反差，单一侧硬轮廓光，深阴影雕刻面部",
+      "color": "黑白或暗青，强对比，黑位扎实",
+      "lens": "35mm 固定/缓推，烟雾雾气增层次",
+      "texture": "粗颗粒，高反差，湿地面反光",
+      "motion": "缓慢转身、抬眼，节奏克制",
+      "neg": "高调明亮，糖果色，平光死板，过曝死白",
+      "params": { "cfg": 6.0, "steps": 26, "res": "1080*1608", "hd": 0.4, "negStrength": 0.9, "sampler": "DPM++ 3M SDE Karras" },
+      "ratio": "9:16", "duration": 12, "soundMood": "dark-tension", "grade": "noir"
+    }
+  ]
+}

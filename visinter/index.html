@@ -1,0 +1,1968 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VisInter · 智能装配</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   tokens.css —— 平台唯一视觉令牌源
+   ───────────────────────────────────────────────────────────────────────
+   定位：「暗黑玻璃拟态 · 冷银基调」。深黑 #08080a 上悬浮两团冷色光晕
+   （左上蓝灰、右下紫灰），所有卡片/面板/输入/弹窗是一层半透明白玻璃：
+   光从玻璃后面透出来，边缘靠 1px 亮线勾勒，hover 上浮并泛一圈冷光。
+
+   为什么要有这个文件：
+     七套界面此前各持一份配色。令牌集中到一处之后，全平台只有一种视觉人格，
+     并且「像不像暗黑玻璃」这件事变成了可被 lint 校验的硬指标（tools/lint_ui.mjs）。
+
+   四条硬规矩（违反即 lint 失败）：
+     1. 玻璃面统一：背景 rgba(255,255,255,.06)、边框 rgba(255,255,255,.12)、
+        圆角 16px、blur(20px) saturate(1.4)、黑阴影 + 顶部 1px 内亮线。
+     2. 冷银唯一强调：--acc #C8CDD4，高亮 #EEF1F5。光晕只许冷色
+        （蓝灰/紫灰/银，通道差 ≤ 64 且蓝≥红），禁止暖色荧光与 AI 紫。
+     3. hover 三件套：背景提亮到 .10、边框提亮到 .25、上浮 3px + 冷光
+        0 0 20px rgba(180,200,230,.15)。循环动画只给铸造粒子/烟雾加载器。
+     4. 碑铭字体保留：平台名与卡片标题走 --serif 宽字距；正文 --sans
+        小字号松行高；数字一律 tabular-nums。颗粒层保留（胶片感）。
+
+   使用方式：
+     单文件产物要求双击 file:// 可用 → 不允许运行时 @import。
+     各 HTML 的 :root 必须**逐字复制**本文件的变量块；lint 会比对变量名与取值。
+     通用玻璃类 .glass-card / .glass-btn / .glass-input 在本文件底部，
+     组件直接挂类，不要各写一份玻璃配方。移动端 blur 自动降到 12px。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 碑铭衬线：Cinzel（SIL OFL，本地 woff2，见 assets/fonts/LICENSE-Cinzel.txt）。
+   中文无 Cinzel 字形，自然落到宋体/思源宋体——碑铭感靠字距与字重，不靠假字体。 */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-700.woff2") format("woff2");
+}
+
+:root {
+  /* ── 玻璃明度阶梯：半透明白膜叠在深黑上，冷光晕从后面透出来 ──────
+     越靠近内容越亮。--panel 是标准玻璃面，--panel2 是膜内凹槽。 */
+  --bg:        #08080a;   /* 应用底（双光晕的落点） */
+  --bg-deep:   #0a0a0d;   /* 画布凹槽（节点图、时间轴）：比玻璃面更暗 */
+  --panel:     rgba(255, 255, 255, 0.06);   /* 标准玻璃面 */
+  --panel2:    rgba(255, 255, 255, 0.04);   /* 输入框 / 膜内凹槽 */
+  --panel3:    rgba(255, 255, 255, 0.10);   /* 悬停态 */
+  --panel4:    rgba(255, 255, 255, 0.14);   /* 按下 / 选中填充 */
+
+  /* ── 分隔线：玻璃边缘的亮线（1px 半透明白）───────────────────── */
+  --line:      rgba(255, 255, 255, 0.12);   /* 常规玻璃边框 */
+  --line2:     rgba(255, 255, 255, 0.18);   /* 强分隔 / 输入框边框 */
+  --line3:     rgba(255, 255, 255, 0.25);   /* hover / 焦点边框 */
+
+  /* ── 文字（三级，绝不用纯白：纯白在暗底上光晕扩散）────────────── */
+  --text:      #d4d8de;   /* 主文本 */
+  --text-dim:  #7a8089;   /* 次要说明 */
+  --text-dim2: #565c66;   /* 占位 / 禁用 */
+
+  /* ── 唯一强调色：冷银。高亮 #eef1f5，像光扫过玻璃边缘 ─────────── */
+  --acc:       #c8cdd4;
+  --acc-hover: #eef1f5;
+  --acc-dim:   #8a9099;
+  --acc-fill:  rgba(200, 205, 212, 0.10);  /* 选中行底色 */
+
+  /* ── 语义状态（降饱和；血红只作错误信号，不铺大面）──────────────
+     --bad 太暗不能作文字色，错误文案用 --bad-ink，边框/填充用 --bad。 */
+  --ok:        #7d9b84;
+  --warn:      #b3985a;
+  --bad:       #6b2020;
+  --bad-ink:   #c98080;
+  --ok-fill:   rgba(125, 155, 132, 0.12);
+  --warn-fill: rgba(179, 152, 90, 0.12);
+  --bad-fill:  rgba(107, 32, 32, 0.16);
+
+  /* ── 端口/类型色（节点图专用，仅连线与 3-4px 圆点；全部压成灰调）── */
+  --t-model:   #8d84a0;   /* 模型 */
+  --t-latent:  #a08489;   /* 潜空间 */
+  --t-image:   #a09678;   /* 图像 */
+  --t-number:  #7f948c;   /* 数值 */
+  --t-text:    #84909f;   /* 文本 */
+
+  /* ── 字号（正文小字号 + 松行高；碑铭标题另走 --serif 放大）────── */
+  --fz-xs: 10.5px;
+  --fz-s:  11.5px;
+  --fz:    12.5px;
+  --fz-l:  13.5px;
+  --fz-xl: 15px;
+  --lh:    1.6;
+
+  /* ── 间距（4 的倍数）─────────────────────────────────────────── */
+  --sp1: 4px;  --sp2: 8px;  --sp3: 12px;  --sp4: 16px;  --sp5: 24px;
+
+  /* ── 圆角（玻璃 16 / 按钮与输入 12 / 小件 8）──────────────────── */
+  --r:   8px;
+  --r2:  12px;
+  --r3:  16px;       /* 卡片 / 面板 / 弹窗 */
+  --r-pill: 999px;   /* 只用于状态点、计数徽标 */
+
+  /* ── 阴影与光：黑阴影托底 + 顶部内亮线；冷光只给 hover/焦点 ────── */
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 20px rgba(180, 200, 230, 0.15);
+  --glow-soft: 0 0 20px rgba(180, 200, 230, 0.08);
+  --glass: rgba(255, 255, 255, 0.06);   /* 导航/顶栏/侧栏的玻璃底 */
+
+  /* ── 玻璃配方（通用类共用；移动端 --glass-blur 自动降档）───────── */
+  --glass-blur: blur(20px) saturate(1.4);
+  --glass-blur-lite: blur(12px) saturate(1.3);
+  --glass-hover: rgba(255, 255, 255, 0.10);
+  --glass-line-hover: rgba(255, 255, 255, 0.25);
+  --glow-cool: rgba(180, 200, 230, 0.15);
+  /* 环境光：玻璃必须「有东西可透」。0.16 的光晕压在 #08080a 上只剩 #1a1d24，
+     肉眼等于平黑——玻璃层再正确也读不出来。这里提到 0.30/0.26，
+     合成后左上≈#262d39（蓝灰）、右下≈#241f2c（紫灰），仍远低于卡片明度。 */
+  --amb-blue: rgba(108, 132, 172, 0.30);   /* 左上蓝灰环境光 */
+  --amb-purple: rgba(132, 112, 168, 0.26); /* 右下紫灰环境光 */
+  --amb-core: rgba(226, 232, 240, 0.05);   /* 中景冷白核心光，给玻璃一层极淡的迎光面 */
+  --vignette: radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  --sheen: linear-gradient(158deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0) 46%);
+
+  /* ── 动效（状态切换 90-140ms；入场与铸造加载走 --t-slow）───────── */
+  --t-fast: 90ms;
+  --t:      140ms;
+  --t-slow: 320ms;
+  --ease:   cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── 过渡别名（迁移垫片，不是设计决策）───────────────────────── */
+  --dim:   #7a8089;
+  --dim2:  #565c66;
+  --acc2:  #eef1f5;
+
+  /* ── 字体 ─────────────────────────────────────────────────────
+     数字一律 tabular-nums：参数面板全是会跳动的数字，等宽数字能避免整行抖动。 */
+  --sans: -apple-system, "Segoe UI", "Microsoft YaHei UI", "PingFang SC",
+          "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --serif: "Cinzel", "Palatino Linotype", "Book Antiqua", Georgia,
+           "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+}
+
+/* ── 基础层：七个界面共用的最小复位与排版基调 ───────────────────── */
+/* 底：深黑 + 两团冷色径向光晕（左上蓝灰 / 右下紫灰）+ 中景冷白核光 + 边缘压暗。
+   fixed 不随滚动漂移。光晕是玻璃的「景」——没有它们，blur 透出来的只是一片死黑。 */
+html {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(78% 62% at 6% -4%, var(--amb-blue) 0%, rgba(108, 132, 172, 0) 68%),
+    radial-gradient(70% 58% at 104% 102%, var(--amb-purple) 0%, rgba(132, 112, 168, 0) 68%),
+    radial-gradient(60% 46% at 50% 34%, var(--amb-core) 0%, rgba(226, 232, 240, 0) 70%),
+    radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+body {
+  background: transparent;
+  color: var(--text);
+  font: var(--fz)/var(--lh) var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* 胶片颗粒：极细噪点铺满视口，不拦截指针；4% 透明度只够"感觉到"不够"看到" */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background: url("../assets/grain.png") repeat;
+  background-size: 160px 160px;
+}
+
+/* ── 通用玻璃类：组件直接挂类，配方只此一份 ─────────────────────── */
+.glass-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 可交互玻璃卡：hover 提亮 + 上浮 3px + 冷光（风格卡/作品卡/模板卡） */
+.glass-card.hoverable {
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.glass-card.hoverable:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.glass-btn {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--glass-line-hover);
+  color: var(--acc-hover);
+  box-shadow: 0 0 20px var(--glow-cool);
+}
+.glass-input {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease),
+              background var(--t) var(--ease);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: var(--glass-line-hover);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: var(--glow);
+}
+.glass-input::placeholder { color: var(--text-dim2); }
+
+/* 移动端：blur 降到 12px，避免大面积毛玻璃拖垮帧率 */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+}
+
+/* 碑铭体：平台名、卡片标题、章节题字共用 */
+.serif {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+/* 数字等宽：所有数值读数都用它 */
+.num, kbd, code, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点环：冷银描边 + 一圈极淡冷光，键盘可达 */
+:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(180, 200, 230, 0.12);
+}
+
+/* 滚动条：细、暗、玻璃亮线 thumb，hover 提亮；不用系统默认蓝条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+*::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* 选区：银的低透明填充，不用系统蓝 */
+::selection { background: var(--acc-fill); color: var(--acc-hover); }
+
+/* ── 玻璃族第二批：弹窗 / 浮条 / 侧栏 / 凹槽 / 胶囊 ──────────────────
+   同一套配方，只是圆角与投影档位不同。组件直接挂类，别再复写 blur。 */
+.glass-modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.glass-toast {
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+/* 悬浮工具条：画布顶部/参数板顶部那种横条，圆角 16 贴在内容之上 */
+.glass-toolbar {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏 / 导航栏：从贴边条改成悬浮玻璃板（margin 16 + 圆角 16） */
+.glass-rail {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 凹槽：画布底、代码块、时间轴这类「玻璃板里的暗面」，不铺毛玻璃 */
+.glass-well {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.glass-chip {
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r2);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+}
+
+/* 玻璃卡顶部迎光：一层极淡的白到透明的斜向渐变，让平面看出弧面 */
+.glass-card, .glass-modal, .glass-rail, .panel {
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+}
+
+/* ── 无 backdrop-filter 的浏览器：把膜加厚一档，至少不塌成纯黑 ──────── */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar { background-color: rgba(255, 255, 255, 0.10); }
+  .glass-toast { background-color: rgba(255, 255, 255, 0.14); }
+}
+
+/* ── 移动端：blur 降到 12px；小控件直接关掉毛玻璃，省一次合成 ────────── */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+  .glass-btn, .glass-chip, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+}
+
+/* ── 尊重系统设置：减少动效 / 减少透明 ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .glass-card.hoverable:hover, .glass-btn:hover { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar, .glass-toast, .glass-chip, .glass-btn, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(24, 26, 30, 0.92);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   module-ui.css —— 功能模块入口的共享骨架
+   ───────────────────────────────────────────────────────────────────────
+   定位：market / plugins / quality / server 四个入口共用同一套外壳结构
+   （顶栏 / 左列表 / 右详情 / 底部口径条），差异只在中间的「内容形态」。
+
+   视觉人格：暗黑玻璃拟态 · 冷银基调（ui/tokens.css 为唯一令牌源）。
+     - 顶栏 / 侧栏 / 详情区头 / 底部口径条：四块悬浮玻璃板，统一 margin 16 + 圆角 16 + blur 20
+     - 侧栏：#08080a 上的半透明白膜（.body > .aside，比 skin 的 .aside 高一级）
+     - 选中态：左侧 2px 冷银竖线 + 一圈冷银亮边，不做亮色填充、不引入彩色
+     - 按钮：玻璃底 rgba(255,255,255,.1) + 1px 亮边 + 冷白字，圆角 12；输入框圆角 16
+     - 卡片：.06 白膜 + 0 8px 32px rgba(0,0,0,.3) + inset 0 1px 0 rgba(255,255,255,.08)
+     - 凹槽：标签页与代码/日志块走 .glass-well 口径（bg-deep + 内描边，不铺毛玻璃）
+     - 卡片标题：碑铭衬线（--serif）宽字距；表格行 hover 只提亮、不位移
+
+   规矩（与 docs/09-design-system.md 一致，lint 会拦）：
+     - 只用 ui/tokens.css 的变量，不新增色值
+     - 圆角只走 --r / --r2 / --r3 / --r-pill（卡片上限 16px）
+     - 光晕只给冷色（--glow / --glow-soft / --glow-cool），投影只给中性黑
+   ═══════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: transparent; color: var(--text); font: var(--fz)/var(--lh) var(--sans); }
+a { color: var(--acc); text-decoration: none; }
+a:hover { color: var(--acc-hover); }
+
+/* ── 页面骨架：悬浮玻璃顶栏 + 主体 + 口径条 24 ───────────────────── */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) 24px; height: 100vh; }
+
+.topbar {
+  display: flex; align-items: center; gap: var(--sp3);
+  margin: var(--sp4) var(--sp4) 0; min-height: 38px;
+  padding: 0 var(--sp3);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  position: relative; z-index: 5;
+}
+.topbar .brand { display: flex; align-items: baseline; gap: var(--sp2); }
+.topbar .brand b {
+  font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.18em; color: var(--acc);
+}
+.topbar .brand span { font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: 0.08em; }
+.topbar .spacer { flex: 1; }
+.topbar .crumbs { font-size: var(--fz-s); color: var(--text-dim); }
+.topbar .crumbs i { color: var(--text-dim2); font-style: normal; padding: 0 var(--sp1); }
+
+.body { display: grid; grid-template-columns: var(--col, 320px) minmax(0, 1fr); min-height: 0; }
+.body.no-aside { grid-template-columns: minmax(0, 1fr); }
+
+/* 侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20 / 边框 rgba(255,255,255,.12)）。
+   选择器写在 .body > .aside：glass-skin.css 里 .aside 只留膜（background-color: transparent，
+   玻璃底色交给页面），这里比它高一级，底色与迎光面由骨架自己给，两边不互相覆盖。 */
+.body > .aside {
+  display: flex; flex-direction: column; min-height: 0;
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  overflow: hidden;   /* 内部滚到底也不露直角 */
+}
+.aside-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim);
+  letter-spacing: 0.12em; flex: 0 0 auto;
+}
+.aside-h .spacer { flex: 1; }
+.aside-b { flex: 1; min-height: 0; overflow: auto; }
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: transparent; }
+/* 详情区头：悬浮玻璃条，与左栏板同一条基线（左 16 / 上 16），下沿不画分隔线 */
+.main-h {
+  display: flex; align-items: center; gap: var(--sp2);
+  margin: var(--sp4) var(--sp4) 0;
+  padding: var(--sp2) var(--sp3); min-height: 34px; flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.main-h h2 {
+  margin: 0; font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.12em; color: var(--acc);
+}
+.main-h .sub { font-size: var(--fz-xs); color: var(--text-dim); }
+.main-h .spacer { flex: 1; }
+.main-b { flex: 1; min-height: 0; overflow: auto; padding: var(--sp3) var(--sp4); }
+/* 底部口径条：悬浮玻璃条（统计/说明常驻在这里），左右与主体内容同一列线 */
+.main-f {
+  flex: 0 0 auto; margin: var(--sp3) var(--sp4) var(--sp4);
+  padding: var(--sp2) var(--sp3); font-size: var(--fz-xs); color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 全平台口径条（最底一行）：细玻璃条，不做大圆角，只提亮到膜上 */
+.statusbar {
+  display: flex; align-items: center; gap: var(--sp3); padding: 0 var(--sp4);
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  border-top: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-size: var(--fz-xs); color: var(--text-dim2);
+}
+.statusbar .spacer { flex: 1; }
+.statusbar .num { color: var(--text-dim); }
+
+/* ── 列表行（左栏主力形态）───────────────────────────────────────── */
+.list { display: flex; flex-direction: column; }
+.list .row {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center; gap: var(--sp2);
+  padding: 0 var(--sp2); min-height: 28px; cursor: pointer;
+  border-bottom: 1px solid var(--line); color: var(--text);
+  transition: background var(--t-fast) var(--ease);
+}
+.list .row:hover { background: var(--panel3); }
+/* 选中 = 左 2px 冷银竖线 + 一圈冷银亮边 + 极淡银底；全程冷银，不用任何彩色 */
+.list .row[aria-selected="true"] {
+  background: var(--acc-fill);
+  box-shadow: inset 2px 0 0 var(--acc), inset 0 0 0 1px var(--glass-line-hover);
+  color: var(--acc-hover);
+}
+.list .row[aria-selected="true"]:hover { background: var(--panel3); }
+.list .row .t { font-size: var(--fz); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .row .s { font-size: var(--fz-xs); color: var(--text-dim2); }
+.list .row .ico { display: flex; align-items: center; justify-content: center; color: var(--text-dim); }
+.list .row[aria-selected="true"] .ico { color: var(--acc); }
+.list .sect {
+  padding: var(--sp2) var(--sp2) var(--sp1); font-size: var(--fz-xs); color: var(--text-dim2);
+  letter-spacing: 0.12em; border-bottom: 1px solid var(--line); background: transparent;
+}
+.list .empty-row { padding: var(--sp3); color: var(--text-dim2); font-size: var(--fz-s); }
+
+/* ── 徽标与状态点 ────────────────────────────────────────────────── */
+.dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--text-dim2); flex: 0 0 auto; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); }
+.dot.acc { background: var(--acc); }
+.dot.off { background: var(--line2); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 17px; padding: 0 6px;
+  border: 1px solid var(--line2); border-radius: var(--r); background: var(--panel2);
+  font-size: var(--fz-xs); color: var(--text-dim); white-space: nowrap;
+}
+.badge.ok { border-color: var(--ok); color: var(--ok); background: var(--ok-fill); }
+.badge.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-fill); }
+.badge.bad { border-color: var(--bad); color: var(--bad-ink); background: var(--bad-fill); }
+.badge.acc { border-color: var(--acc-dim); color: var(--acc); background: var(--acc-fill); }
+.badge.pill { border-radius: var(--r-pill); }
+
+/* ── 按钮：玻璃底 + 1px 亮边 + 冷白字；hover 提亮泛冷光 ───────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 26px; padding: 0 11px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: var(--r2); background: rgba(255, 255, 255, 0.10);
+  color: var(--text); font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+              box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.btn:hover { background: rgba(255, 255, 255, 0.14); border-color: var(--glass-line-hover); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+.btn:active { background: var(--panel4); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+/* 主操作：不是实心色块，而是亮边更亮一档的玻璃碑牌 */
+.btn.acc { background: var(--panel3); border-color: var(--acc-dim); color: var(--acc-hover); letter-spacing: 0.12em; }
+.btn.acc:hover { background: var(--panel4); border-color: var(--acc-hover); box-shadow: var(--glow); }
+.btn.mini { height: 21px; padding: 0 7px; font-size: var(--fz-xs); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-dim); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.btn.ghost:hover { background: var(--panel3); color: var(--text); box-shadow: none; }
+
+/* ── 表单：膜内凹槽 + 1px 亮边；圆角 16（按钮 12，两者别混）────────── */
+.input, .select, .textarea {
+  height: 26px; padding: 0 8px; color: var(--text);
+  background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r3);
+  font: var(--fz-s)/1 var(--sans); outline: none;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.textarea { height: auto; padding: 5px 6px; font-family: var(--mono); resize: vertical; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--acc-hover); box-shadow: var(--glow); }
+.input::placeholder { color: var(--text-dim2); }
+label.field { display: flex; flex-direction: column; gap: var(--sp1); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 键值对 / 表格 ───────────────────────────────────────────────── */
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--sp3); font-size: var(--fz-s); }
+.kv dt { color: var(--text-dim); }
+.kv dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.kv dd.num { color: var(--text); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--fz-s); }
+.tbl th, .tbl td { text-align: left; padding: 0 var(--sp2); height: 26px; border-bottom: 1px solid var(--line); }
+/* 行 hover 只提亮膜内底色：行高/padding/transform 一律不动，258 行才不抖 */
+.tbl td { transition: background-color var(--t-fast) var(--ease); }
+.tbl th { color: var(--text-dim); font-weight: 500; font-size: var(--fz-xs); letter-spacing: 0.08em; background: var(--panel2); }
+.tbl tr:hover td { background-color: var(--glass-hover); }
+.tbl td.num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl td.mono { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 面板 / 卡片：半透明白 .06 + 1px 冷灰边 + 0 8px 32px rgba(0,0,0,.3)
+      + inset 0 1px 0 rgba(255,255,255,.08)。四行数值全部来自令牌：
+      --panel / --line / --shadow-pop / --shadow-inset，改令牌即全站生效。 */
+.panel {
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen);   /* 顶部迎光斜向渐变：平面看出弧面 */
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 网格里的卡片才上浮（市场概览卡 / 服务面板）；整幅区块例如 quality 的检查项不动，
+   否则鼠标划过正文时整块跳动。hover 只加 background-color，保住迎光面。 */
+.grid2 > .panel, .grid3 > .panel {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.grid2 > .panel:hover, .grid3 > .panel:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.panel + .panel { margin-top: var(--sp3); }
+.panel-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim); letter-spacing: 0.12em;
+}
+.panel-h .spacer { flex: 1; }
+.panel-b { padding: var(--sp3); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp3); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp3); }
+@media (max-width: 1100px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── 空态与提示 ──────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp2);
+  padding: var(--sp4); border: 1px dashed var(--line2); border-radius: var(--r3);
+  color: var(--text-dim); font-size: var(--fz-s); background: var(--panel);
+}
+.empty b { color: var(--text); font-weight: 600; }
+.hint { font-size: var(--fz-xs); color: var(--text-dim2); }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── 标签页（详情区切换）：膜内凹槽 + 分段胶囊，不画底线（避免与凹槽边框叠成双线）── */
+.tabs {
+  display: flex; align-items: center; gap: 2px;
+  margin: var(--sp3) var(--sp4) 0; padding: 3px;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.tabs .tab {
+  height: 24px; padding: 0 var(--sp3); cursor: pointer; border: 0; border-radius: var(--r2);
+  background: transparent; color: var(--text-dim);
+  font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.tabs .tab:hover { color: var(--text); background-color: var(--panel2); }
+.tabs .tab[aria-selected="true"] {
+  color: var(--acc-hover); background-color: var(--panel3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ── 进度条（银条；只做状态显示）────────────────────────────────── */
+.bar { height: 4px; background: var(--panel4); border-radius: var(--r); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--acc); }
+.bar.ok > i { background: var(--ok); }
+.bar.warn > i { background: var(--warn); }
+.bar.bad > i { background: var(--bad); }
+
+/* ── 代码/日志块：.glass-well 口径（膜内凹槽，不铺毛玻璃）──────────────
+   长文本上再叠一层 backdrop-filter 是纯浪费帧率，凹槽靠 bg-deep + 内描边成像。 */
+.code {
+  margin: 0; padding: var(--sp2);
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line); border-radius: var(--r2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  font-family: var(--mono); font-size: var(--fz-xs);
+  color: var(--text-dim); overflow: auto; max-height: 220px; white-space: pre-wrap; word-break: break-all;
+}
+.code .k { color: var(--t-text); }
+.code .ok { color: var(--ok); }
+.code .bad { color: var(--bad-ink); }
+
+/* ── 窄屏（≤900px）：悬浮板全部取消外边距、贴边全宽，卡片不再上浮 ─────
+   blur 的降档在 tokens.css 的 @media (max-width:900px) 里（--glass-blur →
+   blur(12px)），骨架一律引用 var(--glass-blur)，所以这里不用再写一遍 blur。 */
+@media (max-width: 900px) {
+  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .body > .aside {
+    margin: 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none;
+    max-height: 42vh;   /* 侧栏变成顶部条带，内部照旧滚动 */
+  }
+  .topbar { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .main-h { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none; }
+  .main-b { padding: var(--sp3); }
+  .main-f { margin: 0; border-width: 1px 0 0; border-radius: 0; box-shadow: none; }
+  .statusbar { padding: 0 var(--sp3); }
+  .tabs { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .grid2, .grid3 { gap: var(--sp2); }
+  /* 卡片不再上浮：hover 只提亮，位移与冷光一起收掉 */
+  .grid2 > .panel:hover, .grid3 > .panel:hover {
+    transform: none;
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+}
+/* ═══════════════════════════════════════════════════════════════════════
+   glass-skin.css —— 玻璃映射层（最后一遍）
+   ───────────────────────────────────────────────────────────────────────
+   定位：ui/tokens.css 定义「玻璃是什么」，本文件负责「把各页已经写好的
+   组件选择器映射到那套配方上」。页面源件里只留自己的结构与排版，不再各写
+   一份 background/border/blur/shadow。
+
+   为什么单独一层而不是逐组件改：
+     七个页面 + 帧检视器共 543KB 源，卡片族有 40 多个类名，逐个改一遍既容易
+     漏、又会在下一次改令牌时全部失配。映射层只做增量：圆角补齐、hover 三件套、
+     侧栏悬浮、弹窗居中、控件玻璃化。谁想加新卡片，挂 .glass-card 即可。
+
+   注入位置：每个页面 <style> 的最后一行（构建期替换 /*__SKIN__*\/）。
+     放在最后 = 同权重规则里一定赢，所以整份文件不需要一个 !important。
+
+   三条规矩：
+     1. 只写「页面自己的类名 → 玻璃配方」，不新增色值，全部走 var()。
+     2. 不改布局栅格（列宽/行高/顺序由各页自持）；只加外边距让它浮起来。
+     3. 循环动画、彩色光晕、纯白文字一律不写（tools/lint_ui.mjs 会拦）。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 悬浮侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20）── */
+#sidenav,
+nav#rail,
+#pRail,
+aside,
+.aside {
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);      /* 膜必须由本层给：页面侧多为 transparent，靠 skin 兜底 */
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏内部滚到底时的圆角不露直角 */
+#sidenav, nav#rail, #pRail, aside { overflow-y: auto; }
+
+/* ── 2. 圆角补齐：还停在 12px 的卡片族一律抬到 16px ───────────────── */
+.card,
+.style-card,
+.ai-card,
+.gen-card,
+.work-item,
+.opt,
+.honest,
+.summary,
+.reco,
+.prow,
+.np-row,
+.legend,
+.tip,
+#toast,
+.toast,
+.loaded,
+.errcard,
+.svc,
+.node,
+.wp,
+.stage-chip,
+.field,
+.empty {
+  border-radius: var(--r3);
+}
+
+/* 输入框：规范要求 16px（按钮 12px，别混） */
+select,
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="password"],
+input[type="url"],
+textarea {
+  border-radius: var(--r3);
+}
+
+/* ── 3. hover 三件套：提亮 + 亮边 + 上浮 3px + 一圈冷光 ────────────── */
+.card,
+.style-card,
+.work-item,
+.opt,
+.np-row,
+.loaded {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.card:hover,
+.style-card:hover,
+.work-item:hover,
+.opt:hover,
+.np-row:hover,
+.loaded:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* 提示块不是可点目标：.honest / .summary / .svc 只提亮，不上浮（跟着鼠标跳会很脏） */
+.honest,
+.summary,
+.svc {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.honest:hover,
+.summary:hover,
+.svc:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+}
+
+/* 列表行 / 参数行：只在膜内提亮，不上浮（上浮会让 258 行变成果冻） */
+.row:hover,
+.list .row:hover,
+.prow:hover,
+.tier-head:hover,
+.wstep:hover,
+.rail-item:hover,
+.nav-item:hover,
+.wi-acts:hover {
+  background-color: var(--glass-hover);
+}
+
+/* ── 4. 悬浮工具条 / 弹窗 / Toast ─────────────────────────────────── */
+/* 画布顶部与参数板顶部的横条：同一条玻璃，圆角 16 */
+#canvasTop,
+.canvas-tools,
+.toolbar,
+.board-head,
+.main-h,
+.viewhead {
+  border-radius: var(--r3);
+}
+#canvasTop,
+.canvas-tools,
+.toolbar {
+  background-color: var(--glass);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 弹窗：居中 + 玻璃 + 16px；遮罩压暗但不铺纯黑 */
+.wiz,
+.modal,
+.dialog,
+.panel-pop {
+  background-color: var(--panel);
+  background-image: var(--sheen);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 弹层遮罩只负责压暗与居中，毛玻璃档位交给页面自己（app 用 10px）。
+   这里若再写一份 blur(2px)，同权重且 skin 在后，会把页面的遮罩糊没了。 */
+#wizard,
+#forgeOverlay {
+  display: grid;
+  place-items: center;
+}
+
+/* Toast：玻璃胶囊，居中偏下 */
+#toast,
+.toast {
+  background-color: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 5. 画布：区域是深色凹槽，节点与属性面板是玻璃 ────────────────── */
+#nodeWrap {
+  margin: 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+#nodeWrap .legend,
+#nodeWrap .node,
+#estimator {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+#nodeWrap .node:hover {
+  border-color: var(--glass-line-hover);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 6. 表单控件：滑块轨道是膜内凹槽，拇指是一颗冷银 ─────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--panel4);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px; height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 1px solid var(--acc-hover);
+  box-shadow: 0 0 10px var(--glow-cool);
+  transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--acc-hover); }
+input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: var(--r-pill); background: var(--panel4);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--acc); border: 1px solid var(--acc-hover);
+}
+
+/* ── 7. 细节：风格图标去彩（emoji 只作字形，不作彩色贴纸）─────────── */
+.sc-emoji,
+.wi-emoji,
+.style-ico {
+  filter: grayscale(0.72) contrast(0.94);
+  opacity: 0.92;
+}
+
+/* 底部口径条 / 状态栏：细玻璃条，不做大圆角 */
+#statusbar,
+.statusbar,
+footer {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* 代码块 / 日志：膜内凹槽，别铺毛玻璃（长文本 blur 很贵） */
+.code,
+pre,
+.gout {
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+/* ── 8. 窄屏：侧栏取消外边距，改为贴边全宽；卡片不再上浮 ─────────── */
+@media (max-width: 900px) {
+  #sidenav,
+  nav#rail,
+  #pRail,
+  aside,
+  .aside {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .card:hover,
+  .style-card:hover,
+  .work-item:hover,
+  .opt:hover,
+  .honest:hover,
+  .summary:hover,
+  .np-row:hover,
+  .loaded:hover,
+  .svc:hover {
+    transform: none;
+  }
+  #nodeWrap { margin: 0; border-radius: 0; }
+}
+
+/* VisInter 专属：只补版式（模式条 / 风险行 / 弹窗遮罩），色值与圆角全部走令牌 */
+.vi-modes { display: flex; gap: var(--sp2); }
+.vi-modes .btn { flex: 1; height: 30px; letter-spacing: .14em; }
+.vi-modes .btn[aria-pressed="true"] { border-color: var(--acc-hover); color: var(--acc-hover); background: var(--panel4); box-shadow: var(--glow); }
+
+.vi-banner {
+  display: flex; gap: var(--sp2); align-items: baseline;
+  padding: var(--sp2) var(--sp3); margin-bottom: var(--sp3);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  border-radius: var(--r2); background: var(--panel2);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  font-size: var(--fz-s); color: var(--text-dim);
+}
+.vi-banner b { color: var(--warn); font-weight: 600; letter-spacing: .08em; }
+
+.vi-risk {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: var(--sp2);
+  align-items: center; padding: var(--sp2) var(--sp3); margin-top: var(--sp2);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  border-radius: var(--r2); background: var(--panel2);
+}
+.vi-risk[data-level="high"] { border-left-color: var(--bad); }
+.vi-risk .lv { font-size: var(--fz-xs); letter-spacing: .1em; color: var(--warn); }
+.vi-risk[data-level="high"] .lv { color: var(--bad-ink); }
+.vi-risk .tx { font-size: var(--fz-s); color: var(--text); line-height: 1.55; }
+.vi-risk .dt { font-size: var(--fz-xs); color: var(--text-dim2); font-family: var(--mono); margin-top: 2px; }
+
+.vi-mask {
+  position: fixed; inset: 0; z-index: 40; display: none;
+  align-items: center; justify-content: center; padding: var(--sp4);
+  background: rgba(8, 8, 10, .62);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.vi-mask.on { display: flex; }
+.vi-mask .panel { width: min(560px, 100%); }
+.vi-mask .panel-b { max-height: 60vh; overflow: auto; }
+.vi-actions { display: flex; gap: var(--sp2); justify-content: flex-end; margin-top: var(--sp3); }
+
+.vi-pill {
+  display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 7px;
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  font-size: var(--fz-xs); color: var(--text-dim); letter-spacing: .06em;
+}
+.vi-pill[data-tone="ok"] { border-color: var(--ok); color: var(--ok); }
+.vi-pill[data-tone="warn"] { border-color: var(--warn); color: var(--warn); }
+.vi-pill[data-tone="bad"] { border-color: var(--bad); color: var(--bad-ink); }
+.vi-line { font-size: var(--fz-s); color: var(--text-dim); line-height: 1.7; }
+.vi-line b { color: var(--text); font-weight: 500; }
+.vi-mono { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim); word-break: break-all; }
+.vi-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp2); }
+.vi-fields .input { height: 26px; }
+@media (max-width: 1100px) { .vi-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vi-ta { min-height: 74px; line-height: 1.55; }
+.vi-ta.tall { min-height: 128px; }
+.vi-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp2); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><b>VisInter</b><span>智能装配 · 开源管线</span></div>
+    <div class="crumbs">wan2.2 <i>/</i> IP-Adapter 定妆 <i>/</i> FaceDetailer</div>
+    <div class="spacer"></div>
+    <span class="vi-pill" id="pill-store">存储：检测中</span>
+    <a class="btn ghost" data-backlink href="../app/index.html">← 工作台</a>
+    <button class="btn mini" id="btn-selfcheck">一键自检</button>
+    <button class="btn mini" id="btn-selfrun">跑 4 张</button>
+    <span class="vi-pill" id="pill-selfcheck" data-tone="warn">inferred</span>
+  </header>
+
+  <div class="body">
+    <aside class="aside">
+      <div class="aside-h"><span>装配条件</span><div class="spacer"></div><span class="vi-pill" id="pill-mode">小白一键</span></div>
+      <div class="aside-b">
+        <div class="panel">
+          <div class="panel-h">模式</div>
+          <div class="panel-b">
+            <div class="vi-modes">
+              <button class="btn" id="m-novice" aria-pressed="true">小白一键</button>
+              <button class="btn" id="m-expert" aria-pressed="false">专家模式</button>
+            </div>
+            <div class="vi-line" style="margin-top:var(--sp2)" id="mode-note"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">一句话描述</div>
+          <div class="panel-b">
+            <textarea class="textarea vi-ta" id="txt" rows="3" placeholder="例：雨夜街头，一个女孩回眸，车灯勾出发丝轮廓"></textarea>
+            <div class="vi-line" style="margin-top:var(--sp2)">识别到人物会自动拼人像词并开人脸模块；风景/静物会摘掉人像词并关模块。开关仍可手动反向。</div>
+            <button class="btn acc" id="btn-plan" style="width:100%;margin-top:var(--sp2);height:30px">生成装配</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">关键参数 <span class="spacer"></span><span class="vi-pill">258 全开放 · 同源</span></div>
+          <div class="panel-b">
+            <div class="vi-fields" id="fields"></div>
+            <div class="vi-line" style="margin-top:var(--sp2)">这 6 个键与 <b>web/params.html</b> 的 258 全量参数共用一份存储（avp.shell.store.v1），两边改动实时互通。</div>
+            <button class="btn mini" id="btn-preset" style="margin-top:var(--sp2)">切换推荐预设</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">角色设定 <span class="spacer"></span><span class="vi-pill" id="pill-char">【AI提取】</span></div>
+          <div class="panel-b">
+            <label class="field">脸型（ch.face_shape）<select class="input" id="face"></select></label>
+            <div class="vi-line" id="char-line" style="margin-top:var(--sp2)">—</div>
+            <div class="vi-line" id="char-note" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-h"><h2>装配结果</h2><span class="sub" id="sub-result">尚未装配</span><div class="spacer"></div><button class="btn acc" id="btn-submit">提交生成</button></div>
+      <div class="main-b">
+        <div class="vi-banner"><b>提示</b><span id="banner"></span></div>
+
+        <div class="panel">
+          <div class="panel-h">主体与联动</div>
+          <div class="panel-b">
+            <div class="vi-line" id="subject-line">—</div>
+            <div class="vi-line" id="linkage-line" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">提示词 <span class="spacer"></span><span class="vi-pill" id="pill-prompt">自动</span></div>
+          <div class="panel-b">
+            <label class="field">正向（Muse + 人像）<textarea class="textarea vi-ta tall" id="pos" rows="5"></textarea></label>
+            <label class="field" style="margin-top:var(--sp2)">负面<textarea class="textarea vi-ta" id="neg" rows="3"></textarea></label>
+            <div class="vi-line" style="margin-top:var(--sp2)">手改后自动填充不再覆盖；清空则交给模型。</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">风险检测 <span class="spacer"></span><span class="vi-pill" id="pill-risk" data-tone="ok">0 条</span></div>
+          <div class="panel-b" id="risks"><div class="vi-line">点「生成装配」后列出触发的风险；不拦截提交。</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">自检 <span class="spacer"></span><span class="vi-pill" id="pill-self2" data-tone="warn">inferred</span></div>
+          <div class="panel-b" id="selfcheck"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="st">就绪</span>
+    <div class="spacer"></div>
+    <span class="num" id="st-num"></span>
+  </footer>
+</div>
+
+<div class="vi-mask" id="mask">
+  <div class="panel">
+    <div class="panel-h">风险提示 <span class="spacer"></span><span class="vi-pill" id="mask-count" data-tone="warn">0</span></div>
+    <div class="panel-b" id="mask-body"></div>
+    <div class="panel-b"><div class="vi-actions">
+      <button class="btn" id="btn-cancel">返回调整</button>
+      <button class="btn" id="btn-preset2">切换推荐预设</button>
+      <button class="btn acc" id="btn-go">继续生成</button>
+    </div></div>
+  </div>
+</div>
+
+<script>
+window.__SNAP = {
+  "generatedAt": "2026-11-18T14:41:34.768Z",
+  "schema": "ai-video-platform/visinter.agent",
+  "version": "0.1.0",
+  "banner": "💡 智能风险检测已开启：所有参数完全自由自定义，高风险配置仅提示，不限制提交",
+  "pipeline": {
+    "name": "VisInter-Agent",
+    "backend": "wan2.2 (ComfyUI 本地)",
+    "cloud_required": false,
+    "ark_key_required": false,
+    "billing": "0 元/张（本机算力；IP-Adapter / FaceDetailer 都是本地节点，无额外计费）",
+    "params_open": 258,
+    "honesty": "缺 ComfyUI / 缺模型文件一律 fail 并给出路径，未跑自检标 inferred，只有 4 张实测通过才标 measured"
+  },
+  "modes": {
+    "novice": {
+      "label": "小白一键",
+      "auto_fill": true,
+      "fills": [
+        "kf.prompt_prefix",
+        "kf.negative",
+        "kf.sampler",
+        "kf.steps",
+        "kf.cfg",
+        "mo.strength",
+        "kf.ipadapter_weight",
+        "kf.face_denoise",
+        "kf.identity_weight"
+      ],
+      "note": "填充后仍全部可改；改过的键下次不再自动填（用户优先）"
+    },
+    "expert": {
+      "label": "专家模式",
+      "auto_fill": false,
+      "fills": [],
+      "note": "不填值、不覆盖，只跑风险检测与提示词 lint"
+    }
+  },
+  "prompts": {
+    "muse_positive": "cinematic emotional storytelling, 35mm film shot, soft rim side light, volumetric haze, shallow depth of field, bokeh background, subtle film grain, gentle dark vignette, tiny breathing micro shake, natural color grading, teal and orange tone, foreground-midground-background layered composition, rule of thirds, quiet atmosphere, realistic texture, natural skin texture, soft highlight, stable face structure, consistent facial features, smooth slow motion, slight natural movement, no drastic camera shake, realistic environment detail, lifelike fabric and hair detail",
+    "portrait_positive": "pure chinese young girl, delicate facial features, big clear double eyelids, long curled eyelashes, straight high nose bridge, slim V-shaped face, soft natural makeup, light blush, glossy lips, silky black hair with broken strands around face, on-camera beauty, coordinated facial proportion",
+    "negative": "distorted face, deformed limbs, extra fingers, missing fingers, blurry, overexposed, underexposed, flat lighting, oversaturated, neon clutter, CGI, cartoon, anime, ugly, asymmetrical face, messy motion, fast violent shake, warped body, floating limbs, watermark, text, logo, bad anatomy, plastic fake skin, heavy filter, ghosting, frame jump, flickering face",
+    "note": "三条提示词都进输入框且可清空；自动拼接顺序 = muse_positive + (人像时) portrait_positive。负面里没有『no visible pores』类条款——那与 reverse.capabilities 的皮相结论冲突。"
+  },
+  "presets": {
+    "stable": {
+      "kf.sampler": "dpmpp_2m_sde",
+      "kf.steps": 30,
+      "kf.cfg": 5.5,
+      "mo.strength": 0.45,
+      "kf.ipadapter_weight": 0.75,
+      "kf.identity_weight": 0.8,
+      "kf.face_denoise": 0.4,
+      "kf.scheduler": "karras"
+    },
+    "note": "ComfyUI 界面上叫 DPM++ 2M SDE Karras，但平台注册表 kf.sampler 是枚举（euler/euler_a/dpmpp_2m/dpmpp_2m_sde/dpmpp_3m_sde/uni_pc/lcm），Karras 属于 kf.scheduler。所以 stable 预设落库为 sampler=dpmpp_2m_sde + scheduler=karras，展示名放 display.sampler_ui —— 直接写 'DPM++ 2M SDE Karras' 进 kf.sampler 会被 coerce 回落默认，那才是静默降级。运动 bucket 0.3~0.6 取 0.45；IP-Adapter 0.75 是甜区，>0.9 会锁死表情。",
+    "display": {
+      "sampler_ui": "DPM++ 2M SDE Karras"
+    }
+  },
+  "resolutions": [
+    "1080*1920",
+    "1920*1080",
+    "1440*1440",
+    "1248*1632",
+    "1632*1248",
+    "480*832",
+    "832*480",
+    "624*624"
+  ],
+  "risk_rules": [
+    {
+      "id": "resolution",
+      "label": "分辨率非法",
+      "level": "warn",
+      "checker": "resolution",
+      "applies_to": "all",
+      "text": "当前分辨率非官方标准档位，可能出现画面拉伸、黑屏、报错、畸形画面，是否仍要使用自定义分辨率生成？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "motion",
+      "label": "运动幅度过高",
+      "level": "high",
+      "checker": "motion",
+      "applies_to": "all",
+      "text": "运动强度过高，高概率出现人脸闪烁、肢体变形、画面抖动、镜头撕裂、AI幻觉漂移，是否继续高运动强度生成？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "cfg",
+      "label": "CFG 异常",
+      "level": "high",
+      "checker": "cfg",
+      "applies_to": "all",
+      "text": "CFG 数值超出稳定区间，过高=画面畸形扭曲、崩脸；过低=画面模糊、细节丢失、风格弱化，是否继续？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "steps",
+      "label": "采样步数过低",
+      "level": "warn",
+      "checker": "steps",
+      "applies_to": "all",
+      "text": "采样步数过低，画面大概率糊脸、质感缺失、达不到 Muse 电影效果，是否继续生成？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "grade_stack",
+      "label": "多重调色叠加",
+      "level": "warn",
+      "checker": "grade_stack",
+      "applies_to": "all",
+      "text": "当前叠加多重调色滤镜，可能出现色彩错乱、频闪、画面脏色、风格混乱，是否继续？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    },
+    {
+      "id": "face_off",
+      "label": "关闭人脸模块",
+      "level": "high",
+      "checker": "face_off",
+      "applies_to": "portrait",
+      "text": "已关闭 AI 人脸精修 & 人物一致性锁定，人像可能五官崩坏、脸跳、质感丢失，是否继续？",
+      "buttons": [
+        "继续生成",
+        "切换推荐预设"
+      ]
+    }
+  ],
+  "risk_thresholds": {
+    "motion_max": 0.6,
+    "cfg_min": 4,
+    "cfg_max": 7.5,
+    "steps_min": 20,
+    "grade_stack_count": 2,
+    "grade_params": [
+      "lk.lut",
+      "lk.bloom",
+      "lk.chroma",
+      "lk.sharpen",
+      "lk.screen_tone",
+      "lk.lut_strength"
+    ],
+    "face_params": [
+      "kf.ipadapter_weight",
+      "kf.face_denoise"
+    ]
+  },
+  "linkage": {
+    "portrait": {
+      "keywords": [
+        "女孩",
+        "女生",
+        "少女",
+        "女人",
+        "男子",
+        "男人",
+        "少年",
+        "人像",
+        "模特",
+        "主角",
+        "他",
+        "她",
+        "人脸",
+        "侧脸",
+        "特写",
+        "portrait",
+        "girl",
+        "boy",
+        "woman",
+        "man",
+        "face"
+      ],
+      "add_positive": [
+        "portrait_positive"
+      ],
+      "enable": {
+        "kf.ipadapter_weight": 0.75,
+        "kf.identity_weight": 0.8,
+        "kf.face_denoise": 0.4
+      },
+      "note": "人像场景：Muse 氛围包 + IP-Adapter 定妆参考 + FaceDetailer 同时启用；参考图存在才有意义（ch.ref_images 为空时如实提示）"
+    },
+    "landscape": {
+      "keywords": [
+        "风景",
+        "山",
+        "海",
+        "湖",
+        "森林",
+        "城市",
+        "街道",
+        "建筑",
+        "静物",
+        "花",
+        "天空",
+        "夜景",
+        "雪",
+        "沙漠",
+        "河",
+        "landscape",
+        "scenery",
+        "mountain",
+        "street",
+        "still life"
+      ],
+      "drop_positive": [
+        "portrait_positive"
+      ],
+      "disable": {
+        "kf.ipadapter_weight": 0,
+        "kf.face_denoise": 0,
+        "kf.identity_weight": 0
+      },
+      "note": "风景/静物：只留 Muse 氛围包；人脸模块关但开关保留，用户可手动反向开启"
+    }
+  },
+  "face_presets": {
+    "note": "场景脸型预设：提示词没写脸型时按场景给默认（不是硬覆盖，UI 标【AI提取】且可改）。Muse 电影氛围与抖音网红人像都优先瓜子/V 脸——这是 reverse.capabilities#douyin-face 的骨相结论前置到 UI 层。",
+    "scenes": [
+      {
+        "id": "muse",
+        "match": [
+          "muse",
+          "氛围感",
+          "电影感",
+          "情绪",
+          "朦胧",
+          "空气感",
+          "cinematic"
+        ],
+        "face": "瓜子",
+        "reason": "Muse 氛围人像：瓜子脸 + 下颌收窄是本风格骨相锚点"
+      },
+      {
+        "id": "douyin",
+        "match": [
+          "网红",
+          "抖音",
+          "纯欲",
+          "网感",
+          "influencer",
+          "douyin"
+        ],
+        "face": "瓜子",
+        "reason": "抖音网红人像：V 脸骨相三件套之一，缺了会退回鹅蛋/圆脸"
+      },
+      {
+        "id": "anime",
+        "match": [
+          "二次元",
+          "动漫",
+          "漫画",
+          "anime"
+        ],
+        "face": "瓜子",
+        "reason": "二次元人设通用小 V 脸"
+      }
+    ],
+    "keyword_map": [
+      {
+        "re": "V脸|V 脸|v脸|小V脸|瓜子脸|瓜子|尖脸",
+        "face": "瓜子"
+      },
+      {
+        "re": "圆脸|娃娃脸|婴儿肥",
+        "face": "圆"
+      },
+      {
+        "re": "方脸|国字脸|棱角脸",
+        "face": "方"
+      },
+      {
+        "re": "鹅蛋脸|鹅蛋",
+        "face": "鹅蛋"
+      },
+      {
+        "re": "长脸|马脸",
+        "face": "长"
+      },
+      {
+        "re": "心形脸|桃心脸|倒三角",
+        "face": "心形"
+      }
+    ]
+  },
+  "selfcheck": {
+    "label": "一键自检",
+    "shots": [
+      {
+        "id": "bone-1",
+        "kind": "bone",
+        "tier": "1K",
+        "ratio": "9:16",
+        "size": "800x1424",
+        "checks": [
+          "face_structure",
+          "v_shape"
+        ],
+        "seed": 11
+      },
+      {
+        "id": "bone-2",
+        "kind": "bone",
+        "tier": "1K",
+        "ratio": "9:16",
+        "size": "800x1424",
+        "checks": [
+          "face_structure"
+        ],
+        "seed": 11
+      },
+      {
+        "id": "hero-1",
+        "kind": "hero",
+        "tier": "1.5K",
+        "ratio": "9:16",
+        "size": "1152x2048",
+        "checks": [
+          "pores",
+          "dewy_highlight",
+          "catchlight"
+        ],
+        "seed": 21
+      },
+      {
+        "id": "hero-2",
+        "kind": "hero",
+        "tier": "1.5K",
+        "ratio": "9:16",
+        "size": "1152x2048",
+        "checks": [
+          "pores",
+          "dewy_highlight",
+          "catchlight"
+        ],
+        "seed": 21
+      }
+    ],
+    "model_requirements": [
+      {
+        "slot": "lora",
+        "name": "influencerBeauty_v1",
+        "node": "LoraLoader",
+        "path_hint": "ComfyUI/models/loras/influencerBeauty_v1.safetensors",
+        "node_types": [
+          "LoraLoader",
+          "LoraLoaderModelOnly"
+        ],
+        "files": [
+          "influencerBeauty_v1.safetensors",
+          "influencerBeauty.safetensors"
+        ],
+        "folder": "loras"
+      },
+      {
+        "slot": "ipadapter",
+        "name": "ip-adapter-faceid-sdxl",
+        "node": "IPAdapterFaceID",
+        "path_hint": "ComfyUI/models/ipadapter/ip-adapter-faceid_sdxl.bin",
+        "node_types": [
+          "IPAdapterFaceID",
+          "IPAdapterAdvanced",
+          "IPAdapterUnifiedLoader"
+        ],
+        "files": [
+          "ip-adapter-faceid_sdxl.bin",
+          "ip-adapter-faceid_sdxl_fp16.safetensors",
+          "ip-adapter-plus_sdxl_vit-h.bin"
+        ],
+        "folder": "ipadapter"
+      },
+      {
+        "slot": "face_detailer",
+        "name": "FaceDetailer",
+        "node": "FaceDetailer",
+        "path_hint": "ComfyUI/custom_nodes/ComfyUI-Impact-Pack",
+        "node_types": [
+          "FaceDetailer",
+          "FaceDetailerPipe"
+        ],
+        "files": [
+          "ComfyUI-Impact-Pack",
+          "ComfyUI-Impact-Subpack"
+        ],
+        "folder": "custom_nodes"
+      }
+    ],
+    "layers": {
+      "note": "自检分两层：global（ComfyUI 可达 + 基础节点）与 face（LoRA/IPAdapter/FaceDetailer）。face 层缺失只封人像，不封风景——Muse 氛围管线不依赖人脸节点。",
+      "global_nodes": [
+        "CheckpointLoaderSimple",
+        "KSampler",
+        "SaveImage"
+      ],
+      "face_nodes": [
+        "LoraLoader",
+        "IPAdapterFaceID",
+        "FaceDetailer"
+      ]
+    },
+    "report": {
+      "note": "自检报告三块：模型加载状态（真实查节点与模型文件）、人脸一致性、质感评分。后两项没有 VL 模型时只能给规则代理值，必须标 provenance:'rule-proxy' 且 not_visual:true，不许冒充模型评分。",
+      "fields": [
+        {
+          "id": "models_loaded",
+          "label": "模型加载状态",
+          "provenance": "measured"
+        },
+        {
+          "id": "face_consistency",
+          "label": "人脸一致性",
+          "provenance": "rule-proxy",
+          "not_visual": true,
+          "reason": "按 4 张测试图的同一角色设定与参考图路径计数，不是视觉比对"
+        },
+        {
+          "id": "texture_score",
+          "label": "质感评分",
+          "provenance": "rule-proxy",
+          "not_visual": true,
+          "reason": "按出图字节/像素与是否带颗粒参数估算，不是 VL 画质分"
+        }
+      ]
+    },
+    "status_words": {
+      "inferred": "未跑自检；配方来源为文档/推理，不是实测",
+      "measured": "4 张实测通过（骨相 ×2 + 定妆 ×2），LoRA/IPAdapter/FaceDetailer 加载成功",
+      "fail": "缺 ComfyUI 或模型文件；给出 path_hint"
+    },
+    "status": "inferred",
+    "reason": "未跑自检（构建期快照）。点页面「一键自检」走后端 /api/visinter/selfcheck 探 ComfyUI 与模型文件。"
+  },
+  "defaults": {
+    "kf.resolution": 1536,
+    "kf.ratio": "16:9",
+    "kf.steps": 24,
+    "kf.cfg": 4.5,
+    "kf.sampler": "dpmpp_2m",
+    "mo.strength": 0.55,
+    "kf.ipadapter_weight": 0.75,
+    "kf.identity_weight": 1,
+    "kf.face_denoise": 0.35,
+    "lk.lut": "东方暖调",
+    "lk.bloom": 20,
+    "lk.chroma": 8,
+    "lk.sharpen": 30,
+    "lk.screen_tone": 15,
+    "lk.lut_strength": 70,
+    "ch.ref_images": 2,
+    "kf.negative": "低质量, 模糊, 水印, 文字, 变形, 塑料感",
+    "ch.face_shape": "鹅蛋",
+    "ch.subject": "一个24岁的中国女孩，鹅蛋脸，黑色长直发，米色针织衫，站在窗边"
+  },
+  "registry": {
+    "version": "0.1.0",
+    "total": 258,
+    "staged": {
+      "total": 258,
+      "l3": 43,
+      "l4": 215
+    }
+  }
+};
+</script>
+<script>
+(function () {
+  'use strict';
+  var S = window.__SNAP || null;
+  var API = location.protocol.indexOf('http') === 0;
+  var state = { mode: 'novice', plan: null, manual: {}, manualKeys: [], promptEdited: false, negEdited: false, extracted: {}, link: null };
+  var FACE_OPTIONS = ['瓜子', '鹅蛋', '圆', '方', '长', '心形'];
+
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function notice(t) { el('st').textContent = t; }
+
+  if (!S) { notice('缺 window.__SNAP：先跑 node tools/snap_visinter.mjs 与 node tools/build_module.mjs visinter'); return; }
+  el('banner').textContent = S.banner;
+  el('mode-note').textContent = S.modes.novice.note;
+
+  /* ───── 共享存储：与 web/params.html、canvas、外壳同一份 avp.shell.store.v1 ───── */
+  var SHELL_KEY = 'avp.shell.store.v1';
+  var SHELL_SCHEMA = 'ai-video-platform/shell.store';
+
+  function readStore() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SHELL_KEY) || 'null');
+      if (!s || s.schema !== SHELL_SCHEMA || !s.active) return null;
+      var p = s.projects && s.projects[s.active];
+      return p && p.values ? { store: s, project: p } : null;
+    } catch (e) { return null; }
+  }
+
+  function paintStore(linked) {
+    var p = el('pill-store');
+    p.textContent = linked ? '存储：已联动「' + linked.project.name + '」' : '存储：独立模式（未建项目）';
+    p.setAttribute('data-tone', linked ? 'ok' : 'warn');
+    state.link = linked;
+  }
+
+  function writeStore(patch, alsoKeys) {
+    var b = readStore();
+    if (!b) return false;
+    var p = b.project;
+    for (var k in patch) p.values[k] = patch[k];
+    if (alsoKeys && alsoKeys.length) {
+      // 手改清单也持久化：换标签页/刷新后仍然知道哪些键是用户定的
+      p.manualKeys = Array.from(new Set([].concat(p.manualKeys || [], alsoKeys)));
+    }
+    p.updatedAt = new Date().toISOString();
+    try { localStorage.setItem(SHELL_KEY, JSON.stringify(b.store)); return true; } catch (e) { return false; }
+  }
+
+  function storeValues() {
+    var b = readStore();
+    return b ? b.project.values : null;
+  }
+
+  // 6 个关键键：先取共享存储（258 全量里的子集），没有才用快照默认
+  function baseValue(k) {
+    var v = storeValues();
+    if (v && v[k] != null) return v[k];
+    return S.defaults[k] != null ? S.defaults[k] : '';
+  }
+
+  /* ── 关键参数输入 ── */
+  var FIELDS = [
+    { k: 'kf.cfg', label: 'CFG', type: 'number', step: 0.1 },
+    { k: 'kf.steps', label: '采样步数', type: 'number', step: 1 },
+    { k: 'mo.strength', label: '运动幅度', type: 'number', step: 0.05 },
+    { k: 'kf.resolution', label: '长边像素', type: 'number', step: 1 },
+    { k: 'kf.face_denoise', label: '人脸精修强度', type: 'number', step: 0.05 },
+    { k: 'kf.ipadapter_weight', label: '定妆参考权重', type: 'number', step: 0.05 }
+  ];
+  var writeTimer = 0;
+  function renderFields() {
+    var box = el('fields');
+    box.innerHTML = '';
+    FIELDS.forEach(function (f) {
+      var lab = document.createElement('label');
+      lab.className = 'field';
+      lab.textContent = f.label + ' · ' + f.k;
+      var inp = document.createElement('input');
+      inp.className = 'input';
+      inp.type = f.type; inp.step = f.step;
+      inp.dataset.key = f.k;
+      inp.value = baseValue(f.k);
+      inp.addEventListener('input', function () {
+        var v = f.type === 'number' ? Number(inp.value) : inp.value;
+        state.manual[f.k] = v;
+        if (state.manualKeys.indexOf(f.k) < 0) state.manualKeys.push(f.k);
+        clearTimeout(writeTimer);
+        writeTimer = setTimeout(function () {
+          var patch = {}; patch[f.k] = v;
+          var ok = writeStore(patch, [f.k]);
+          notice('已记录手改 ' + f.k + ' = ' + v + (ok ? '（已写回 258 全量存储）' : '（独立模式：仅本次会话）'));
+        }, 200);
+      });
+      lab.appendChild(inp);
+      box.appendChild(lab);
+    });
+  }
+
+  /* ── 脸型（AI 提取 + 可手改） ── */
+  (function initFaceSelect() {
+    var sel = el('face');
+    var cur = baseValue('ch.face_shape');
+    FACE_OPTIONS.forEach(function (f) {
+      var o = document.createElement('option');
+      o.value = f; o.textContent = f === '瓜子' ? '瓜子（V 脸）' : f;
+      if (String(cur) === f) o.selected = true;
+      sel.appendChild(o);
+    });
+    if (!cur) sel.value = '鹅蛋';
+  })();
+  el('face').addEventListener('change', function () {
+    var v = el('face').value;
+    state.manual['ch.face_shape'] = v;
+    if (state.manualKeys.indexOf('ch.face_shape') < 0) state.manualKeys.push('ch.face_shape');
+    writeStore({ 'ch.face_shape': v }, ['ch.face_shape']);
+    el('pill-char').textContent = '【手改】';
+    el('pill-char').setAttribute('data-tone', 'ok');
+    notice('脸型已手改：' + v + '（写回全量参数，AI 不再覆盖）');
+    if (state.plan) plan();
+  });
+
+  /* ── 提示词 ── */
+  el('pos').value = S.prompts.muse_positive;
+  el('neg').value = S.prompts.negative;
+  el('pos').addEventListener('input', function () {
+    state.promptEdited = true;
+    if (state.manualKeys.indexOf('kf.prompt_prefix') < 0) state.manualKeys.push('kf.prompt_prefix');
+    el('pill-prompt').textContent = '手改';
+    writeStore({ 'kf.prompt_prefix': el('pos').value }, ['kf.prompt_prefix']);
+  });
+  el('neg').addEventListener('input', function () {
+    state.negEdited = true;
+    if (state.manualKeys.indexOf('kf.negative') < 0) state.manualKeys.push('kf.negative');
+    writeStore({ 'kf.negative': el('neg').value }, ['kf.negative']);
+  });
+
+  /* ── 模式 ── */
+  function setMode(m) {
+    state.mode = m === 'expert' ? 'expert' : 'novice';
+    el('m-novice').setAttribute('aria-pressed', String(state.mode === 'novice'));
+    el('m-expert').setAttribute('aria-pressed', String(state.mode === 'expert'));
+    el('pill-mode').textContent = S.modes[state.mode].label;
+    el('mode-note').textContent = S.modes[state.mode].note;
+  }
+  el('m-novice').addEventListener('click', function () { setMode('novice'); });
+  el('m-expert').addEventListener('click', function () { setMode('expert'); });
+  setMode('novice');
+
+  /* ── 装配 ── */
+  function currentValues() {
+    var v = {};
+    for (var e in state.extracted) v[e] = state.extracted[e];
+    for (var k in state.manual) v[k] = state.manual[k];
+    if (state.promptEdited) v['kf.prompt_prefix'] = el('pos').value;
+    if (state.negEdited) v['kf.negative'] = el('neg').value;
+    return v;
+  }
+
+  function paintCharacter(ch) {
+    if (!ch) return;
+    if (ch.patch) state.extracted = ch.patch;
+    var face = ch.face_shape || {};
+    var src = face.source === 'keyword' ? '关键词' : face.source === 'scene' ? '场景预设' : '未识别';
+    el('char-line').innerHTML = '脸型：<b>' + esc(face.value || '（保持当前）') + '</b> · <span class="vi-mono">' + esc(src) + '｜' + esc(face.evidence || '') + '</span>';
+    el('char-note').innerHTML = '场景：' + esc((ch.scene && ch.scene.id) || '—') + '｜' + esc((ch.scene && ch.scene.reason) || '') + (ch.preconditions_applied && ch.preconditions_applied.length ? '<br>已应用前置条件：主体句删除「' + esc(ch.preconditions_applied.map(function (x) { return x.find; }).join('、')) + '」' : '');
+    if (!state.manualKeys.length || state.manualKeys.indexOf('ch.face_shape') < 0) {
+      el('pill-char').textContent = '【AI提取】';
+      el('pill-char').setAttribute('data-tone', 'warn');
+      if (face.value) el('face').value = face.value;
+    }
+  }
+
+  function renderPlan(p) {
+    state.plan = p;
+    el('sub-result').textContent = p.mode_label + ' · 主体 ' + p.subject + ' · 填充 ' + p.applied.length + ' 项';
+    el('subject-line').innerHTML = '主体识别：<b>' + esc(p.subject) + '</b>（portrait ' + p.subject_detail.scores.portrait + ' / landscape ' + p.subject_detail.scores.landscape + '）<br><span class="vi-mono">' + esc(p.subject_detail.rule) + '</span>';
+    var link = p.linkage.enabled && Object.keys(p.linkage.enabled).length ? '开启 ' + JSON.stringify(p.linkage.enabled) : (p.linkage.disabled.length ? '关闭 ' + p.linkage.disabled.join(', ') : '无联动');
+    el('linkage-line').innerHTML = esc(link) + '<br><span class="vi-mono">' + esc(p.linkage.note) + '</span>';
+
+    // 装配值回写到输入框（手改过的键不回写）：否则用户看到的还是默认值，以为没填充
+    FIELDS.forEach(function (f) {
+      if (state.manualKeys.indexOf(f.k) >= 0) return;
+      var inp = document.querySelector('.input[data-key="' + f.k + '"]');
+      if (inp && p.values[f.k] != null) inp.value = p.values[f.k];
+    });
+    if (!state.promptEdited && p.values['kf.prompt_prefix']) { el('pos').value = p.values['kf.prompt_prefix']; el('pill-prompt').textContent = p.subject === 'portrait' ? 'Muse+人像' : 'Muse'; }
+    if (!state.negEdited && p.values['kf.negative']) el('neg').value = p.values['kf.negative'];
+    paintCharacter(p.character);
+
+    var box = el('risks');
+    box.innerHTML = '';
+    el('pill-risk').textContent = p.risks.length + ' 条';
+    el('pill-risk').setAttribute('data-tone', p.risks.some(function (r) { return r.level === 'high'; }) ? 'bad' : (p.risks.length ? 'warn' : 'ok'));
+    if (!p.risks.length) { box.innerHTML = '<div class="vi-line">没有触发风险规则。' + (p.mode === 'expert' ? '（专家模式不自动填充，风险照检）' : '') + '</div>'; return; }
+    p.risks.forEach(function (r) {
+      var d = document.createElement('div');
+      d.className = 'vi-risk';
+      d.setAttribute('data-level', r.level);
+      d.innerHTML = '<div class="lv">' + (r.level === 'high' ? '高危' : '提醒') + '</div>'
+        + '<div><div class="tx">' + esc(r.text) + '</div><div class="dt">' + esc(JSON.stringify(r.detail)) + '</div></div>'
+        + '<div><button class="btn mini">继续生成</button></div>';
+      d.querySelector('button').addEventListener('click', function () { openMask(); });
+      box.appendChild(d);
+    });
+  }
+
+  function plan() {
+    if (!API) { notice('file:// 模式只展示内联规格；装配请用 node tools/serve.mjs 打开 http://127.0.0.1:8388/visinter/index.html'); return; }
+    notice('装配中…');
+    fetch('/api/visinter/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: el('txt').value, mode: state.mode, values: Object.assign({}, storeValues() || {}, currentValues()), manualKeys: state.manualKeys }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { notice('装配失败：' + d.error.message); return; }
+        renderPlan(d);
+        notice('装配完成 · ' + d.risks.length + ' 条风险（未拦截）');
+      })
+      .catch(function (e) { notice('装配失败：' + e.message); });
+  }
+  el('btn-plan').addEventListener('click', plan);
+
+  /* ── 预设 ── */
+  function applyPreset() {
+    var st = S.presets.stable;
+    var patch = {};
+    for (var k in st) {
+      var inp = document.querySelector('.input[data-key="' + k + '"]');
+      if (inp) { inp.value = st[k]; state.manual[k] = st[k]; if (state.manualKeys.indexOf(k) < 0) state.manualKeys.push(k); }
+      patch[k] = st[k];
+    }
+    writeStore(patch, state.manualKeys);
+    state.promptEdited = false; state.negEdited = false;
+    el('pos').value = S.prompts.muse_positive;
+    el('neg').value = S.prompts.negative;
+    el('pill-prompt').textContent = '自动';
+    closeMask();
+    notice('已切回推荐预设（已写回全量存储，仍可继续手改）');
+    plan();
+  }
+  el('btn-preset').addEventListener('click', applyPreset);
+  el('btn-preset2').addEventListener('click', applyPreset);
+
+  /* ── 弹窗 ── */
+  function openMask() {
+    var p = state.plan;
+    var list = p && p.risks ? p.risks : [];
+    el('mask-count').textContent = list.length;
+    el('mask-body').innerHTML = list.length
+      ? list.map(function (r) { return '<div class="vi-risk" data-level="' + r.level + '"><div class="lv">' + (r.level === 'high' ? '高危' : '提醒') + '</div><div class="tx">' + esc(r.text) + '</div><div></div></div>'; }).join('')
+      : '<div class="vi-line">没有风险项。</div>';
+    el('mask').classList.add('on');
+  }
+  function closeMask() { el('mask').classList.remove('on'); }
+  el('btn-cancel').addEventListener('click', closeMask);
+  el('btn-go').addEventListener('click', function () { closeMask(); submit(); });
+
+  /* ── 提交 ── */
+  function submit() {
+    if (!API) { notice('file:// 模式不能提交；请用 node tools/serve.mjs'); return; }
+    var values = currentValues();
+    notice('提交中…');
+    fetch('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'local', values: values, note: el('txt').value }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { notice('提交失败：' + d.error.code + ' ' + d.error.message + (d.error.detail && d.error.detail.hint ? '｜' + d.error.detail.hint : '')); return; }
+        notice('已提交任务 ' + (d.id || '') + '（' + (d.provider || '') + '）');
+        el('st-num').textContent = d.id || '';
+      })
+      .catch(function (e) { notice('提交失败：' + e.message); });
+  }
+  el('btn-submit').addEventListener('click', function () {
+    if (state.plan && state.plan.risks.length) { openMask(); return; }
+    submit();
+  });
+
+  /* ── 自检 ── */
+  function paintSelf(sc) {
+    var tone = sc.status === 'measured' ? 'ok' : (sc.status === 'fail' ? 'bad' : 'warn');
+    el('pill-selfcheck').textContent = sc.status;
+    el('pill-selfcheck').setAttribute('data-tone', tone);
+    el('pill-self2').textContent = sc.status;
+    el('pill-self2').setAttribute('data-tone', tone);
+    var rows = '<div class="vi-line"><b>' + esc(sc.status) + '</b> · ' + esc(sc.reason) + '</div>';
+    if (sc.layers) {
+      rows += '<div class="vi-grid2" style="margin-top:var(--sp2)">'
+        + '<div class="vi-line">global 层：' + (sc.layers.global.ok ? '<b>OK</b>' : '<b>缺失</b>') + '<br><span class="vi-mono">' + (sc.layers.global.nodes || []).map(function (n) { return n.want + (n.present === false ? '(缺)' : n.present === null ? '(未知)' : ''); }).join(' · ') + '</span></div>'
+        + '<div class="vi-line">face 层：' + (sc.layers.face.ok ? '<b>OK</b>' : '<b>缺失</b>') + '<br><span class="vi-mono">风景可跑：' + (sc.landscape_ok ? '是' : '否') + '</span></div>'
+        + '</div>';
+    }
+    rows += '<div class="kv" style="margin-top:var(--sp2)">';
+    (sc.models || []).forEach(function (m) {
+      rows += '<dt>' + esc(m.slot) + '</dt><dd>' + (m.present ? '在位' : '缺失') + ' <span class="vi-mono">' + esc(m.path_hint) + '</span></dd>';
+    });
+    rows += '</div>';
+    if (sc.report) {
+      var r = sc.report;
+      rows += '<div class="vi-line" style="margin-top:var(--sp2)">报告：模型加载 <b>' + (r.models_loaded && r.models_loaded.ok ? '通过' : '未通过') + '</b>'
+        + ' · 人脸一致性 <b>' + (r.face_consistency && r.face_consistency.value != null ? r.face_consistency.value : '未测') + '</b>'
+        + ' · 质感 <b>' + (r.texture_score && r.texture_score.value != null ? r.texture_score.value : '未测') + '</b>'
+        + '<span class="vi-mono">（后两项为规则代理，不是 VL 评分）</span></div>';
+    }
+    el('selfcheck').innerHTML = rows;
+  }
+
+  function runSelf(run) {
+    if (!API) { notice('file:// 模式不能自检；请用 node tools/serve.mjs'); return; }
+    notice(run ? '跑 4 张测试图…（需要 ComfyUI 与模型）' : '自检中…');
+    fetch('/api/visinter/selfcheck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run: !!run }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { paintSelf(d); notice('自检：' + d.status + (d.landscape_ok ? '（风景可跑）' : '')); })
+      .catch(function (e) { notice('自检失败：' + e.message); });
+  }
+  el('btn-selfcheck').addEventListener('click', function () { runSelf(false); });
+  el('btn-selfrun').addEventListener('click', function () { runSelf(true); });
+
+  /* ── 跨页同步：另一标签页改了 258 参数 → 这里跟上 ── */
+  window.addEventListener('storage', function (e) {
+    if (!e || e.key !== SHELL_KEY) return;
+    var b = readStore();
+    paintStore(b);
+    FIELDS.forEach(function (f) {
+      if (state.manualKeys.indexOf(f.k) >= 0) return;
+      var inp = document.querySelector('.input[data-key="' + f.k + '"]');
+      if (inp) inp.value = baseValue(f.k);
+    });
+    notice('检测到全量参数页改动，已同步 6 项关键参数');
+    if (state.plan) plan();
+  });
+
+  // 恢复跨页手改清单，并据此决定哪些键不允许自动填充
+  (function restoreManualKeys() {
+    var b = readStore();
+    if (b && Array.isArray(b.project.manualKeys)) state.manualKeys = b.project.manualKeys.slice();
+  })();
+  paintStore(readStore());
+  renderFields();
+  if (el('face').value) el('face').value = baseValue('ch.face_shape') || '鹅蛋';
+  paintSelf({ status: S.selfcheck.status, reason: S.selfcheck.reason, models: S.selfcheck.model_requirements.map(function (m) { return Object.assign({ present: false }, m); }) });
+  notice(API ? '就绪（http 模式：装配 / 自检 / 提交可用）' : 'file:// 模式：仅展示内联规格');
+  el('st-num').textContent = S.registry.total + ' 参数 · ' + S.risk_rules.length + ' 条风险规则 · ' + S.resolutions.length + ' 档分辨率';
+})();
+</script>
+</body>
+</html>

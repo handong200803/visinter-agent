@@ -1,0 +1,5727 @@
+{
+  "schema": "ai-video-platform/params.registry",
+  "version": "0.1.0",
+  "updated": "2026-11-16",
+  "generated_by": "tools/gen_registry.mjs",
+  "note": "唯一真相源。UI 控件、预设导出、workflow 编译全部从这里生成，不要手改界面代码。impact=[vram,time,quality] 见 tools/gen_registry.mjs 头部口径。",
+  "tiers": {
+    "L0": "系统硬约束：显存方程与模型能力上限，用户不可见",
+    "L1": "机型预设：探测+标定自动生成，可覆盖但提示风险",
+    "L2": "模板默认：作者打包时设定，改动后卡片标记已自定义",
+    "L3": "用户常用：每板块 5–8 个核心参数，界面直接露出",
+    "L4": "高级裸参：折叠区/专家模式/导入导出，覆盖后强制重算"
+  },
+  "stages": [
+    {
+      "id": "character",
+      "code": "A",
+      "name": "角色设定",
+      "en": "Character",
+      "l3": 6,
+      "total": 42,
+      "desc": "一张脸贯穿全剧：骨相/服装/画风/一致性",
+      "count": 42,
+      "l3_count": 6
+    },
+    {
+      "id": "storyboard",
+      "code": "B",
+      "name": "剧本分镜",
+      "en": "Storyboard",
+      "l3": 5,
+      "total": 34,
+      "desc": "格数/节奏/景别/情绪曲线，LLM 出分镜表",
+      "count": 34,
+      "l3_count": 5
+    },
+    {
+      "id": "keyframe",
+      "code": "C",
+      "name": "关键帧",
+      "en": "Keyframe",
+      "l3": 8,
+      "total": 56,
+      "desc": "画质主战场：七阶精修、四把锁、ControlNet/IPAdapter",
+      "count": 56,
+      "l3_count": 8
+    },
+    {
+      "id": "motion",
+      "code": "D",
+      "name": "动效",
+      "en": "Motion",
+      "l3": 7,
+      "total": 38,
+      "desc": "视差/局部 i2v/粒子，帧率与光流稳定",
+      "count": 38,
+      "l3_count": 7
+    },
+    {
+      "id": "voice",
+      "code": "E",
+      "name": "配音口型",
+      "en": "Voice",
+      "l3": 5,
+      "total": 30,
+      "desc": "TTS、多音字、口型对齐、响度",
+      "count": 30,
+      "l3_count": 5
+    },
+    {
+      "id": "look",
+      "code": "F",
+      "name": "质感后期",
+      "en": "Look",
+      "l3": 6,
+      "total": 32,
+      "desc": "LUT/颗粒/赛璐璐/字幕，统一观感",
+      "count": 32,
+      "l3_count": 6
+    },
+    {
+      "id": "export",
+      "code": "G",
+      "name": "输出",
+      "en": "Export",
+      "l3": 6,
+      "total": 26,
+      "desc": "编码/码率/多平台派生/打包",
+      "count": 26,
+      "l3_count": 6
+    }
+  ],
+  "counts": {
+    "total": 258,
+    "l3": 43,
+    "l4": 215
+  },
+  "params": [
+    {
+      "key": "ch.subject",
+      "stage": "character",
+      "type": "text",
+      "default": "一个24岁的中国女孩，鹅蛋脸，黑色长直发，米色针织衫，站在窗边",
+      "label": "主体描述",
+      "hint": "一句话交代年龄/脸型/发型/服装/场景。中文整句，求解器会拼进最终提示词。",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.3
+      },
+      "bind": {
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "ch.age",
+      "stage": "character",
+      "type": "int",
+      "default": 24,
+      "min": 16,
+      "max": 60,
+      "step": 1,
+      "unit": "岁",
+      "label": "年龄感",
+      "hint": "影响骨相与皮肤质感；误差 ±4 岁内不易被察觉",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "Character Builder",
+        "widget": "age"
+      }
+    },
+    {
+      "key": "ch.face_shape",
+      "stage": "character",
+      "type": "enum",
+      "default": "鹅蛋",
+      "options": [
+        "鹅蛋",
+        "圆",
+        "方",
+        "瓜子",
+        "长",
+        "心形"
+      ],
+      "label": "骨相脸型",
+      "hint": "一致性最强的锚点之一，换脸型等于换人",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "Character Builder",
+        "widget": "face_shape"
+      }
+    },
+    {
+      "key": "ch.face_detail",
+      "stage": "character",
+      "type": "text",
+      "default": "",
+      "label": "五官细节补充",
+      "hint": "如「内双、鼻梁细直、唇珠明显」，与骨相互补",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "ch.body",
+      "stage": "character",
+      "type": "enum",
+      "default": "标准",
+      "options": [
+        "纤细",
+        "标准",
+        "丰润",
+        "高挑"
+      ],
+      "label": "体态",
+      "hint": "颈肩线与腰胯比决定「像不像真人」，比脸更容易被忽略",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.skin",
+      "stage": "character",
+      "type": "enum",
+      "default": "写实纹理",
+      "options": [
+        "哑光",
+        "水光",
+        "磨皮",
+        "写实纹理"
+      ],
+      "label": "肤质",
+      "hint": "「写实纹理」保留毛孔与微瑕，商用观感更像摄影",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.hair_style",
+      "stage": "character",
+      "type": "enum",
+      "default": "黑色长直发",
+      "options": [
+        "黑色长直发",
+        "短发齐耳",
+        "高马尾",
+        "古风发髻",
+        "微卷中长",
+        "空气刘海"
+      ],
+      "label": "发型",
+      "hint": "发丝走向决定 i2v 的形变难度",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.hair_color",
+      "stage": "character",
+      "type": "enum",
+      "default": "自然黑",
+      "options": [
+        "自然黑",
+        "栗棕",
+        "亚麻",
+        "冷灰",
+        "挑染"
+      ],
+      "label": "发色",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.outfit_1",
+      "stage": "character",
+      "type": "text",
+      "default": "米色针织衫，宽松",
+      "label": "主服装",
+      "hint": "面料写清楚（针织/雪纺/棉麻），纹理阶依赖它",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "ch.outfit_2",
+      "stage": "character",
+      "type": "text",
+      "default": "",
+      "label": "副服装 1",
+      "hint": "同一角色的第二套，用于换装镜头",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.outfit_3",
+      "stage": "character",
+      "type": "text",
+      "default": "",
+      "label": "副服装 2",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.palette",
+      "stage": "character",
+      "type": "enum",
+      "default": "东方暖调",
+      "options": [
+        "东方暖调",
+        "莫兰迪",
+        "高饱和",
+        "冷青电影",
+        "黑白灰"
+      ],
+      "label": "配色方案",
+      "hint": "决定整片色彩基调，与 F 板块 LUT 需一致",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "ch.style",
+      "stage": "character",
+      "type": "enum",
+      "default": "厚涂",
+      "options": [
+        "赛璐璐",
+        "厚涂",
+        "工笔",
+        "水墨",
+        "韩漫",
+        "日漫",
+        "国潮"
+      ],
+      "label": "画风",
+      "hint": "画风是最大的质量杠杆：赛璐璐容错高，厚涂上限高",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.18
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "ch.line_weight",
+      "stage": "character",
+      "type": "int",
+      "default": 35,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "线稿强度",
+      "hint": "0 = 无线稿纯色块；赛璐璐建议 40–60",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.screen_tone",
+      "stage": "character",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "网点密度",
+      "hint": "漫画网点，过量会脏",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.shadow_levels",
+      "stage": "character",
+      "type": "int",
+      "default": 2,
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "label": "阴影阶数",
+      "hint": "1=平涂 2=两阶 3=三阶+高光，阶数越多越像厚涂",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.expression_count",
+      "stage": "character",
+      "type": "int",
+      "default": 5,
+      "min": 1,
+      "max": 8,
+      "step": 1,
+      "label": "表情数",
+      "hint": "每个表情一次出图，直接乘耗时",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.pose_count",
+      "stage": "character",
+      "type": "int",
+      "default": 3,
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "label": "姿态数",
+      "hint": "三视图开启后姿态数会被自动抬高",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.turnaround",
+      "stage": "character",
+      "type": "bool",
+      "default": true,
+      "label": "三视图",
+      "hint": "正/侧/背三视图卡，角色一致性的硬保障",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.25,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.consistency",
+      "stage": "character",
+      "type": "float",
+      "default": 0.85,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.05,
+      "label": "一致性权重",
+      "hint": ">1.0 会略微牺牲构图自由度换取同脸率；漫剧建议 0.85–1.1",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.03,
+        "time": 0.04,
+        "quality": 0.12
+      },
+      "guards": [
+        {
+          "when": ">1.2",
+          "warn": "过强：构图会僵，建议降到 1.1 以下"
+        }
+      ],
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.ref_images",
+      "stage": "character",
+      "type": "int",
+      "default": 2,
+      "min": 1,
+      "max": 6,
+      "step": 1,
+      "label": "参考图数",
+      "hint": "每张参考都要过 IPAdapter，显存与耗时同步上升",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.08,
+        "time": 0.2,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.image_size",
+      "stage": "character",
+      "type": "enum",
+      "default": "1536",
+      "options": [
+        "1024",
+        "1536",
+        "2048"
+      ],
+      "label": "角色图尺寸",
+      "hint": "八字档：1536 足以支撑 1080p 成片",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.12,
+        "time": 0.25,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.steps",
+      "stage": "character",
+      "type": "int",
+      "default": 24,
+      "min": 8,
+      "max": 50,
+      "step": 1,
+      "label": "角色图步数",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.35,
+        "quality": 0.25
+      },
+      "presets": {
+        "draft": 12,
+        "standard": 24,
+        "cinematic": 34
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.cfg",
+      "stage": "character",
+      "type": "float",
+      "default": 4.5,
+      "min": 1,
+      "max": 10,
+      "step": 0.1,
+      "label": "角色图 CFG",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.sampler",
+      "stage": "character",
+      "type": "enum",
+      "default": "dpmpp_2m",
+      "options": [
+        "euler",
+        "euler_a",
+        "dpmpp_2m",
+        "dpmpp_2m_sde",
+        "dpmpp_3m_sde",
+        "ddim",
+        "uni_pc"
+      ],
+      "label": "采样器",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.scheduler",
+      "stage": "character",
+      "type": "enum",
+      "default": "karras",
+      "options": [
+        "normal",
+        "karras",
+        "exponential",
+        "sgm_uniform",
+        "beta"
+      ],
+      "label": "调度器",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.lora_style_1",
+      "stage": "character",
+      "type": "float",
+      "default": 0.7,
+      "min": -1,
+      "max": 2,
+      "step": 0.05,
+      "label": "画风 LoRA 1 权重",
+      "hint": "同一 LoRA 0.6–0.8 是甜区，>1.2 会吃掉提示词",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.04,
+        "time": 0.06,
+        "quality": 0.12
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.lora_style_2",
+      "stage": "character",
+      "type": "float",
+      "default": 0,
+      "min": -1,
+      "max": 2,
+      "step": 0.05,
+      "label": "画风 LoRA 2 权重",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.04,
+        "time": 0.06,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.lora_face",
+      "stage": "character",
+      "type": "float",
+      "default": 0.8,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.05,
+      "label": "角色 LoRA 权重",
+      "hint": "自训角色 LoRA 是跨集同脸的根本手段",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.04,
+        "time": 0.06,
+        "quality": 0.12
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.lora_outfit",
+      "stage": "character",
+      "type": "float",
+      "default": 0.5,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.05,
+      "label": "服装 LoRA 权重",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.03,
+        "time": 0.05,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.cfg_rescale",
+      "stage": "character",
+      "type": "float",
+      "default": 0.5,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "label": "CFG 重缩放",
+      "hint": "高 CFG 下防过曝，厚涂建议 0.4–0.6",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.seed",
+      "stage": "character",
+      "type": "seed",
+      "default": -1,
+      "min": 0,
+      "max": 100,
+      "step": 0.01,
+      "label": "角色种子",
+      "hint": "-1 = 随机；锁定种子可复现同一张脸",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.batch",
+      "stage": "character",
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 8,
+      "step": 1,
+      "label": "出图张数",
+      "hint": "张数线性乘耗时，选图用候选更省总时间",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.1,
+        "time": 0.35,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.face_denoise",
+      "stage": "character",
+      "type": "float",
+      "default": 0.35,
+      "min": 0,
+      "max": 0.8,
+      "step": 0.05,
+      "label": "面部重绘强度",
+      "hint": "画质七阶第 2 阶：不跑这一步，脸一定软",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.12,
+        "quality": 0.16
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.identity_lock",
+      "stage": "character",
+      "type": "bool",
+      "default": true,
+      "label": "身份锁",
+      "hint": "开启后所有镜头强制带角色锚点，禁止漂移",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.03,
+        "time": 0.02,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.prompt_prefix",
+      "stage": "character",
+      "type": "text",
+      "default": "masterpiece, best quality, consistent character,",
+      "label": "提示词前缀",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.negative",
+      "stage": "character",
+      "type": "text",
+      "default": "模糊, 低质量, 水印, 文字, 畸形手指, 多余肢体",
+      "label": "排除词",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.negative_prompt"
+      }
+    },
+    {
+      "key": "ch.ref_strength",
+      "stage": "character",
+      "type": "float",
+      "default": 0.65,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "label": "参考强度",
+      "hint": "参考图与提示词打架时，先降这个再降权重",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.hair_detail",
+      "stage": "character",
+      "type": "int",
+      "default": 60,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "发丝细节",
+      "hint": "发丝是「塑料感」的第一破绽",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.eye_highlight",
+      "stage": "character",
+      "type": "int",
+      "default": 55,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "瞳孔高光",
+      "hint": "有高光才有活人感，过低会「死眼」",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.fabric_texture",
+      "stage": "character",
+      "type": "int",
+      "default": 60,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "织物纹理",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ch.lineart_model",
+      "stage": "character",
+      "type": "enum",
+      "default": "lineart",
+      "options": [
+        "lineart",
+        "canny",
+        "te",
+        "none"
+      ],
+      "label": "线稿提取模型",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.duration",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 36,
+      "min": 15,
+      "max": 120,
+      "step": 1,
+      "unit": "s",
+      "label": "目标时长",
+      "hint": "单集总时长；成片时长由它反推格数与台词量",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.45,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.grid_count",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 24,
+      "min": 12,
+      "max": 40,
+      "step": 1,
+      "label": "每集格数",
+      "hint": "漫剧 24 格 ≈ 30–40s；每格一次关键帧 + 一次动效",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.6,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.rhythm",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "中",
+      "options": [
+        "快",
+        "中",
+        "慢",
+        "变速"
+      ],
+      "label": "节奏模板",
+      "hint": "快=每格 0.8s，慢=1.8s；变速适合情绪转折",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.shot_scale",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "中景",
+      "options": [
+        "特写",
+        "中景",
+        "全景"
+      ],
+      "label": "主导景别",
+      "hint": "特写提升口型价值，全景提升信息量",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.shot_diversity",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 60,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "机位多样性",
+      "hint": ">70 更电影，但一致性压力上升",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.08,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.closeup_ratio",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 35,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "特写占比",
+      "hint": "三项合计建议 100%",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.medium_ratio",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 45,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "中景占比",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.wide_ratio",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "全景占比",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.emotion_curve",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 65,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "情绪曲线强度",
+      "hint": "起承转合的起伏幅度",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.07
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.act_structure",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "起承转合",
+      "options": [
+        "起承转合",
+        "三幕",
+        "单线"
+      ],
+      "label": "叙事结构",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.line_density",
+      "stage": "storyboard",
+      "type": "float",
+      "default": 4.2,
+      "min": 0,
+      "max": 8,
+      "step": 0.1,
+      "unit": "字/秒",
+      "label": "台词密度",
+      "hint": "中文 4–5 字/秒最舒适，>6 会听不清",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.narration_ratio",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 30,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "旁白占比",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.genre",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "古风",
+      "options": [
+        "古风",
+        "都市",
+        "科幻",
+        "悬疑",
+        "校园",
+        "玄幻"
+      ],
+      "label": "题材",
+      "hint": "决定提示词词典与 LUT 默认值",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.camera_language",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "写实剧",
+      "options": [
+        "今敏式",
+        "宫崎式",
+        "写实剧",
+        "快剪"
+      ],
+      "label": "镜头语言",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.llm_temperature",
+      "stage": "storyboard",
+      "type": "float",
+      "default": 0.7,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "label": "LLM 温度",
+      "hint": ">0.9 会出戏，<0.4 会套路化",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.lang",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "中文",
+      "options": [
+        "中文",
+        "英文",
+        "日文"
+      ],
+      "label": "输出语言",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.llm_model",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "Qwen3-8B",
+      "options": [
+        "Qwen3-8B",
+        "GLM-4-9B",
+        "DeepSeek-V3(API)"
+      ],
+      "label": "分镜 LLM",
+      "hint": "本地 8B 够用；API 更快但按量计费",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.max_tokens",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 2048,
+      "min": 512,
+      "max": 4096,
+      "step": 256,
+      "label": "最大 token",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.scene_count",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 3,
+      "min": 1,
+      "max": 8,
+      "step": 1,
+      "label": "场景数",
+      "hint": "每场景一次场景图出图，切场景需重锁光影",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.2,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.transition_count",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 2,
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "label": "转场数",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.conflict_intensity",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 60,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "冲突强度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.hook_seconds",
+      "stage": "storyboard",
+      "type": "bool",
+      "default": true,
+      "label": "前 3 秒钩子",
+      "hint": "短视频完播率的第一杠杆",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.subtitle_lines",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 2,
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "label": "字幕行数上限",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.character_count",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "label": "角色数",
+      "hint": "每多一个角色多一套锚点与 LoRA 显存",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.04,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.story_seed",
+      "stage": "storyboard",
+      "type": "seed",
+      "default": -1,
+      "min": 0,
+      "max": 100,
+      "step": 0.01,
+      "label": "剧本种子",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.retry",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 3,
+      "step": 1,
+      "label": "重写次数",
+      "hint": "分镜不满意时自动重写，线性加时间",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.3,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.beat_per_grid",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 2,
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "label": "每格节拍数",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.silence_ratio",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 10,
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "unit": "%",
+      "label": "静场占比",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.bgm_cue_count",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 3,
+      "min": 0,
+      "max": 12,
+      "step": 1,
+      "label": "BGM 提示点数",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.shotlist_export",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "JSON",
+      "options": [
+        "JSON",
+        "CSV",
+        "表格"
+      ],
+      "label": "分镜表导出格式",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.lock_script",
+      "stage": "storyboard",
+      "type": "bool",
+      "default": true,
+      "label": "锁定剧本",
+      "hint": "锁定后改参数不会重写分镜，只改画面",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.style_ref",
+      "stage": "storyboard",
+      "type": "text",
+      "default": "",
+      "label": "参考剧集/风格描述",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.episode_count",
+      "stage": "storyboard",
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 12,
+      "step": 1,
+      "label": "本批集数",
+      "hint": "整批任务量，影响总耗时与排队",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.3,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "sb.title_style",
+      "stage": "storyboard",
+      "type": "enum",
+      "default": "留白书法",
+      "options": [
+        "留白书法",
+        "居中黑体",
+        "无标题"
+      ],
+      "label": "标题风格",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.resolution",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 1536,
+      "min": 512,
+      "max": 2048,
+      "step": 64,
+      "label": "关键帧分辨率",
+      "hint": "长边像素。1536 是 8G 卡的商用下限，2048 会挤爆显存",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.55,
+        "quality": 0.3
+      },
+      "guards": [
+        {
+          "when": ">1792",
+          "warn": "8G 卡上 1792+ 需要分块或换档"
+        },
+        {
+          "when": "<1024",
+          "warn": "低于 1024 细节无法支撑 1080p 成片"
+        }
+      ],
+      "bind": {
+        "target": "EmptyLatentImage",
+        "widget": "width"
+      }
+    },
+    {
+      "key": "kf.ratio",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "16:9",
+      "options": [
+        "16:9",
+        "9:16",
+        "1:1",
+        "4:3",
+        "2.35:1"
+      ],
+      "label": "纵横比",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "parameters.ratio"
+      }
+    },
+    {
+      "key": "kf.steps",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 20,
+      "min": 16,
+      "max": 25,
+      "step": 1,
+      "label": "采样步数",
+      "hint": "质量优先固定16–25步，不自动减步数",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.42,
+        "quality": 0.31
+      },
+      "presets": {
+        "draft": 20,
+        "standard": 20,
+        "cinematic": 25
+      },
+      "bind": {
+        "target": "KSampler",
+        "widget": "steps"
+      }
+    },
+    {
+      "key": "kf.cfg",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 7,
+      "min": 7,
+      "max": 10,
+      "step": 0.1,
+      "label": "CFG",
+      "hint": "质量优先固定7–10，不使用蒸馏极速路径",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.04,
+        "quality": 0.1
+      },
+      "presets": {
+        "draft": 7,
+        "standard": 7,
+        "cinematic": 8
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.sampler",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "dpmpp_2m",
+      "options": [
+        "euler",
+        "euler_a",
+        "dpmpp_2m",
+        "dpmpp_2m_sde",
+        "dpmpp_3m_sde",
+        "uni_pc"
+      ],
+      "label": "采样器",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.scheduler",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "karras",
+      "options": [
+        "normal",
+        "karras",
+        "exponential",
+        "sgm_uniform",
+        "beta"
+      ],
+      "label": "调度器",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.refine_scale",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 1.5,
+      "min": 1,
+      "max": 2,
+      "step": 0.1,
+      "label": "精修放大倍率",
+      "hint": "画质七阶第 1 阶：hires-fix 1.5× 补结构细节",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.12,
+        "time": 0.3,
+        "quality": 0.22
+      },
+      "presets": {
+        "draft": 1,
+        "standard": 1.5,
+        "cinematic": 1.8
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.refine_denoise",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.65,
+      "min": 0.55,
+      "max": 0.75,
+      "step": 0.01,
+      "label": "采样去噪",
+      "hint": "质量区间0.55–0.75，所有生成入口一致",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.14
+      },
+      "presets": {
+        "draft": 0.65,
+        "standard": 0.65,
+        "cinematic": 0.65
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.refine_steps",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 12,
+      "min": 4,
+      "max": 24,
+      "step": 1,
+      "label": "精修步数",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.22,
+        "quality": 0.12
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.cn_type",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "lineart",
+      "options": [
+        "none",
+        "lineart",
+        "canny",
+        "depth",
+        "pose"
+      ],
+      "label": "ControlNet 类型",
+      "hint": "构图锁：lineart 最稳，depth 适合大景深",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.05,
+        "time": 0.06,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.cn_weight",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.7,
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "label": "CN 权重",
+      "hint": "0.6–1.0 锁构图；>1.3 会僵硬",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.03,
+        "time": 0.12,
+        "quality": 0.12
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.cn_start",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0,
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "label": "CN 起效步",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.cn_end",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.8,
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "label": "CN 失效步",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.cn2_type",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "none",
+      "options": [
+        "none",
+        "lineart",
+        "canny",
+        "depth",
+        "pose"
+      ],
+      "label": "第二 ControlNet",
+      "hint": "第二张控制图，显存几乎翻倍",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.06,
+        "time": 0.05,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.cn2_weight",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.4,
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "label": "CN2 权重",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.1,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.ipadapter_weight",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.75,
+      "min": 0,
+      "max": 1.5,
+      "step": 0.05,
+      "label": "IPAdapter 权重",
+      "hint": "角色锁的抓手；0.6–0.9 同脸且不死板",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.06,
+        "time": 0.08,
+        "quality": 0.12
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.ipadapter_mode",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "构图",
+      "options": [
+        "构图",
+        "风格",
+        "两者"
+      ],
+      "label": "IPAdapter 模式",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.identity_weight",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 1,
+      "min": 0.6,
+      "max": 1.5,
+      "step": 0.05,
+      "label": "一致性权重（联动）",
+      "hint": "运动强度 >0.6 时由联动引擎自动抬高",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "auto": true
+    },
+    {
+      "key": "kf.lora1_w",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.7,
+      "min": -1,
+      "max": 2,
+      "step": 0.05,
+      "label": "LoRA 1 权重",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.04,
+        "time": 0.06,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.lora2_w",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.4,
+      "min": -1,
+      "max": 2,
+      "step": 0.05,
+      "label": "LoRA 2 权重",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.04,
+        "time": 0.06,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.lora3_w",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0,
+      "min": -1,
+      "max": 2,
+      "step": 0.05,
+      "label": "LoRA 3 权重",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.04,
+        "time": 0.06,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.composition",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "九宫格",
+      "options": [
+        "九宫格",
+        "黄金分割",
+        "居中",
+        "大留白"
+      ],
+      "label": "构图锁定",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "kf.negative_space",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 60,
+      "step": 1,
+      "unit": "%",
+      "label": "留白比例",
+      "hint": "留白给字幕与呼吸感，>40% 主体会弱",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.color_temp",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 5200,
+      "min": 2700,
+      "max": 8000,
+      "step": 50,
+      "unit": "K",
+      "label": "色温",
+      "hint": "黄昏 3800–4500K，正午 5500–6000K",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.07
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "kf.light_ratio",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 2.5,
+      "min": 1,
+      "max": 8,
+      "step": 0.1,
+      "label": "光比",
+      "hint": ">4 是硬光戏剧感，1.5 是柔和棚拍",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.07
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.key_light_dir",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "侧逆光",
+      "options": [
+        "顺光",
+        "侧光",
+        "侧逆光",
+        "顶光",
+        "底光"
+      ],
+      "label": "主光方向",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "kf.dof",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 40,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "景深强度",
+      "hint": "浅景深显贵，但会吃掉背景细节",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.05,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "kf.batch",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 1,
+      "min": 1,
+      "max": 4,
+      "step": 1,
+      "label": "批量",
+      "hint": "每批张数，生成候选用",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.35,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.seed",
+      "stage": "keyframe",
+      "type": "seed",
+      "default": -1,
+      "min": 0,
+      "max": 100,
+      "step": 0.01,
+      "label": "关键帧种子",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "parameters.seed"
+      }
+    },
+    {
+      "key": "kf.seed_mode",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "锁定",
+      "options": [
+        "锁定",
+        "随机",
+        "递增"
+      ],
+      "label": "seed 策略",
+      "hint": "锁定=同一镜头可复现；递增=每格微变化",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.face_denoise",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.35,
+      "min": 0,
+      "max": 0.8,
+      "step": 0.05,
+      "label": "面部重绘（七阶第 2 阶）",
+      "hint": "脸/手/眼专项重绘，不做必软",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.12,
+        "quality": 0.16
+      },
+      "presets": {
+        "draft": 0,
+        "standard": 0.35,
+        "cinematic": 0.45
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.hand_fix",
+      "stage": "keyframe",
+      "type": "bool",
+      "default": true,
+      "label": "手部修复",
+      "hint": "指节与握姿专项重绘",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.1,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.eye_fix",
+      "stage": "keyframe",
+      "type": "bool",
+      "default": true,
+      "label": "眼部高光修复",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.08,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.tile_size",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 1024,
+      "min": 512,
+      "max": 1536,
+      "step": 64,
+      "label": "分块尺寸",
+      "hint": "分块超分越小越省显存，接缝风险越高",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.1,
+        "time": 0.1,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.tile_overlap",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 64,
+      "min": 32,
+      "max": 192,
+      "step": 16,
+      "label": "分块重叠",
+      "hint": "64–96 基本无接缝",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.05,
+        "time": 0.05,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.texture_pass",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.2,
+      "min": 0,
+      "max": 0.4,
+      "step": 0.01,
+      "label": "纹理 pass 去噪",
+      "hint": "七阶第 4 阶：0.15–0.25 注入材质颗粒",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.1,
+        "quality": 0.14
+      },
+      "presets": {
+        "draft": 0,
+        "standard": 0.2,
+        "cinematic": 0.25
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.usm_amount",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 0.35,
+      "min": 0,
+      "max": 2,
+      "step": 0.05,
+      "label": "USM 锐化量",
+      "hint": "1.2/0.35 是印刷常用组合",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.1
+      },
+      "presets": {
+        "draft": 0.2,
+        "standard": 0.35,
+        "cinematic": 0.5
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.usm_radius",
+      "stage": "keyframe",
+      "type": "float",
+      "default": 1.2,
+      "min": 0.2,
+      "max": 3,
+      "step": 0.1,
+      "label": "USM 半径",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.grain",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 4,
+      "min": 0,
+      "max": 20,
+      "step": 1,
+      "label": "底片颗粒",
+      "hint": "3–6% 去塑料感，多了像噪点",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "kf.tonemap",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "filmic",
+      "options": [
+        "none",
+        "filmic",
+        "aces",
+        "reinhard"
+      ],
+      "label": "色调映射",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.clip_skip",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 2,
+      "min": 1,
+      "max": 3,
+      "step": 1,
+      "label": "CLIP 跳过层",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.freeu",
+      "stage": "keyframe",
+      "type": "bool",
+      "default": false,
+      "label": "FreeU",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.teacache",
+      "stage": "keyframe",
+      "type": "bool",
+      "default": false,
+      "label": "TeaCache（质量模式禁用）",
+      "hint": "不跳过采样步骤",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.sage_attn",
+      "stage": "keyframe",
+      "type": "bool",
+      "default": false,
+      "label": "SageAttention（质量模式禁用）",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.nunchaku",
+      "stage": "keyframe",
+      "type": "bool",
+      "default": false,
+      "label": "Nunchaku（质量模式禁用）",
+      "hint": "不使用int4量化加速",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.vae_tile",
+      "stage": "keyframe",
+      "type": "bool",
+      "default": true,
+      "label": "VAE 分块解码",
+      "hint": "8G 必开，否则解码阶段 OOM",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.08,
+        "time": 0.1,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.dtype",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "fp16",
+      "options": [
+        "fp16"
+      ],
+      "label": "推理精度",
+      "hint": "质量优先不自动量化；需要对应未量化模型权重",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.model",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "Qwen-Image-GGUF-Q4",
+      "options": [
+        "Qwen-Image-GGUF-Q4",
+        "Qwen-Image-fp8",
+        "SDXL",
+        "Flux-GGUF-Q4"
+      ],
+      "label": "关键帧模型",
+      "hint": "8G：Qwen-Image Q4 出图质量最好；SDXL 最快",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.25,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.negative",
+      "stage": "keyframe",
+      "type": "text",
+      "default": "低质量, 模糊, 水印, 文字, 变形, 塑料感",
+      "label": "关键帧排除词",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.negative_prompt"
+      }
+    },
+    {
+      "key": "kf.prompt_weight_syntax",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "A1111",
+      "options": [
+        "A1111",
+        "ComfyUI",
+        "自然语言"
+      ],
+      "label": "提示词权重语法",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.prompt_compile",
+      "stage": "keyframe",
+      "type": "bool",
+      "default": true,
+      "label": "中文提示词编译",
+      "hint": "本地 LLM 把中文整句翻成 danbooru 风格标签",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.08,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.prompt_llm",
+      "stage": "keyframe",
+      "type": "enum",
+      "default": "Qwen3-4B",
+      "options": [
+        "Qwen3-4B",
+        "Qwen3-8B",
+        "规则模板"
+      ],
+      "label": "编译用 LLM",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.detail_boost",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 30,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "细节增强",
+      "hint": "提示词加权 + 精修去噪的合成旋钮",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.08
+      },
+      "presets": {
+        "draft": 5,
+        "standard": 30,
+        "cinematic": 60
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.sharpness_target",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 420,
+      "min": 0,
+      "max": 1000,
+      "step": 1,
+      "label": "锐度目标（拉普拉斯方差）",
+      "hint": "质检闸门：低于它判「糊」",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.anchor_count",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 1,
+      "min": 0,
+      "max": 8,
+      "step": 1,
+      "label": "锚点帧数",
+      "hint": "每 8 帧一个锚点，近景加密；8G 预算下建议 1–2 个",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.3,
+        "quality": 0.06
+      },
+      "presets": {
+        "draft": 0,
+        "standard": 1,
+        "cinematic": 3
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "kf.anchor_interval",
+      "stage": "keyframe",
+      "type": "int",
+      "default": 8,
+      "min": 4,
+      "max": 16,
+      "step": 1,
+      "label": "锚点间隔（帧）",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.mode",
+      "stage": "motion",
+      "type": "enum",
+      "default": "视差",
+      "options": [
+        "静帧",
+        "视差",
+        "局部i2v",
+        "粒子"
+      ],
+      "label": "动效模式",
+      "hint": "静帧 0 成本；视差最稳；局部 i2v 最强也最贵",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.05,
+        "time": 0.1,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.parallax_layers",
+      "stage": "motion",
+      "type": "int",
+      "default": 3,
+      "min": 1,
+      "max": 5,
+      "step": 1,
+      "label": "视差层数",
+      "hint": "3 层（前景/主体/背景）已够 95% 场景",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.06,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.strength",
+      "stage": "motion",
+      "type": "float",
+      "default": 0.55,
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "label": "运动强度",
+      "hint": ">0.6 时联动引擎会抬关键帧一致性权重",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.15,
+        "quality": 0.04
+      },
+      "guards": [
+        {
+          "when": ">0.85",
+          "warn": "已知崩坏区：肢体与背景易撕裂（专家可试）"
+        }
+      ],
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.layer1_shift",
+      "stage": "motion",
+      "type": "int",
+      "default": 40,
+      "min": 0,
+      "max": 300,
+      "step": 1,
+      "unit": "px",
+      "label": "前景层位移",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.layer2_shift",
+      "stage": "motion",
+      "type": "int",
+      "default": 22,
+      "min": 0,
+      "max": 300,
+      "step": 1,
+      "unit": "px",
+      "label": "主体层位移",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.layer3_shift",
+      "stage": "motion",
+      "type": "int",
+      "default": 10,
+      "min": 0,
+      "max": 300,
+      "step": 1,
+      "unit": "px",
+      "label": "背景层位移",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.layer4_shift",
+      "stage": "motion",
+      "type": "int",
+      "default": 6,
+      "min": 0,
+      "max": 300,
+      "step": 1,
+      "unit": "px",
+      "label": "远景层位移",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.layer5_shift",
+      "stage": "motion",
+      "type": "int",
+      "default": 3,
+      "min": 0,
+      "max": 300,
+      "step": 1,
+      "unit": "px",
+      "label": "天空层位移",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.easing",
+      "stage": "motion",
+      "type": "enum",
+      "default": "easeInOut",
+      "options": [
+        "linear",
+        "easeInOut",
+        "bezier",
+        "custom"
+      ],
+      "label": "缓动曲线",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.camera",
+      "stage": "motion",
+      "type": "enum",
+      "default": "推",
+      "options": [
+        "推",
+        "拉",
+        "摇",
+        "移",
+        "环绕",
+        "手持",
+        "固定"
+      ],
+      "label": "镜头运动",
+      "hint": "推/拉最稳；环绕需要 3D 感知，8G 卡慎用",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "mo.camera_speed",
+      "stage": "motion",
+      "type": "float",
+      "default": 0.5,
+      "min": 0,
+      "max": 1,
+      "step": 0.01,
+      "label": "运镜速度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "mo.i2v_model",
+      "stage": "motion",
+      "type": "enum",
+      "default": "Wan2.1-1.3B",
+      "options": [
+        "Wan2.1-1.3B",
+        "Wan2.2-5B",
+        "LTX-2B",
+        "H3(远程)"
+      ],
+      "label": "i2v 模型",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.1,
+        "time": 0.3,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.i2v_strength",
+      "stage": "motion",
+      "type": "float",
+      "default": 0.5,
+      "min": 0.1,
+      "max": 0.9,
+      "step": 0.01,
+      "label": "i2v 强度",
+      "hint": "0.4–0.6 只动局部，>0.75 会重画主体",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.03,
+        "time": 0.2,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.i2v_res",
+      "stage": "motion",
+      "type": "enum",
+      "default": "480p",
+      "options": [
+        "384p",
+        "480p",
+        "576p",
+        "720p"
+      ],
+      "label": "i2v 生成分辨率",
+      "hint": "细节靠锚点传播，不靠原生像素",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.2,
+        "time": 0.35,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.duration",
+      "stage": "motion",
+      "type": "float",
+      "default": 5,
+      "min": 0.5,
+      "max": 15,
+      "step": 0.5,
+      "unit": "s",
+      "label": "单格时长",
+      "hint": "云端 wan2.7 支持 2–15s；wan2.2 固定 5s，超范围会夹紧并留 warning",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.2,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "parameters.duration"
+      }
+    },
+    {
+      "key": "mo.mask_area",
+      "stage": "motion",
+      "type": "int",
+      "default": 35,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "unit": "%",
+      "label": "局部重绘面积",
+      "hint": "面积越大越贵，>60% 不如整帧重画",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.05,
+        "time": 0.15,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.breath_amp",
+      "stage": "motion",
+      "type": "int",
+      "default": 30,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "呼吸幅度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.04,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.hair_sway",
+      "stage": "motion",
+      "type": "int",
+      "default": 40,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "发丝飘动",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.04,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.cloth_sway",
+      "stage": "motion",
+      "type": "int",
+      "default": 35,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "衣摆飘动",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.04,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.fx_rain",
+      "stage": "motion",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "雨效",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.fx_snow",
+      "stage": "motion",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "雪效",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "mo.fx_fog",
+      "stage": "motion",
+      "type": "int",
+      "default": 10,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "雾效",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "input.prompt"
+      }
+    },
+    {
+      "key": "mo.fx_bloom_light",
+      "stage": "motion",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "光斑",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.fx_dust",
+      "stage": "motion",
+      "type": "int",
+      "default": 10,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "尘埃",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.fps",
+      "stage": "motion",
+      "type": "int",
+      "default": 30,
+      "min": 24,
+      "max": 30,
+      "step": 6,
+      "label": "原生生成帧率",
+      "hint": "仅24/30fps；H3固定24fps，输出60fps由独立RIFE插帧",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.interp",
+      "stage": "motion",
+      "type": "bool",
+      "default": true,
+      "label": "补帧",
+      "hint": "RIFE 2× 让 12fps 生成变 24fps 播放",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.03,
+        "time": 0.25,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.interp_factor",
+      "stage": "motion",
+      "type": "enum",
+      "default": "2x",
+      "options": [
+        "2x",
+        "4x"
+      ],
+      "label": "补帧倍率",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.03,
+        "time": 0.2,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.flow_stabilize",
+      "stage": "motion",
+      "type": "int",
+      "default": 50,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "光流稳定强度",
+      "hint": "0.3–0.5 是「留细节又不抖」的保险",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.05,
+        "time": 0.3,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.max_frames",
+      "stage": "motion",
+      "type": "int",
+      "default": 121,
+      "min": 1,
+      "max": 4097,
+      "step": 1,
+      "label": "原生帧数",
+      "hint": "按模型帧数网格校验；高分辨率不自动压低帧数",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.25,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.flicker_guard",
+      "stage": "motion",
+      "type": "bool",
+      "default": true,
+      "label": "闪烁闸门",
+      "hint": "帧间亮度 std >2% 判异常并回修",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.08,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.deflicker_strength",
+      "stage": "motion",
+      "type": "int",
+      "default": 40,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "deflicker 强度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.06,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.temporal_denoise",
+      "stage": "motion",
+      "type": "float",
+      "default": 0.4,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "label": "时序降噪权重",
+      "hint": "中间帧去噪必须 ≤0.25，否则呼吸感崩坏",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.06,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.particle_count",
+      "stage": "motion",
+      "type": "int",
+      "default": 120,
+      "min": 0,
+      "max": 600,
+      "step": 1,
+      "label": "粒子数量",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.1,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.particle_type",
+      "stage": "motion",
+      "type": "enum",
+      "default": "光点",
+      "options": [
+        "光点",
+        "花瓣",
+        "雪片",
+        "火星",
+        "纸屑"
+      ],
+      "label": "粒子类型",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.shake_seed",
+      "stage": "motion",
+      "type": "seed",
+      "default": -1,
+      "min": 0,
+      "max": 100,
+      "step": 0.01,
+      "label": "抖动种子",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.lens_distortion",
+      "stage": "motion",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "镜头畸变",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.motion_blur",
+      "stage": "motion",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "运动模糊",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.04,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "mo.loop",
+      "stage": "motion",
+      "type": "bool",
+      "default": false,
+      "label": "循环首尾",
+      "hint": "做循环 GIF/封面动效时开",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.voice_id",
+      "stage": "voice",
+      "type": "enum",
+      "default": "茉莉",
+      "options": [
+        "茉莉",
+        "冰糖",
+        "白桦",
+        "苏打",
+        "旁白男",
+        "旁白女"
+      ],
+      "label": "音色",
+      "hint": "女声茉莉/narrator 冰糖是中文短剧主力",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.speed",
+      "stage": "voice",
+      "type": "float",
+      "default": 1,
+      "min": 0.7,
+      "max": 1.3,
+      "step": 0.01,
+      "label": "语速",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.pitch",
+      "stage": "voice",
+      "type": "int",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "半音",
+      "label": "音高",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.emotion",
+      "stage": "voice",
+      "type": "enum",
+      "default": "温柔",
+      "options": [
+        "平静",
+        "温柔",
+        "激动",
+        "悲怆",
+        "俏皮"
+      ],
+      "label": "情绪",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.lipsync",
+      "stage": "voice",
+      "type": "bool",
+      "default": true,
+      "label": "口型驱动",
+      "hint": "仅近景有价值；联动引擎会在中景/全景自动关掉",
+      "tier": "L3",
+      "impact": {
+        "vram": 0.06,
+        "time": 0.35,
+        "quality": 0.1
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.pause_insert",
+      "stage": "voice",
+      "type": "int",
+      "default": 180,
+      "min": 0,
+      "max": 1000,
+      "step": 10,
+      "unit": "ms",
+      "label": "停顿插入",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.polyphone_table",
+      "stage": "voice",
+      "type": "text",
+      "default": "朝=zhāo; 还=huán; 重=chóng; 骑=jì; 教=jiào",
+      "label": "多音字校正表",
+      "hint": "TTS 读错的字在这里逐字钉死",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.dialect",
+      "stage": "voice",
+      "type": "enum",
+      "default": "普通话",
+      "options": [
+        "普通话",
+        "东北",
+        "粤语",
+        "川渝"
+      ],
+      "label": "方言",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.lipsync_model",
+      "stage": "voice",
+      "type": "enum",
+      "default": "LatentSync",
+      "options": [
+        "Wav2Lip",
+        "MuseTalk",
+        "LatentSync"
+      ],
+      "label": "口型模型",
+      "hint": "LatentSync 质量最好，8G 需 384 输入",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.1,
+        "time": 0.15,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.lipsync_strength",
+      "stage": "voice",
+      "type": "float",
+      "default": 0.8,
+      "min": 0,
+      "max": 1,
+      "step": 0.05,
+      "label": "口型强度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.05,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.closeup_only",
+      "stage": "voice",
+      "type": "bool",
+      "default": true,
+      "label": "仅近景做口型",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.align_tolerance",
+      "stage": "voice",
+      "type": "int",
+      "default": 80,
+      "min": 0,
+      "max": 200,
+      "step": 10,
+      "unit": "ms",
+      "label": "对齐容差",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.sfx_tracks",
+      "stage": "voice",
+      "type": "int",
+      "default": 2,
+      "min": 0,
+      "max": 3,
+      "step": 1,
+      "label": "音效轨数",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.bgm_genre",
+      "stage": "voice",
+      "type": "enum",
+      "default": "古风",
+      "options": [
+        "古风",
+        "氛围",
+        "电子",
+        "钢琴",
+        "无"
+      ],
+      "label": "BGM 曲风",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.bgm_strength",
+      "stage": "voice",
+      "type": "int",
+      "default": 35,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "BGM 强度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.ducking_db",
+      "stage": "voice",
+      "type": "int",
+      "default": -12,
+      "min": -24,
+      "max": 0,
+      "step": 1,
+      "unit": "dB",
+      "label": "ducking 阈值",
+      "hint": "人声出现时 BGM 自动压低",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.loudness",
+      "stage": "voice",
+      "type": "enum",
+      "default": "-14 LUFS",
+      "options": [
+        "-14 LUFS",
+        "-23 LUFS"
+      ],
+      "label": "响度目标",
+      "hint": "短视频 -14，广电 -23",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.tts_engine",
+      "stage": "voice",
+      "type": "enum",
+      "default": "edge-tts",
+      "options": [
+        "edge-tts",
+        "Azure",
+        "火山TTS",
+        "GPT-SoVITS(本地)"
+      ],
+      "label": "TTS 引擎",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.breath",
+      "stage": "voice",
+      "type": "int",
+      "default": 40,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "气口强度",
+      "hint": "气口是人味来源，纯 TTS 会像播报",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.emphasis",
+      "stage": "voice",
+      "type": "int",
+      "default": 50,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "重音强度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.compression",
+      "stage": "voice",
+      "type": "float",
+      "default": 3,
+      "min": 1,
+      "max": 8,
+      "step": 0.1,
+      "label": "压缩比",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.eq_low",
+      "stage": "voice",
+      "type": "int",
+      "default": 0,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "label": "低频 EQ",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.eq_high",
+      "stage": "voice",
+      "type": "int",
+      "default": 2,
+      "min": -12,
+      "max": 12,
+      "step": 1,
+      "unit": "dB",
+      "label": "高频 EQ",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.denoise",
+      "stage": "voice",
+      "type": "bool",
+      "default": true,
+      "label": "人声降噪",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.clarity",
+      "stage": "voice",
+      "type": "int",
+      "default": 60,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "清晰度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.rate_curve",
+      "stage": "voice",
+      "type": "text",
+      "default": "",
+      "label": "语速曲线（逐句）",
+      "hint": "如 1:1.0,2:0.9，逐句覆盖全局语速",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.subtitle_sync",
+      "stage": "voice",
+      "type": "bool",
+      "default": true,
+      "label": "字幕强制同步",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.voice_clone",
+      "stage": "voice",
+      "type": "bool",
+      "default": false,
+      "label": "音色克隆",
+      "hint": "需参考音频；克隆质量决定观众信任度",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.ref_audio",
+      "stage": "voice",
+      "type": "bool",
+      "default": false,
+      "label": "提供参考音频",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "vo.max_chars_per_line",
+      "stage": "voice",
+      "type": "int",
+      "default": 14,
+      "min": 8,
+      "max": 24,
+      "step": 1,
+      "label": "每行字数",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.lut",
+      "stage": "look",
+      "type": "enum",
+      "default": "东方暖调",
+      "options": [
+        "东方暖调",
+        "青橙",
+        "胶片",
+        "黑白",
+        "赛博",
+        "无"
+      ],
+      "label": "LUT",
+      "hint": "全片统一色感的第一杠杆",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.lut_strength",
+      "stage": "look",
+      "type": "int",
+      "default": 70,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "LUT 强度",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.grain",
+      "stage": "look",
+      "type": "int",
+      "default": 12,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "胶片颗粒",
+      "hint": "3–6% 去塑料感，>15 变噪点",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.05
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.vignette",
+      "stage": "look",
+      "type": "int",
+      "default": 25,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "暗角",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.chroma",
+      "stage": "look",
+      "type": "int",
+      "default": 8,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "色散",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.bloom",
+      "stage": "look",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "bloom",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.screen_tone",
+      "stage": "look",
+      "type": "int",
+      "default": 15,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "网点",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.outline",
+      "stage": "look",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "描边",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.cel_levels",
+      "stage": "look",
+      "type": "int",
+      "default": 3,
+      "min": 2,
+      "max": 8,
+      "step": 1,
+      "label": "赛璐璐阶数",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.sharpen",
+      "stage": "look",
+      "type": "int",
+      "default": 30,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "锐化",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.denoise",
+      "stage": "look",
+      "type": "int",
+      "default": 15,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "降噪",
+      "hint": "降噪过猛会吃掉颗粒与纹理",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.deflicker",
+      "stage": "look",
+      "type": "int",
+      "default": 40,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "deflicker",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.08
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.subtitle_style",
+      "stage": "look",
+      "type": "enum",
+      "default": "黑体描边",
+      "options": [
+        "无",
+        "黑体描边",
+        "圆体阴影",
+        "书法"
+      ],
+      "label": "字幕样式",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.subtitle_font",
+      "stage": "look",
+      "type": "enum",
+      "default": "思源黑体",
+      "options": [
+        "思源黑体",
+        "思源宋体",
+        "站酷高端黑",
+        "毛笔楷"
+      ],
+      "label": "字幕字体",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.subtitle_size",
+      "stage": "look",
+      "type": "int",
+      "default": 44,
+      "min": 24,
+      "max": 96,
+      "step": 1,
+      "unit": "px",
+      "label": "字幕字号",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.subtitle_pos",
+      "stage": "look",
+      "type": "enum",
+      "default": "底部",
+      "options": [
+        "底部",
+        "中部",
+        "顶部"
+      ],
+      "label": "字幕位置",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.subtitle_anim",
+      "stage": "look",
+      "type": "enum",
+      "default": "淡入",
+      "options": [
+        "淡入",
+        "逐字",
+        "打字机",
+        "弹入"
+      ],
+      "label": "字幕动效",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.contrast",
+      "stage": "look",
+      "type": "int",
+      "default": 105,
+      "min": 0,
+      "max": 200,
+      "step": 1,
+      "label": "对比度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.saturation",
+      "stage": "look",
+      "type": "int",
+      "default": 105,
+      "min": 0,
+      "max": 200,
+      "step": 1,
+      "label": "饱和度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.temperature",
+      "stage": "look",
+      "type": "int",
+      "default": 5,
+      "min": -100,
+      "max": 100,
+      "step": 1,
+      "label": "色温微调",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.tint",
+      "stage": "look",
+      "type": "int",
+      "default": 0,
+      "min": -100,
+      "max": 100,
+      "step": 1,
+      "label": "色调微调",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.highlight_rolloff",
+      "stage": "look",
+      "type": "int",
+      "default": 20,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "高光滚降",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.shadow_lift",
+      "stage": "look",
+      "type": "int",
+      "default": 10,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "暗部提亮",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.lens_flare",
+      "stage": "look",
+      "type": "int",
+      "default": 5,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "镜头光晕",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.paper_texture",
+      "stage": "look",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "纸纹",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.watercolor_edge",
+      "stage": "look",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "水彩边",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.ink_bleed",
+      "stage": "look",
+      "type": "int",
+      "default": 0,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "墨韵扩散",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.frame_border",
+      "stage": "look",
+      "type": "bool",
+      "default": false,
+      "label": "画框",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.film_halation",
+      "stage": "look",
+      "type": "int",
+      "default": 10,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "胶片光晕",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.vignette_softness",
+      "stage": "look",
+      "type": "int",
+      "default": 50,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "暗角柔度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.color_grade_model",
+      "stage": "look",
+      "type": "enum",
+      "default": "LUT",
+      "options": [
+        "无",
+        "IC-Light",
+        "参考图匹配",
+        "LUT"
+      ],
+      "label": "调色方式",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.03,
+        "time": 0.05,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "lk.reference_image",
+      "stage": "look",
+      "type": "bool",
+      "default": false,
+      "label": "参考图调色",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0.02,
+        "time": 0.05,
+        "quality": 0.04
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.resolution",
+      "stage": "export",
+      "type": "enum",
+      "default": "1080p",
+      "options": [
+        "720p",
+        "1080p",
+        "1440p",
+        "4K"
+      ],
+      "label": "成片分辨率",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.1,
+        "quality": 0.06
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "parameters.resolution"
+      }
+    },
+    {
+      "key": "ex.bitrate",
+      "stage": "export",
+      "type": "int",
+      "default": 12,
+      "min": 2,
+      "max": 40,
+      "step": 1,
+      "unit": "Mbps",
+      "label": "码率",
+      "hint": "1080p24 建议 10–16 Mbps",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.05,
+        "quality": 0.03
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.codec",
+      "stage": "export",
+      "type": "enum",
+      "default": "H.264",
+      "options": [
+        "H.264",
+        "H.265",
+        "AV1"
+      ],
+      "label": "编码",
+      "hint": "H.265 同码率更清晰，但部分平台转码更慢",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.08,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.fps",
+      "stage": "export",
+      "type": "enum",
+      "default": "24",
+      "options": [
+        "24",
+        "25",
+        "30",
+        "60"
+      ],
+      "label": "成片帧率",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.08,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.color_space",
+      "stage": "export",
+      "type": "enum",
+      "default": "Rec.709",
+      "options": [
+        "Rec.709",
+        "Rec.2020",
+        "sRGB"
+      ],
+      "label": "色彩空间",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.episode_duration",
+      "stage": "export",
+      "type": "int",
+      "default": 36,
+      "min": 5,
+      "max": 300,
+      "step": 1,
+      "unit": "s",
+      "label": "单集成片时长",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.transition",
+      "stage": "export",
+      "type": "enum",
+      "default": "叠化",
+      "options": [
+        "无",
+        "淡入淡出",
+        "叠化",
+        "划像",
+        "闪白"
+      ],
+      "label": "转场类型",
+      "hint": "",
+      "tier": "L3",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0.02
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.transition_duration",
+      "stage": "export",
+      "type": "float",
+      "default": 0.3,
+      "min": 0.1,
+      "max": 1.5,
+      "step": 0.1,
+      "unit": "s",
+      "label": "转场时长",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.intro",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "片头",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.outro",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "片尾",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.watermark_pos",
+      "stage": "export",
+      "type": "enum",
+      "default": "右下",
+      "options": [
+        "右下",
+        "左下",
+        "居中",
+        "无"
+      ],
+      "label": "水印位置",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.watermark_opacity",
+      "stage": "export",
+      "type": "int",
+      "default": 40,
+      "min": 0,
+      "max": 100,
+      "step": 1,
+      "label": "水印透明度",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.ai_label",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "AI 生成标识（不可关）",
+      "hint": "合规红线：国内平台要求显著标识",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "guards": [],
+      "bind": {
+        "target": "",
+        "widget": ""
+      },
+      "bind_ds": {
+        "path": "parameters.watermark"
+      }
+    },
+    {
+      "key": "ex.metadata",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "写入元数据",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.platform_douyin",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "派生抖音版",
+      "hint": "9:16 + 安全边距",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.platform_bilibili",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "派生 B 站版",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.platform_xhs",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "派生小红书版",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.platform_shipinhao",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "派生视频号版",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.03,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.pack_master",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "打包母版",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.pack_srt",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "打包 SRT",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.pack_cover",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "打包封面",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.02,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.pack_manifest",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "打包 manifest",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.audio_bitrate",
+      "stage": "export",
+      "type": "int",
+      "default": 192,
+      "min": 96,
+      "max": 320,
+      "step": 16,
+      "unit": "kbps",
+      "label": "音频码率",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0.01
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.loudness_norm",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "响度归一",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0.01,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.faststart",
+      "stage": "export",
+      "type": "bool",
+      "default": true,
+      "label": "faststart",
+      "hint": "网页秒开必需",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    },
+    {
+      "key": "ex.naming_rule",
+      "stage": "export",
+      "type": "text",
+      "default": "{episode}_{shot}_{seed}",
+      "label": "文件命名规则",
+      "hint": "",
+      "tier": "L4",
+      "impact": {
+        "vram": 0,
+        "time": 0,
+        "quality": 0
+      },
+      "bind": {
+        "target": "",
+        "widget": ""
+      }
+    }
+  ]
+}

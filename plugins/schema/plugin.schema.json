@@ -1,0 +1,267 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "ai-video-platform/plugin.schema.json",
+  "title": "AI 视频平台插件 manifest（schema: ai-video-platform/plugin）",
+  "description": "四类插件（model/node/preset/ui）共用一份 manifest。手写 draft-07；运行时校验器 plugins/loader.js 内置本文件的子集解释器，不依赖任何第三方库。原则：插件只允许声明式 JSON，可以声明『要什么』，不能携带『要跑的代码』。",
+  "type": "object",
+  "required": ["schema", "id", "name", "version", "type", "engines", "contributes"],
+  "additionalProperties": false,
+  "properties": {
+    "schema": { "const": "ai-video-platform/plugin" },
+    "id": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9-]{2,47}$",
+      "description": "全局唯一 ID，同时是 packs 目录名与 registry.plugin_layers 里的键；只允许小写字母/数字/连字符。"
+    },
+    "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+    "version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "type": { "enum": ["model", "node", "preset", "ui"] },
+    "description": { "type": "string", "maxLength": 400 },
+    "author": { "type": "string", "maxLength": 80 },
+    "homepage": { "type": "string", "pattern": "^https://" },
+    "engines": {
+      "type": "object",
+      "required": ["platform"],
+      "additionalProperties": false,
+      "properties": {
+        "platform": {
+          "type": "string",
+          "pattern": "^[<>=^~0-9. |\\-]+$",
+          "description": "语义化范围，支持 >= <= > < = ^ ~ 与 || 组合。不满足则整包拒绝加载，理由写进 errors。"
+        },
+        "registry": {
+          "type": "string",
+          "pattern": "^[<>=^~0-9. |\\-]+$",
+          "description": "可选：要求宿主注册表版本（preset 插件还会额外强校验 registry_version 与 checksum）。"
+        }
+      }
+    },
+    "permissions": {
+      "type": "array",
+      "uniqueItems": true,
+      "maxItems": 4,
+      "items": { "enum": ["fs:read", "net", "exec", "gpu"] },
+      "description": "默认全拒。声明 exec 的包不会注入运行时，只登记为 needs-review 交人工审核。"
+    },
+    "signature": { "$ref": "#/definitions/signature" },
+    "contributes": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "params": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 64,
+          "items": { "$ref": "#/definitions/param" }
+        },
+        "node": { "$ref": "#/definitions/node" },
+        "models": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 16,
+          "items": { "$ref": "#/definitions/model" }
+        },
+        "preset": { "$ref": "#/definitions/preset" },
+        "ui": { "$ref": "#/definitions/ui" }
+      }
+    }
+  },
+  "allOf": [
+    {
+      "if": { "properties": { "type": { "const": "node" } }, "required": ["type"] },
+      "then": { "required": ["contributes"], "properties": { "contributes": { "required": ["params"] } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "model" } }, "required": ["type"] },
+      "then": { "required": ["contributes"], "properties": { "contributes": { "required": ["models"] } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "preset" } }, "required": ["type"] },
+      "then": { "required": ["contributes"], "properties": { "contributes": { "required": ["preset"] } } }
+    },
+    {
+      "if": { "properties": { "type": { "const": "ui" } }, "required": ["type"] },
+      "then": { "required": ["contributes"], "properties": { "contributes": { "required": ["ui"] } } }
+    }
+  ],
+  "definitions": {
+    "signature": {
+      "type": "object",
+      "required": ["key_id", "alg", "sig"],
+      "additionalProperties": false,
+      "description": "Ed25519 签名。签名对象是规范化后的 manifest 正文（去掉顶层 signature、对象键升序、无空白、UTF-8），验签前由 loader 重算，详见 docs/04-plugins.md §11。缺签的 model/node/exec 包会被拒载，ui/preset 降级为 unsigned。",
+      "properties": {
+        "key_id": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9._-]{2,47}$",
+          "description": "必须能在 plugins/keys/trusted.json 里找到同名公钥（base64 SPKI）。不在清单里 = PLUGIN_UNKNOWN_KEY。"
+        },
+        "alg": { "const": "ed25519", "description": "只支持 ed25519（Node 内置 crypto，零依赖）。" },
+        "sig": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9+/]{86}==$",
+          "description": "64 字节签名的 base64（Ed25519 定长 64 字节 → base64 88 字符，结尾 ==）。"
+        }
+      }
+    },
+    "param": {
+      "type": "object",
+      "required": ["key", "stage", "type", "default", "label", "hint", "tier", "impact", "bind"],
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "type": "string",
+          "pattern": "^[a-z]{2,4}\\.[a-z][a-z0-9_]*$",
+          "description": "前缀必须是对应 stage 的既有前缀（ch/sb/kf/mo/vo/lk/ex），且不得与既有参数重名。"
+        },
+        "stage": { "type": "string", "minLength": 1, "description": "必须是宿主 registry.stages 里已存在的 stage。" },
+        "type": { "enum": ["text", "int", "enum", "bool", "float", "seed"] },
+        "default": { "type": ["string", "number", "boolean"] },
+        "label": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "hint": { "type": "string", "minLength": 1, "maxLength": 240 },
+        "tier": { "enum": ["L2", "L3", "L4"] },
+        "impact": {
+          "type": "object",
+          "required": ["vram", "time", "quality"],
+          "additionalProperties": false,
+          "properties": {
+            "vram": { "type": "number", "minimum": 0, "maximum": 1 },
+            "time": { "type": "number", "minimum": 0, "maximum": 1 },
+            "quality": { "type": "number", "minimum": 0, "maximum": 1 }
+          }
+        },
+        "bind": {
+          "type": "object",
+          "required": ["target", "widget"],
+          "additionalProperties": false,
+          "properties": {
+            "target": { "type": "string", "minLength": 1 },
+            "widget": { "type": "string", "minLength": 1 }
+          }
+        },
+        "min": { "type": "number" },
+        "max": { "type": "number" },
+        "step": { "type": "number", "exclusiveMinimum": 0 },
+        "unit": { "type": "string", "maxLength": 8 },
+        "options": { "type": "array", "minItems": 1, "maxItems": 40, "uniqueItems": true, "items": { "type": "string" } }
+      }
+    },
+    "node": {
+      "type": "object",
+      "required": ["id", "title", "stage"],
+      "additionalProperties": false,
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{2,47}$" },
+        "title": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "stage": { "type": "string", "minLength": 1 },
+        "inputs": { "type": "array", "maxItems": 12, "items": { "type": "string" } },
+        "outputs": { "type": "array", "maxItems": 12, "items": { "type": "string" } },
+        "notes": { "type": "string", "maxLength": 400 }
+      }
+    },
+    "model": {
+      "type": "object",
+      "required": ["group", "id", "resident_mib", "t_factor", "license", "provenance"],
+      "additionalProperties": false,
+      "properties": {
+        "group": { "enum": ["keyframe", "i2v", "voice"] },
+        "id": { "type": "string", "minLength": 2, "maxLength": 64 },
+        "params_b": { "type": "number", "exclusiveMinimum": 0 },
+        "resident_mib": {
+          "type": "object",
+          "required": ["fp16"],
+          "additionalProperties": false,
+          "properties": {
+            "fp16": { "type": "number", "exclusiveMinimum": 0 },
+            "fp8": { "type": "number", "exclusiveMinimum": 0 },
+            "gguf_q4": { "type": "number", "exclusiveMinimum": 0 },
+            "int4": { "type": "number", "exclusiveMinimum": 0 }
+          }
+        },
+        "t_factor": { "type": "number", "exclusiveMinimum": 0, "maximum": 10 },
+        "license": { "type": "string", "minLength": 1, "maxLength": 40 },
+        "provenance": {
+          "enum": ["measured", "doc", "estimate"],
+          "description": "来源等级必须自报；estimate 不得被当成实测对外宣传（沿用语料库 provenance 口径）。"
+        },
+        "note": { "type": "string", "maxLength": 240 }
+      }
+    },
+    "preset": {
+      "type": "object",
+      "required": ["schema", "format", "registry_version", "name", "values", "checksum"],
+      "additionalProperties": false,
+      "properties": {
+        "schema": { "const": "ai-video-platform/preset" },
+        "format": { "const": 1 },
+        "registry_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+        "name": { "type": "string", "minLength": 1, "maxLength": 60 },
+        "author": { "type": "string", "maxLength": 80 },
+        "device": { "type": "string", "maxLength": 60 },
+        "created": { "type": "string", "minLength": 10 },
+        "checksum": { "type": "string", "pattern": "^djb2:[0-9a-f]{1,8}$" },
+        "values": {
+          "type": "object",
+          "minProperties": 1,
+          "additionalProperties": { "type": ["string", "number", "boolean"] }
+        }
+      }
+    },
+    "ui": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "themes": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["id", "title", "tokens"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,31}$" },
+              "title": { "type": "string", "minLength": 1, "maxLength": 40 },
+              "tokens": {
+                "type": "object",
+                "minProperties": 1,
+                "maxProperties": 64,
+                "additionalProperties": { "type": "string", "maxLength": 80 }
+              }
+            }
+          }
+        },
+        "panels": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 8,
+          "items": {
+            "type": "object",
+            "required": ["id", "slot", "title"],
+            "additionalProperties": false,
+            "properties": {
+              "id": { "type": "string", "pattern": "^[a-z][a-z0-9-]{1,31}$" },
+              "slot": { "enum": ["stage-sidebar", "inspector-right", "toolbar", "export-dialog"] },
+              "title": { "type": "string", "minLength": 1, "maxLength": 40 },
+              "fields": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 16,
+                "items": {
+                  "type": "object",
+                  "required": ["key"],
+                  "additionalProperties": false,
+                  "properties": {
+                    "key": { "type": "string", "description": "必须指向注册表里已存在的参数 key。" },
+                    "label": { "type": "string", "maxLength": 40 },
+                    "readonly": { "type": "boolean" }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

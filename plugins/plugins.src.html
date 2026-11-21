@@ -1,0 +1,1411 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>插件管理 · VisInter-Agent v0.1</title>
+<!--
+  plugins/plugins.src.html —— 插件管理入口的源件（构建产物 plugins/index.html，单文件双击可用）
+
+  构建期注入三块（顺序见 tools/build_module.mjs，占位符只出现在下面的 style 与 script 里）：
+    TOKENS ← ui/tokens.css       视觉令牌
+    UI     ← ui/module-ui.css    四模块共享骨架
+    SNAP   ← plugins/snapshot.json  由 tools/snap_plugins.mjs 用 plugins/loader.js 真跑出来
+
+  本页做四件事，且每件都必须落在真实字段上：
+    1) 把快照里的 state 分组显示（可用 / 需复核 / 未签名 / 被拒）—— 状态名来自 loader，不自造；
+    2) 展示 errors[] / warnings[] 原文（path / code / message），不做意译；
+    3) 本地校验：按快照里的 schema 约束 + 权限白名单 + engines 版本比较给出 0/1 结论；
+    4) ui 运行时：主题真的写进 :root CSS 变量、面板真的挂进四个 slot 容器（跨模块宿主标「登记不渲染」）。
+
+  明确不做的两件事（写在页面里，不藏在文档里）：
+    - 启停只记本地意图（localStorage avp.plugins.state），真实启用/停止属于服务端能力，执行在 loader 侧；
+    - 权限是声明式标签，加载器不沙箱执行代码。
+-->
+<style>
+/*__TOKENS__*/
+/*__UI__*/
+/*__SKIN__*/
+
+/* ───────────────────────── 本页专有样式 ─────────────────────────
+   只加「插件管理」真正需要的东西：清单行的标记位、权限判定表、本地校验结果。
+   字体、颜色、圆角、间距一律取令牌，不新增色值。 */
+
+/* 顶栏压紧：1100px 下不横向滚动 */
+.topbar .crumbs { white-space: nowrap; }
+.topbar .badge { flex: 0 0 auto; }
+
+/* 左栏：三段分组头 + 行内标记
+   分组头吸在列表顶上，滚到它下面时必须挡住行（原来 background: transparent
+   会在悬浮玻璃板里透出下面的字），这里给一层膜内凹槽底。 */
+.list .sect {
+  display: flex; align-items: center; gap: var(--sp2);
+  position: sticky; top: 0; z-index: 1;
+  background-color: var(--bg-deep);
+}
+.list .sect .n { font-variant-numeric: tabular-nums; color: var(--text-dim2); }
+.list .row .t { display: flex; align-items: center; gap: 5px; min-width: 0; }
+.list .row .t .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .row.disabled .nm { color: var(--text-dim2); }
+.list .row.disabled .s { color: var(--text-dim2); }
+.list .row .s { white-space: nowrap; }
+
+/* 小标记（样例·异常 / 已禁用 / 白名单内 等）：状态胶囊，圆角走 pill（属令牌允许的 999 档） */
+.chip {
+  display: inline-flex; align-items: center; height: 16px; padding: 0 6px;
+  border: 1px solid var(--line2); border-radius: var(--r-pill); background: var(--panel2);
+  color: var(--text-dim); font-size: var(--fz-xs); white-space: nowrap; flex: 0 0 auto;
+  transition: background-color var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+.chip.ok   { border-color: var(--ok);   color: var(--ok);   background: var(--ok-fill); }
+.chip.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-fill); }
+.chip.bad  { border-color: var(--bad);  color: var(--bad);  background: var(--bad-fill); }
+.chip.off  { color: var(--text-dim2); background: transparent; }
+
+/* 详情字段表：字段名窄列，值列可换行 */
+.detail-kv {
+  display: grid; grid-template-columns: 92px minmax(0, 1fr);
+  gap: 5px var(--sp3); font-size: var(--fz-s); margin: 0;
+}
+.detail-kv > dt { color: var(--text-dim); }
+.detail-kv > dd { margin: 0; min-width: 0; overflow-wrap: anywhere; }
+.detail-kv > dd .line { display: flex; flex-wrap: wrap; align-items: center; gap: 5px; }
+.detail-kv > dd .line + .line { margin-top: 3px; }
+
+/* 固定列宽的表：1100px 下用换行兜住，不出横向滚动 */
+.tbl.fixed { table-layout: fixed; }
+.tbl.fixed th, .tbl.fixed td { height: auto; padding: 4px var(--sp2); vertical-align: top; }
+.tbl.fixed .wrap { overflow-wrap: anywhere; }
+.col-code { width: 176px; }
+.col-path { width: 208px; }
+.col-perm { width: 116px; }
+.col-verdict { width: 132px; }
+.col-rule { width: 176px; }
+@media (max-width: 1100px) {
+  .topbar .brand span { display: none; }
+  .body { --col: 268px; }
+  .col-code { width: 148px; }
+  .col-path { width: 168px; }
+}
+
+/* 空的校验结果：给「0 错 0 警」而不是空白 */
+.zero { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp2); color: var(--text-dim); font-size: var(--fz-s); }
+
+/* 原始 manifest / 运行日志块 */
+.raw { margin-top: var(--sp2); }
+.raw summary { cursor: pointer; color: var(--text-dim); font-size: var(--fz-xs); padding: 2px 0; }
+.raw summary:hover { color: var(--text); }
+.raw .code { max-height: 260px; margin-top: var(--sp2); }
+
+/* 本地校验面板：文件选择框按输入框口径（圆角 16），里面的按钮按按钮口径（12） */
+.localbar { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp2); }
+.file {
+  height: 26px; padding: 2px 6px; font-size: var(--fz-xs); color: var(--text-dim); max-width: 100%;
+  border: 1px solid var(--line); border-radius: var(--r3); background-color: var(--panel2);
+  cursor: pointer;
+}
+.file:hover { border-color: var(--glass-line-hover); }
+.file::file-selector-button {
+  height: 20px; margin-right: var(--sp2); padding: 0 7px; cursor: pointer;
+  border: 1px solid var(--line2); border-radius: var(--r2); background: var(--panel3);
+  color: var(--text); font: var(--fz-xs)/1 var(--sans);
+}
+.file::file-selector-button:hover { background: var(--panel3); }
+.verdict-line { display: flex; align-items: center; flex-wrap: wrap; gap: var(--sp2); margin: var(--sp2) 0 0; }
+.verdict-line b { font-weight: 600; }
+.rulelist { margin: var(--sp2) 0 0; padding: 0; list-style: none; display: flex; flex-wrap: wrap; gap: var(--sp1) var(--sp2); }
+.rulelist li { display: flex; align-items: center; gap: 5px; font-size: var(--fz-xs); color: var(--text-dim); }
+.rulelist li .mono { color: var(--text); }
+
+/* 最近一次本地校验：内存态列表 */
+.runs { display: flex; flex-direction: column; }
+.runs .run {
+  display: grid; grid-template-columns: 72px minmax(0, 1fr) auto;
+  gap: var(--sp2); align-items: baseline;
+  padding: 4px var(--sp1); border-bottom: 1px solid var(--line); font-size: var(--fz-s);
+}
+.runs .run:last-child { border-bottom: 0; }
+.runs .run .at { color: var(--text-dim2); font-family: var(--mono); font-size: var(--fz-xs); }
+.runs .run .what { min-width: 0; overflow-wrap: anywhere; }
+.runs .run .what .fname { color: var(--text); }
+.runs .run .codes { color: var(--text-dim2); font-family: var(--mono); font-size: var(--fz-xs); }
+.runs .run.latest { background-color: var(--panel2); box-shadow: inset 2px 0 0 var(--acc); }
+.runs .run:hover { background-color: var(--panel2); }
+
+/* 提示条（导出结果、启停结果）：与 glass-skin 的 .toast 配方逐项一致
+   （页面样式在 skin 之后，所以这套值得在页面里写全，否则会被这里的低配覆盖） */
+.toast {
+  position: fixed; left: 50%; transform: translateX(-50%); bottom: 34px; z-index: 30;
+  display: none; align-items: center; gap: var(--sp2); max-width: min(420px, 92vw);
+  padding: 7px var(--sp3);
+  border: 1px solid var(--glass-line-hover); border-radius: var(--r3);
+  background-color: var(--glass-hover);
+  background-image: var(--sheen); background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+  color: var(--text); font-size: var(--fz-s);
+}
+.toast.on { display: flex; }
+
+/* 说明段落（口径文字） */
+.note { margin: var(--sp2) 0 0; color: var(--text-dim); font-size: var(--fz-s); line-height: 1.6; }
+.note b { color: var(--text); font-weight: 600; }
+
+/* ── 窄屏（≤900）：顶栏按钮多，允许横向滑动；面包屑让位给状态徽标 ── */
+@media (max-width: 900px) {
+  .topbar { overflow-x: auto; scrollbar-width: none; }
+  .topbar::-webkit-scrollbar { display: none; }
+  .topbar .crumbs { display: none; }
+  .detail-kv { grid-template-columns: 72px minmax(0, 1fr); }
+}
+
+/* ───────────────────── ui 运行时（主题真生效 + slot dock） ─────────────────────
+   这张页签是"真渲染"的证据面：主题 token 真的写进 documentElement 的 CSS 变量，
+   面板真的以 DOM 挂在四个 slot 容器里。表内颜色/圆角/间距一律取令牌，不新增色值。 */
+.themes { display: grid; grid-template-columns: repeat(auto-fill, minmax(232px, 1fr)); gap: var(--sp2); }
+.themecard {
+  display: flex; flex-direction: column; gap: var(--sp2);
+  padding: var(--sp3); border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--panel2);
+}
+.themecard.on { border-color: var(--line3); box-shadow: inset 0 0 0 1px var(--acc-fill); }
+.themecard .th { display: flex; align-items: center; gap: var(--sp2); min-width: 0; }
+.themecard .th .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; color: var(--text); }
+.themecard .sws { display: flex; flex-wrap: wrap; gap: 5px; }
+.themecard .sw { display: flex; align-items: center; gap: 4px; font-size: var(--fz-xs); color: var(--text-dim2); }
+.themecard .sw i {
+  display: inline-block; width: 13px; height: 13px; border-radius: var(--r2);
+  border: 1px solid var(--line2); background-color: var(--panel3);
+}
+.themecard .ops { display: flex; align-items: center; gap: var(--sp2); margin-top: auto; }
+
+.slots { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp3); }
+.slot {
+  display: flex; flex-direction: column; gap: var(--sp2);
+  min-height: 104px; padding: var(--sp2) var(--sp3) var(--sp3);
+  border: 1px solid var(--line); border-radius: var(--r3); background-color: var(--panel2);
+}
+.slot-h { display: flex; align-items: center; gap: var(--sp2); padding-bottom: var(--sp1); border-bottom: 1px solid var(--line); }
+.slot-h .mono { color: var(--text); }
+.pcard { padding: var(--sp2); border: 1px solid var(--line2); border-radius: var(--r2); background-color: var(--panel); }
+.pcard-h { display: flex; align-items: center; gap: var(--sp2); font-size: var(--fz-s); color: var(--text); }
+.pcard-b { display: flex; flex-direction: column; gap: 3px; margin-top: var(--sp1); }
+.field { display: flex; align-items: center; gap: var(--sp2); font-size: var(--fz-s); }
+.field .lbl { color: var(--text); }
+.field .k { color: var(--text-dim2); font-family: var(--mono); font-size: var(--fz-xs); }
+.pcard-f { margin-top: var(--sp1); color: var(--text-dim2); font-size: var(--fz-xs); }
+@media (max-width: 1100px) { .slots { grid-template-columns: minmax(0, 1fr); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <a class="btn mini ghost" data-backlink href="../app/index.html" title="返回平台工作台（各模块页共用的回程路）">← 工作台</a>
+    <div class="brand"><b>插件管理</b><span>VisInter-Agent v0.1</span></div>
+    <span class="crumbs">工作台<i>/</i>插件管理</span>
+    <span class="spacer"></span>
+    <span class="badge ok" id="bActive"><span class="dot ok"></span><span class="num">0</span> 可用</span>
+    <span class="badge warn" id="bReview"><span class="dot warn"></span><span class="num">0</span> 需复核</span>
+    <span class="badge warn" id="bUnsigned"><span class="dot warn"></span><span class="num">0</span> 未签名</span>
+    <span class="badge bad" id="bRejected"><span class="dot bad"></span><span class="num">0</span> 被拒</span>
+    <button class="btn" id="btnLocal" type="button">本地校验</button>
+    <button class="btn acc" id="btnExport" type="button">导出审计报告</button>
+  </header>
+
+  <div class="body" style="--col:300px">
+    <aside class="aside">
+      <div class="aside-h">插件清单<span class="spacer"></span><span>按 loader state 分组</span></div>
+      <div class="aside-b"><div class="list" id="list" role="listbox" aria-label="插件清单"></div></div>
+    </aside>
+
+    <main class="main">
+      <div class="main-h">
+        <h2 id="detailTitle">未选中</h2>
+        <span class="sub" id="detailSub"></span>
+        <span class="spacer"></span>
+        <span class="badge" id="sigBadge">签名</span>
+        <span class="badge" id="intentBadge">本地意图</span>
+        <button class="btn" id="btnToggle" type="button" disabled>停用</button>
+      </div>
+
+      <div class="tabs" id="tabs" role="tablist">
+        <button class="tab" type="button" role="tab" data-tab="manifest" aria-selected="true">清单</button>
+        <button class="tab" type="button" role="tab" data-tab="perm" aria-selected="false">权限</button>
+        <button class="tab" type="button" role="tab" data-tab="check" aria-selected="false">校验</button>
+        <button class="tab" type="button" role="tab" data-tab="ui" aria-selected="false">ui 运行时</button>
+      </div>
+
+      <div class="main-b" id="mainB"></div>
+      <div class="main-f" id="mainF"></div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="provenance">数据来源 plugins/snapshot.json</span>
+    <span class="spacer"></span>
+    <span class="num" id="stCounts"></span>
+  </footer>
+</div>
+
+<div class="toast" id="toast" role="status" aria-live="polite"></div>
+
+<script>
+/*__SNAP__*/
+</script>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ═══════════════════════════ 快照 ═══════════════════════════ */
+  const SNAP = (window.__SNAP && typeof window.__SNAP === 'object') ? window.__SNAP : null;
+  const ENTRIES = (SNAP && Array.isArray(SNAP.entries)) ? SNAP.entries : [];
+  const COUNTS = (SNAP && SNAP.counts) || {};
+  const HOST = (SNAP && SNAP.host) || {};
+  const SCHEMA = (SNAP && SNAP.schema_contract) || {};
+  const HOST_VER = HOST.platform_version || '0.1.0';
+  const WHITELIST = (SNAP && Array.isArray(SNAP.permission_whitelist) && SNAP.permission_whitelist.length)
+    ? SNAP.permission_whitelist
+    : ['fs:read', 'net', 'exec', 'gpu'];
+  const SNAP_AT = (SNAP && SNAP.generated_at) || '（快照缺失）';
+  const LS_KEY = 'avp.plugins.state';           // 只动自己的前缀
+  const GROUPS = ['active', 'needs-review', 'unsigned', 'rejected'];
+  const STATE_META = {
+    active: { label: '可用', tone: 'ok' },
+    'needs-review': { label: '需复核', tone: 'warn' },
+    unsigned: { label: '未签名', tone: 'warn' },
+    rejected: { label: '被拒', tone: 'bad' }
+  };
+  /* 签名原因码 → 人话。页面只照抄 loader 的 code，不自己判断签名对不对：
+     loader 报的问题在 errors[]（拒载）或 warnings[]（降级）里，这里只是换个说法 */
+  const SIG_CODES = {
+    PLUGIN_SIGNATURE_OK: '签名通过',
+    PLUGIN_UNSIGNED: '缺签',
+    PLUGIN_UNKNOWN_KEY: '未知 key_id',
+    PLUGIN_BAD_ALG: 'alg 不支持',
+    PLUGIN_BAD_SIGNATURE: '验签失败'
+  };
+  const SIG_RE = /^PLUGIN_(SIGNATURE_OK|UNSIGNED|UNKNOWN_KEY|BAD_ALG|BAD_SIGNATURE)$/;
+  const PERM_NOTE = {
+    'fs:read': '允许宿主在加载阶段读取本包目录内的附属文件（当前仅登记，未开放）',
+    net: '允许未来拉取远程资产（加载阶段不发任何网络请求）',
+    gpu: '声明需要 GPU 预算（求解器会把该包模型计入显存账本）',
+    exec: '声明需要运行外部进程（默认隔离，不注入运行时）'
+  };
+
+  /* ═══════════════════════════ 工具 ═══════════════════════════ */
+  const $ = (sel) => document.querySelector(sel);
+  const esc = (v) => String(v === null || v === undefined ? '' : v).replace(/[&<>"']/g, (c) => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;'
+  }[c]));
+  const num = (v) => (typeof v === 'number' && isFinite(v) ? String(v) : '0');
+  const pad2 = (n) => (n < 10 ? '0' + n : String(n));
+  const clock = (d) => pad2(d.getHours()) + ':' + pad2(d.getMinutes()) + ':' + pad2(d.getSeconds());
+  const stamp = (d) => d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate()) + ' ' + clock(d);
+  const toneOf = (state) => (STATE_META[state] ? STATE_META[state].tone : '');
+  const labelOf = (state) => (STATE_META[state] ? STATE_META[state].label : String(state || '未知'));
+
+  /* ═══════════════════════ 本地启停意图 ═══════════════════════
+     铁律：这里只记录「用户希望它启用/停用」，不假装能启停插件。
+     真实启用/停止属于服务端能力（loader 在 Node 侧合并注册表），浏览器里没有运行时。 */
+  function loadIntent() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      const obj = raw ? JSON.parse(raw) : {};
+      return (obj && typeof obj === 'object' && !Array.isArray(obj)) ? obj : {};
+    } catch (e) {
+      return {};
+    }
+  }
+  let intent = loadIntent();
+  function intentOf(id) { return intent[id] === 'disabled' ? 'disabled' : 'enabled'; }
+  function setIntent(id, value) {
+    intent[id] = value;
+    let ok = true;
+    try {
+      localStorage.setItem(LS_KEY, JSON.stringify(intent));
+    } catch (e) {
+      ok = false;   // 隐私模式 / file:// 限制下写不进去：页面照实说，不装作成功
+    }
+    return ok;
+  }
+
+  /* ═══════════════════════════ 视图状态 ═══════════════════════════ */
+  let selected = ENTRIES.length ? ENTRIES[0].id : null;
+  let tab = 'manifest';
+  let localChecks = [];       // 内存态：最近一次本地校验
+  let lastLocal = null;
+
+  const entryOf = (id) => ENTRIES.find((e) => e.id === id) || null;
+
+  /* ═══════════════════════ 签名状态（只读 loader 的结论） ═══════════════════════
+     规则：manifest 里有 signature + loader 没报签名类问题 ⇒ 通过；
+     否则取加载器报的那条原因码（errors 优先于 warnings：被拒比降级更严重）。
+     页面**不做**真正的验签——浏览器里没有可信清单，也不该有私钥；
+     验签只发生在 Node 侧的 plugins/loader.js。 */
+  function sigOf(e) {
+    const m = (e && e.manifest) || {};
+    const present = !!(m.signature && typeof m.signature === 'object');
+    const errs = ((e && e.errors) || []).filter((x) => SIG_RE.test(x.code));
+    const warns = ((e && e.warnings) || []).filter((x) => SIG_RE.test(x.code));
+    const hit = errs[0] || warns[0] || null;
+    if (hit) {
+      return { present, ok: false, code: hit.code, label: SIG_CODES[hit.code] || hit.code, tone: errs.length ? 'bad' : 'warn', message: hit.message };
+    }
+    if (present) {
+      return { present, ok: true, code: 'PLUGIN_SIGNATURE_OK', label: SIG_CODES.PLUGIN_SIGNATURE_OK, tone: 'ok', message: '' };
+    }
+    return { present: false, ok: false, code: 'PLUGIN_UNSIGNED', label: SIG_CODES.PLUGIN_UNSIGNED, tone: 'warn', message: '' };
+  }
+  /** 所有带 ui 贡献的包（active / unsigned）—— 宿主真正会挂载的那批 */
+  function uiPacks() {
+    return ENTRIES.filter((e) => {
+      const c = (e.manifest && e.manifest.contributes) || {};
+      const ui = c.ui;
+      if (!ui || typeof ui !== 'object') return false;
+      return e.state === 'active' || e.state === 'unsigned';
+    });
+  }
+
+  /* ═══════════════════════════ 左栏清单 ═══════════════════════════ */
+  function renderList() {
+    const box = $('#list');
+    if (!ENTRIES.length) {
+      box.innerHTML = '<div class="empty-row">快照里没有插件。左侧无法列出任何条目 —— 见右侧空态的处理办法。</div>';
+      return;
+    }
+    let html = '';
+    for (const key of GROUPS) {
+      const rows = ENTRIES.filter((e) => e.state === key);
+      html += '<div class="sect">' + esc(STATE_META[key].label) + '<span class="spacer"></span><span class="n">' + rows.length + '</span></div>';
+      if (!rows.length) {
+        html += '<div class="empty-row">没有' + esc(STATE_META[key].label) + '的包</div>';
+        continue;
+      }
+      for (const e of rows) {
+        const disabled = intentOf(e.id) === 'disabled';
+        const dot = disabled ? 'off' : toneOf(e.state);
+        const isFixture = e.origin === 'fixture';
+        const sig = sigOf(e);
+        html += '<div class="row' + (disabled ? ' disabled' : '') + '" role="option" tabindex="0"'
+          + ' aria-selected="' + (e.id === selected ? 'true' : 'false') + '" data-id="' + esc(e.id) + '"'
+          + ' title="' + esc(e.id + ' · ' + (e.dir || '') + ' · 签名 ' + sig.code) + '">'
+          + '<span class="ico"><span class="dot ' + dot + '"></span></span>'
+          + '<span class="t"><span class="nm">' + esc(e.name || e.id) + '</span>'
+          + (isFixture ? '<span class="chip warn">样例·异常</span>' : '')
+          + '<span class="chip ' + (sig.tone === 'ok' ? 'ok' : sig.tone) + '">' + esc(sig.present ? sig.label : '缺签') + '</span>'
+          + (disabled ? '<span class="chip off">已禁用</span>' : '')
+          + '</span>'
+          + '<span class="s num">v' + esc(e.version || '?') + ' · ' + esc(e.type || '?') + '</span>'
+          + '</div>';
+      }
+    }
+    box.innerHTML = html;
+  }
+
+  $('#list').addEventListener('click', (ev) => {
+    const row = ev.target.closest('.row');
+    if (row && row.dataset.id) { selected = row.dataset.id; render(); }
+  });
+  $('#list').addEventListener('keydown', (ev) => {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    const row = ev.target.closest('.row');
+    if (!row || !row.dataset.id) return;
+    ev.preventDefault();
+    selected = row.dataset.id;
+    render();
+  });
+
+  /* ui 页签的主题按钮：事件委托。面板 HTML 每次 render 重建，绑在按钮上的监听会一起没掉。 */
+  $('#mainB').addEventListener('click', (ev) => {
+    const applyBtn = ev.target.closest('[data-theme-apply]');
+    if (applyBtn) {
+      const parts = String(applyBtn.getAttribute('data-theme-apply') || '').split('::');
+      applyTheme(parts[0], parts[1]);
+      return;
+    }
+    if (ev.target.closest('[data-theme-reset]')) resetTheme();
+  });
+
+  /* ═══════════════════════════ 右侧标题栏 ═══════════════════════════ */
+  function renderHeader() {
+    const e = entryOf(selected);
+    const btn = $('#btnToggle');
+    const intentBadge = $('#intentBadge');
+    const sigBadge = $('#sigBadge');
+    if (!e) {
+      $('#detailTitle').textContent = ENTRIES.length ? '未选中' : '没有插件';
+      $('#detailSub').textContent = '';
+      btn.disabled = true;
+      btn.textContent = '停用';
+      intentBadge.className = 'badge';
+      intentBadge.textContent = '本地意图';
+      if (sigBadge) { sigBadge.className = 'badge'; sigBadge.textContent = '签名'; }
+      return;
+    }
+    $('#detailTitle').textContent = e.name || e.id;
+    $('#detailSub').textContent = e.id + ' · v' + (e.version || '?') + ' · ' + (e.type || '?');
+    const disabled = intentOf(e.id) === 'disabled';
+    btn.disabled = false;
+    btn.textContent = disabled ? '启用' : '停用';
+    intentBadge.className = 'badge ' + (disabled ? '' : 'acc');
+    intentBadge.textContent = disabled ? '已禁用（本地意图）' : '启用中（本地意图）';
+    if (sigBadge) {
+      const sig = sigOf(e);
+      sigBadge.className = 'badge ' + (sig.tone === 'ok' ? 'ok' : sig.tone);
+      sigBadge.textContent = sig.present ? sig.label : '缺签（unsigned 风险）';
+      sigBadge.title = sig.message || sig.code;
+    }
+  }
+
+  $('#btnToggle').addEventListener('click', () => {
+    const e = entryOf(selected);
+    if (!e) return;
+    const next = intentOf(e.id) === 'disabled' ? 'enabled' : 'disabled';
+    const saved = setIntent(e.id, next);
+    render();
+    toast(saved
+      ? '已把 ' + (e.name || e.id) + ' 的本地意图写为 ' + next + '（' + LS_KEY + '）'
+      : '写入 ' + LS_KEY + ' 失败，本次只改了页面状态');
+  });
+
+  /* ═══════════════════════════ 清单页 ═══════════════════════════ */
+  function fieldRow(label, valueHtml) {
+    return '<dt>' + esc(label) + '</dt><dd>' + valueHtml + '</dd>';
+  }
+
+  function enginesHtml(e) {
+    const chk = e.engines_check || {};
+    const eng = e.engines || {};
+    const out = [];
+    const line = (key, name) => {
+      const c = chk[key];
+      if (!c) {
+        const declared = typeof eng[key] === 'string';
+        return declared
+          ? '<div class="line"><span class="mono">' + esc(name) + ' ' + esc(eng[key]) + '</span>'
+            + '<span class="chip">未比较</span></div>'
+          : '<div class="line"><span class="hint">' + esc(name) + ' 未声明</span></div>';
+      }
+      return '<div class="line"><span class="mono">' + esc(name) + ' ' + esc(c.range) + '</span>'
+        + '<span class="badge ' + (c.satisfied ? 'ok' : 'bad') + '">' + (c.satisfied ? '满足' : '不满足') + '</span>'
+        + '<span class="hint">宿主 ' + esc(c.against) + '</span></div>';
+    };
+    out.push(line('platform', 'platform'));
+    out.push(line('registry', 'registry'));
+    return out.join('') + '<div class="line"><span class="hint">比较规则：' + esc(HOST.version_rule || '') + '</span></div>';
+  }
+
+  function contributesHtml(e) {
+    const c = e.contributes || {};
+    const parts = [];
+    if ((c.params || 0) > 0) parts.push('params ' + c.params + ' 条');
+    if ((c.models || 0) > 0) parts.push('models ' + c.models + ' 条');
+    if (c.node) parts.push('node ' + esc(c.node.id) + '（' + esc(c.node.stage) + '）');
+    if (c.preset) parts.push('preset ' + esc(c.preset.name) + '（' + c.preset.values + ' 项，' + esc(c.preset.checksum) + '）');
+    if (c.ui) parts.push('ui 主题 ' + c.ui.themes + ' / 面板 ' + c.ui.panels);
+    if (!parts.length) parts.push('（contributes 为空）');
+    const keys = (c.keys || []).length ? (c.keys || []).join(' / ') : '（无）';
+    return '<div class="line">' + parts.join('<span class="hint"> · </span>') + '</div>'
+      + '<div class="line"><span class="hint">键：' + esc(keys) + '</span></div>';
+  }
+
+  function signatureHtml(e) {
+    const m = e.manifest || {};
+    const s = m.signature || null;
+    const sig = sigOf(e);
+    if (!s) {
+      return '<span class="chip warn">缺签</span> '
+        + '<span class="hint">' + esc(sig.code) + ' · state=' + esc(e.state)
+        + '（model/node/exec 缺签直接拒载；ui/preset 降级 unsigned）</span>';
+    }
+    const short = String(s.sig || '').slice(0, 16) + '…';
+    return '<span class="mono">key_id ' + esc(s.key_id) + '</span>'
+      + '<span class="chip ' + (sig.tone === 'ok' ? 'ok' : sig.tone) + '">' + esc(sig.label) + '</span>'
+      + '<div class="line"><span class="hint">alg ' + esc(s.alg) + ' · sig ' + esc(short) + ' · ' + esc(sig.code) + '</span></div>';
+  }
+
+  function renderManifestTab(e) {
+    const m = e.manifest || {};
+    const missing = '<span class="chip warn">未声明</span>';
+    const val = (v) => (typeof v === 'string' && v.length ? esc(v) : missing);
+    const head = '<div class="panel">'
+      + '<div class="panel-h">manifest 字段<span class="spacer"></span>'
+      + (e.origin === 'fixture' ? '<span class="chip warn">样例·异常</span>' : '')
+      + '<span class="hint">' + esc(e.dir) + '/plugin.json</span></div>'
+      + '<div class="panel-b"><dl class="detail-kv">';
+    const body = [
+      fieldRow('schema', typeof m.schema === 'string' ? '<span class="mono">' + esc(m.schema) + '</span>' : missing),
+      fieldRow('id', '<span class="mono">' + esc(m.id || e.id) + '</span>'),
+      fieldRow('name', val(m.name)),
+      fieldRow('version', '<span class="mono">' + esc(m.version || e.version || '') + '</span>'),
+      fieldRow('type', val(m.type)),
+      fieldRow('description', val(m.description)),
+      fieldRow('author', val(m.author)),
+      fieldRow('homepage', typeof m.homepage === 'string' ? '<a href="' + esc(m.homepage) + '">' + esc(m.homepage) + '</a>' : missing),
+      fieldRow('engines', enginesHtml(e)),
+      fieldRow('signature', signatureHtml(e)),
+      fieldRow('contributes', contributesHtml(e))
+    ].join('');
+    const raw = '<details class="raw"><summary>manifest 原文（快照内，未经改写）</summary>'
+      + '<pre class="code">' + esc(JSON.stringify(m, null, 2)) + '</pre></details>';
+    return head + body + '</dl>' + raw + '</div></div>';
+  }
+
+  /* ═══════════════════════════ 权限页 ═══════════════════════════ */
+  function renderPermTab(e) {
+    const declared = Array.isArray(e.permissions_declared) ? e.permissions_declared : [];
+    const unknown = Array.isArray(e.permissions_unknown) ? e.permissions_unknown : [];
+    let rows = '';
+    if (!declared.length) {
+      rows = '<tr><td class="mono">（未声明）</td>'
+        + '<td><span class="chip">未声明 → 默认拒绝</span></td>'
+        + '<td class="wrap">manifest 没有 permissions 字段，loader 解析为 <span class="mono">[]</span>，全部按拒绝处理'
+        + '（对应 warning <span class="mono">DEFAULT_DENY</span>）。</td></tr>';
+    } else {
+      for (const p of declared) {
+        const isUnknown = unknown.indexOf(p) >= 0;
+        const isExec = p === 'exec';
+        const verdict = isUnknown
+          ? '<span class="chip warn">未识别（忽略）</span>'
+          : isExec
+            ? '<span class="chip warn">隔离待复核</span>'
+            : '<span class="chip ok">白名单内</span>';
+        let note = PERM_NOTE[p] || '不在 permission 白名单内。';
+        if (isUnknown) {
+          note = '不在 PERMISSION_WHITELIST（' + WHITELIST.join(' / ') + '）内：loader 在权限解析阶段直接丢弃，不登记。';
+        } else if (isExec) {
+          note = 'loader 把该包登记为 <span class="mono">needs-review</span>，reason 写明「等待人工审核（不注入运行时）」；'
+            + '参数不会进入运行时注册表。';
+        }
+        rows += '<tr><td class="mono">' + esc(p) + '</td><td>' + verdict + '</td><td class="wrap">' + note + '</td></tr>';
+      }
+    }
+    const execHint = declared.indexOf('exec') >= 0
+      ? '<p class="note hint"><b>权限是声明式标签，加载器不沙箱执行代码</b> —— 声明 exec 只把包登记为 needs-review，'
+        + '宿主不会为它注入运行时、不分配显存、不发网络请求。</p>'
+      : '';
+
+    const wl = WHITELIST.map((p) => '<tr><td class="mono">' + esc(p) + '</td><td class="wrap">' + esc(PERM_NOTE[p] || '') + '</td></tr>').join('');
+
+    return '<div class="panel">'
+      + '<div class="panel-h">permissions 声明值<span class="spacer"></span>'
+      + '<span class="num">' + declared.length + ' 条声明 · ' + unknown.length + ' 条未识别</span></div>'
+      + '<div class="panel-b">'
+      + '<p class="note hint">启停开关只写 localStorage 的 <span class="mono">' + LS_KEY + '</span>：'
+      + '这里只记录本地启用意图，执行在 loader 侧 —— 页面不会真的加载或卸载任何插件，'
+      + '注册表合并仍然只发生在 Node 侧的 plugins/loader.js。</p>'
+      + '<table class="tbl fixed"><colgroup><col class="col-perm"><col class="col-verdict"><col></colgroup>'
+      + '<thead><tr><th>权限</th><th>判定</th><th>依据</th></tr></thead><tbody>' + rows + '</tbody></table>'
+      + execHint
+      + '<p class="note">未声明 permissions 的包等于「全拒」：这个平台不存在隐式授权。</p>'
+      + '</div></div>'
+      + '<div class="panel">'
+      + '<div class="panel-h">白名单（loader.PERMISSION_WHITELIST）<span class="spacer"></span>'
+      + '<span class="num">' + WHITELIST.length + ' 条</span></div>'
+      + '<div class="panel-b"><table class="tbl fixed"><colgroup><col class="col-perm"><col></colgroup>'
+      + '<thead><tr><th>权限</th><th>语义</th></tr></thead><tbody>' + wl + '</tbody></table>'
+      + '<p class="note">权限是声明式标签，加载器不沙箱执行代码：白名单只决定「这条声明是否被登记」，不产生任何运行时能力。</p>'
+      + '</div></div>';
+  }
+
+  /* ═══════════════════════ ui 运行时（卡 ⑧：真渲染） ═══════════════════════
+     真渲染的部分：
+       1) 主题：把 themes[].tokens 逐个写进 document.documentElement.style，
+          本页所有 var(--x) 立刻跟着变 —— 真的改，不是截图；
+       2) 面板：按 slot 生成四列 dock，面板是真实 DOM（标题/来源/字段）。
+     明确做不到的部分（页面上也写着）：app/ web/ canvas/ inspector/ 四个宿主页
+     没有订阅插件主题与面板（那要改跨模块写域），所以跨模块 slot 只有登记。
+     页面不写任何文件、不改 ui/tokens.css：主题只在本次会话内覆盖 CSS 变量，刷新即复位。 */
+  const SLOTS = ['stage-sidebar', 'inspector-right', 'toolbar', 'export-dialog'];
+  const SLOT_NOTE = {
+    'stage-sidebar': '参数工作台左侧栏',
+    'inspector-right': '检视器右栏',
+    toolbar: '顶栏工具区',
+    'export-dialog': '导出弹窗'
+  };
+  const HOSTS = ['app/', 'web/', 'canvas/', 'inspector/'];
+  const SAFE_COLOR = /^(#[0-9a-f]{3,8}|rgba?\([\d.,\s%]+\))$/i;
+  let appliedTheme = null;   // {plugin_id, id, tokens}
+  let appliedProps = [];     // 已写进 documentElement 的 CSS 变量名
+
+  function themeEntries() {
+    const out = [];
+    for (const e of uiPacks()) {
+      for (const t of ((e.manifest.contributes.ui.themes) || [])) out.push({ entry: e, theme: t });
+    }
+    return out;
+  }
+  function panelEntries() {
+    const out = [];
+    for (const e of uiPacks()) {
+      for (const p of ((e.manifest.contributes.ui.panels) || [])) out.push({ entry: e, panel: p });
+    }
+    return out;
+  }
+
+  function clearTheme() {
+    for (const k of appliedProps) document.documentElement.style.removeProperty(k);
+    appliedProps = [];
+  }
+
+  /** 应用主题：真的写 CSS 变量。只接受 --开头 的变量名与安全值（再防一遍 css 侧信道）。 */
+  function applyTheme(pluginId, themeId) {
+    const hit = themeEntries().find((x) => x.entry.id === pluginId && x.theme.id === themeId);
+    if (!hit) { toast('找不到主题 ' + pluginId + '::' + themeId); return 0; }
+    clearTheme();
+    let n = 0;
+    for (const [k, v] of Object.entries(hit.theme.tokens || {})) {
+      if (!/^--[A-Za-z0-9_-]+$/.test(k) || typeof v !== 'string') continue;
+      if (/url\s*\(|javascript:|@import|<\/?script/i.test(v)) continue;
+      document.documentElement.style.setProperty(k, v);
+      appliedProps.push(k);
+      n += 1;
+    }
+    appliedTheme = { plugin_id: pluginId, id: themeId, tokens: n };
+    render();
+    toast('已应用主题「' + (hit.theme.title || themeId) + '」：' + n + ' 个 CSS 变量写进 :root（本页会话内生效）');
+    return n;
+  }
+
+  function resetTheme() {
+    const had = appliedTheme;
+    clearTheme();
+    appliedTheme = null;
+    render();
+    toast(had ? '已还原主题覆盖（' + had.id + '）' : '当前没有应用主题');
+  }
+
+  /** 面板卡：真实 DOM，字段值由参数工作台持有，这里只渲染 label/key/只读标记 */
+  function panelCard(entry, panel) {
+    const sig = sigOf(entry);
+    const fields = (panel.fields || []).map((f) =>
+      '<div class="field"><span class="lbl">' + esc(f.label || f.key) + '</span>'
+      + '<span class="k">' + esc(f.key) + '</span>'
+      + (f.readonly ? '<span class="chip">只读</span>' : '')
+      + '<span class="spacer"></span>'
+      + '<span class="chip ' + (sig.present ? 'ok' : 'warn') + '">' + esc(sig.present ? sig.label : '缺签') + '</span>'
+      + '</div>').join('');
+    return '<div class="pcard">'
+      + '<div class="pcard-h">' + esc(panel.title || panel.id)
+      + '<span class="spacer"></span><span class="chip">' + esc(panel.id) + '</span></div>'
+      + '<div class="pcard-b">' + (fields || '<span class="hint">面板没有字段</span>') + '</div>'
+      + '<div class="pcard-f">来源 <span class="mono">' + esc(entry.id) + '</span> · state ' + esc(entry.state)
+      + ' · 字段值由参数工作台持有，本页只读渲染</div>'
+      + '</div>';
+  }
+
+  function renderUiTab() {
+    const themes = themeEntries();
+    const panels = panelEntries();
+
+    const hostPanel = '<div class="panel">'
+      + '<div class="panel-h">接线状态<span class="spacer"></span>'
+      + '<span class="chip ' + (appliedTheme ? 'ok' : '') + '">'
+      + (appliedTheme ? '主题已应用：' + esc(appliedTheme.id) : '未应用主题') + '</span></div>'
+      + '<div class="panel-b"><dl class="detail-kv">'
+      + fieldRow('本页真渲染', '<span class="chip ok">主题 → :root CSS 变量</span> <span class="chip ok">面板 → slot dock（四列）</span>')
+      + fieldRow('跨模块宿主', '<span class="chip warn">登记不渲染</span> <span class="hint">'
+        + esc(HOSTS.join(' · ')) + ' 尚未订阅插件主题/面板（要改跨模块写域）</span>')
+      + fieldRow('数据来源', '<span class="mono">plugins/snapshot.json</span>'
+        + ' <span class="hint">entries[].manifest.contributes.ui + entries[].state；页面不二次判断</span>')
+      + '</dl></div></div>';
+
+    const cards = themes.length ? themes.map(function (x) {
+      const on = !!appliedTheme && appliedTheme.plugin_id === x.entry.id && appliedTheme.id === x.theme.id;
+      const sig = sigOf(x.entry);
+      const sws = Object.entries(x.theme.tokens || {}).slice(0, 8).map(function (kv) {
+        const color = SAFE_COLOR.test(String(kv[1])) ? String(kv[1]) : '';
+        return '<span class="sw" title="' + esc(kv[0] + ': ' + kv[1]) + '">'
+          + '<i' + (color ? ' style="background-color:' + esc(color) + '"' : '') + '></i>' + esc(kv[0]) + '</span>';
+      }).join('');
+      return '<div class="themecard' + (on ? ' on' : '') + '">'
+        + '<div class="th"><span class="nm">' + esc(x.theme.title || x.theme.id) + '</span>'
+        + '<span class="chip ' + (sig.tone === 'ok' ? 'ok' : 'warn') + '">' + esc(x.entry.state) + '</span></div>'
+        + '<div class="sws">' + sws + '</div>'
+        + '<div class="ops">'
+        + '<button class="btn' + (on ? '' : ' acc') + '" type="button"'
+        + ' data-theme-apply="' + esc(x.entry.id + '::' + x.theme.id) + '"' + (on ? ' disabled' : '') + '>'
+        + (on ? '已应用' : '应用主题') + '</button>'
+        + (on ? '<button class="btn" type="button" data-theme-reset="1">还原</button>' : '')
+        + '</div>'
+        + '<div class="pcard-f">' + esc(x.entry.id) + ' · ' + Object.keys(x.theme.tokens || {}).length + ' 个 token</div>'
+        + '</div>';
+    }).join('') : '<div class="zero"><span class="hint">没有可用的 ui 主题包（packs/ 里没有 state=active|unsigned 的 ui 类插件）</span></div>';
+
+    const slotHtml = SLOTS.map(function (slot) {
+      const mine = panels.filter(function (x) { return x.panel.slot === slot; });
+      const body = mine.length
+        ? mine.map(function (x) { return panelCard(x.entry, x.panel); }).join('')
+        : '<div class="zero"><span class="hint">该 slot 没有面板</span></div>';
+      return '<section class="slot"><div class="slot-h"><span class="mono">' + esc(slot) + '</span>'
+        + '<span class="hint">' + esc(SLOT_NOTE[slot] || '') + '</span>'
+        + '<span class="spacer"></span><span class="num">' + mine.length + '</span></div>'
+        + '<div class="slot-b">' + body + '</div></section>';
+    }).join('');
+
+    return hostPanel
+      + '<div class="panel"><div class="panel-h">主题（themes[]）<span class="spacer"></span>'
+      + '<span class="num">' + themes.length + ' 个</span></div>'
+      + '<div class="panel-b"><div class="themes">' + cards + '</div>'
+      + '<p class="note">点「应用主题」= 把 token 写进 <span class="mono">document.documentElement.style</span>，本页配色立刻改变；'
+      + '「还原」清除覆盖。不写文件、不改 <span class="mono">ui/tokens.css</span>，刷新即复位。</p></div></div>'
+      + '<div class="panel"><div class="panel-h">slot dock（panels[]）<span class="spacer"></span>'
+      + '<span class="num">' + panels.length + ' 块面板</span></div>'
+      + '<div class="panel-b"><div class="slots">' + slotHtml + '</div>'
+      + '<p class="note">四列是<b>真实容器</b>：面板按 <span class="mono">slot</span> 字段挂进来。'
+      + '宿主页（<span class="mono">' + esc(HOSTS.join(' / ')) + '</span>）尚未订阅 → 那里标「登记不渲染」。</p>'
+      + '</div></div>';
+  }
+
+
+  /* ═══════════════════════════ 校验页 ═══════════════════════════ */
+  function problemTable(rows) {
+    return '<table class="tbl fixed"><colgroup><col class="col-code"><col class="col-path"><col></colgroup>'
+      + '<thead><tr><th>code</th><th>path</th><th>message</th></tr></thead><tbody>'
+      + rows.map((r) => '<tr>'
+        + '<td class="mono">' + esc(r.code) + '</td>'
+        + '<td class="mono wrap">' + esc(r.path) + '</td>'
+        + '<td class="wrap">' + esc(r.message) + '</td>'
+        + '</tr>').join('')
+      + '</tbody></table>';
+  }
+
+  function appliedHtml(e) {
+    if (e.state !== 'active') {
+      return '<span class="chip">未进运行时</span> <span class="hint">state = ' + esc(e.state) + '，loader 不合并该包</span>';
+    }
+    const a = e.applied || {};
+    const bits = [];
+    if ((a.params || 0) > 0) bits.push('参数 +' + a.params);
+    if ((a.models || 0) > 0) bits.push('模型 +' + a.models);
+    if ((a.presets || 0) > 0) bits.push('预设 +' + a.presets);
+    if ((a.themes || 0) > 0) bits.push('主题 +' + a.themes);
+    if ((a.panels || 0) > 0) bits.push('面板 +' + a.panels);
+    return '<span class="chip ok">已注入</span> <span class="hint">' + esc(bits.join(' · ') || '合并结果无增量') + '</span>';
+  }
+
+  function renderCheckTab(e) {
+    const errs = Array.isArray(e.errors) ? e.errors : [];
+    const warns = Array.isArray(e.warnings) ? e.warnings : [];
+    const zero = (errs.length === 0 && warns.length === 0)
+      ? '<div class="zero"><span class="badge ok">0 错 0 警</span><span>loader 没有返回任何错误与警告</span></div>'
+      : '';
+
+    const summary = '<div class="panel">'
+      + '<div class="panel-h">校验结论<span class="spacer"></span>'
+      + '<span class="badge ' + toneOf(e.state) + '">' + esc(labelOf(e.state)) + '</span></div>'
+      + '<div class="panel-b"><dl class="detail-kv">'
+      + fieldRow('state', '<span class="mono">' + esc(e.state) + '</span>')
+      + fieldRow('推导来源', '<span class="mono">' + esc(e.state_from || '') + '</span>'
+        + '<span class="hint">（loader 的返回值，本页不二次判断）</span>')
+      + fieldRow('reason', '<span class="wrap">' + (e.reason ? esc(e.reason) : '<span class="hint">无</span>') + '</span>')
+      + fieldRow('运行时', appliedHtml(e))
+      + fieldRow('计数', zero || ('<span class="num">' + errs.length + '</span> <span class="hint">错</span> '
+        + '<span class="num">' + warns.length + '</span> <span class="hint">警</span>'))
+      + '</dl></div></div>';
+
+    const errPanel = '<div class="panel">'
+      + '<div class="panel-h">errors[]<span class="spacer"></span><span class="num">' + errs.length + '</span></div>'
+      + '<div class="panel-b">' + (errs.length ? problemTable(errs) : '<div class="zero"><span class="badge ok">0</span><span class="hint">没有 error</span></div>') + '</div></div>';
+
+    const warnPanel = '<div class="panel">'
+      + '<div class="panel-h">warnings[]<span class="spacer"></span><span class="num">' + warns.length + '</span></div>'
+      + '<div class="panel-b">' + (warns.length ? problemTable(warns) : '<div class="zero"><span class="badge ok">0</span><span class="hint">没有 warning</span></div>') + '</div></div>';
+
+    return summary + errPanel + warnPanel + localPanel();
+  }
+
+  /* ═══════════════════ 本地校验（页面内结构校验子集）═══════════════════
+     规则来源：快照里的 schema_contract（由 tools/snap_plugins.mjs 直接读
+     plugins/schema/plugin.schema.json 得到）+ loader 的权限白名单 + engines 版本比较。
+     不做的事：contributes 内部的语义校验（key 冲突 / stage 是否存在 / impact 范围 / 预设校验和），
+     那些需要 base 注册表与 core/engine.js，只能在 Node 侧由 loader 完成。 */
+  const VER_RE = /^(\d+)\.(\d+)\.(\d+)(?:-([0-9A-Za-z.-]+))?$/;
+  const CMP_RE = /(\^|~|>=|<=|>|<|=)?\s*(\d+\.\d+\.\d+)(?:-[0-9A-Za-z.-]+)?/g;
+
+  function parseVer(input) {
+    if (typeof input !== 'string') return null;
+    const m = VER_RE.exec(input.trim());
+    if (!m) return null;
+    return { maj: +m[1], min: +m[2], pat: +m[3], pre: m[4] || null };
+  }
+  function cmpVer(a, b) {
+    const keys = ['maj', 'min', 'pat'];
+    for (let i = 0; i < keys.length; i++) {
+      const k = keys[i];
+      if (a[k] !== b[k]) return a[k] < b[k] ? -1 : 1;
+    }
+    const aw = a.pre ? 0 : 1;
+    const bw = b.pre ? 0 : 1;
+    return aw === bw ? 0 : aw < bw ? -1 : 1;
+  }
+  /* 与 plugins/loader.js 的 satisfies 同算法：单比较符 / 空（等于）/ ^ / ~，
+     空格为「与」，|| 为「或」；整段必须被比较式吃干净，否则视为非法范围。 */
+  function satisfies(version, range) {
+    const v = parseVer(version);
+    if (!v || typeof range !== 'string' || !range.trim()) return false;
+    return range.split('||').some(function (clause) {
+      const text = clause.trim();
+      if (!text) return false;
+      const tokens = text.match(CMP_RE);
+      if (!tokens || tokens.join(' ').replace(/\s+/g, ' ') !== text.replace(/\s+/g, ' ')) return false;
+      return tokens.every(function (tok) {
+        CMP_RE.lastIndex = 0;
+        const m = CMP_RE.exec(tok);
+        if (!m) return false;
+        const op = m[1] || '=';
+        const target = parseVer(m[2]);
+        if (!target) return false;
+        const c = cmpVer(v, target);
+        if (op === '>=') return c >= 0;
+        if (op === '<=') return c <= 0;
+        if (op === '>') return c > 0;
+        if (op === '<') return c < 0;
+        if (op === '=') return c === 0;
+        if (op === '^') {
+          const upper = target.maj === 0
+            ? { maj: 0, min: target.min + 1, pat: 0, pre: null }
+            : { maj: target.maj + 1, min: 0, pat: 0, pre: null };
+          return c >= 0 && cmpVer(v, upper) < 0;
+        }
+        if (op === '~') {
+          const upper = { maj: target.maj, min: target.min + 1, pat: 0, pre: null };
+          return c >= 0 && cmpVer(v, upper) < 0;
+        }
+        return false;
+      });
+    });
+  }
+
+  /** 结构校验：返回 { ok, id, name, rules:[{code,path,message,rule}], notes:[], executed:[规则名] } */
+  function localCheck(raw) {
+    const rules = [];
+    const notes = [];
+    const executed = [];
+    const hit = (code, p, message, rule) => rules.push({ code: code, path: p, message: message, rule: rule });
+    const req = Array.isArray(SCHEMA.required) ? SCHEMA.required : [];
+    const typeEnum = Array.isArray(SCHEMA.type_enum) ? SCHEMA.type_enum : [];
+    const permEnum = Array.isArray(SCHEMA.permissions_items_enum) ? SCHEMA.permissions_items_enum : WHITELIST;
+    const contribKeys = Array.isArray(SCHEMA.contributes_keys) ? SCHEMA.contributes_keys : [];
+    const typeReq = Array.isArray(SCHEMA.type_requirements) ? SCHEMA.type_requirements : [];
+    const isObj = (v) => v !== null && typeof v === 'object' && !Array.isArray(v);
+
+    if (!isObj(raw)) {
+      hit('TYPE_MISMATCH', '$', '顶层必须是 JSON 对象，实际 ' + (Array.isArray(raw) ? 'array' : typeof raw), 'type:object');
+      return { ok: false, id: '', name: '', rules: rules, executed: ['type:object'] };
+    }
+
+    executed.push('required: ' + req.join(', '));
+    for (const f of req) {
+      if (!(f in raw)) hit('REQUIRED_MISSING', '$.' + f, '缺少必填字段 ' + f, 'required');
+    }
+
+    if (SCHEMA.additional_properties === false) {
+      executed.push('additionalProperties: false');
+      const known = req.concat(['description', 'author', 'homepage', 'permissions', 'signature']);
+      for (const k of Object.keys(raw)) {
+        if (known.indexOf(k) < 0) hit('UNKNOWN_FIELD', '$.' + k, '未声明的字段（拼错？）', 'additionalProperties');
+      }
+    }
+
+    /* signature：只查**形状**（镜像 schema/plugin.schema.json#definitions/signature）。
+       浏览器里没有可信公钥、也不该有私钥，真验签只在 Node 侧的 plugins/loader.js 做——
+       页面要是假装"验过了"，就等于给了一个假的信任信号。 */
+    if ('signature' in raw) {
+      executed.push('definitions/signature: key_id / alg=ed25519 / sig(base64 64B)');
+      const s = raw.signature;
+      if (!isObj(s)) {
+        hit('TYPE_MISMATCH', '$.signature', '期望 object，实际 ' + (Array.isArray(s) ? 'array' : typeof s), 'type:object');
+      } else {
+        for (const need of ['key_id', 'alg', 'sig']) {
+          if (!(need in s)) hit('REQUIRED_MISSING', '$.signature.' + need, 'signature 缺必填字段 ' + need, 'required:signature');
+        }
+        for (const k of Object.keys(s)) {
+          if (['key_id', 'alg', 'sig'].indexOf(k) < 0) hit('UNKNOWN_FIELD', '$.signature.' + k, 'signature 下未声明的字段', 'additionalProperties:signature');
+        }
+        if ('key_id' in s && (typeof s.key_id !== 'string' || !/^[a-z][a-z0-9._-]{2,47}$/.test(s.key_id))) {
+          hit('PATTERN_MISMATCH', '$.signature.key_id', 'key_id 必须匹配 ^[a-z][a-z0-9._-]{2,47}$', 'pattern:signature.key_id');
+        }
+        if ('alg' in s && s.alg !== 'ed25519') {
+          hit('CONST_MISMATCH', '$.signature.alg', 'alg 必须是 "ed25519"，实际 ' + JSON.stringify(s.alg), 'const:signature.alg');
+        }
+        if ('sig' in s && (typeof s.sig !== 'string' || !/^[A-Za-z0-9+/]{86}==$/.test(s.sig))) {
+          hit('PATTERN_MISMATCH', '$.signature.sig', 'sig 必须是 64 字节签名的 base64（88 字符，结尾 ==）', 'pattern:signature.sig');
+        }
+      }
+    }
+
+    if (SCHEMA.schema_const) {
+      executed.push('const: schema = ' + SCHEMA.schema_const);
+      if ('schema' in raw && raw.schema !== SCHEMA.schema_const) {
+        hit('CONST_MISMATCH', '$.schema', '必须是 ' + JSON.stringify(SCHEMA.schema_const) + '，实际 ' + JSON.stringify(raw.schema), 'const');
+      }
+    }
+
+    const str = (key, label) => {
+      if (!(key in raw)) return null;
+      if (typeof raw[key] !== 'string') {
+        hit('TYPE_MISMATCH', '$.' + key, '期望 string，实际 ' + typeof raw[key], 'type:string');
+        return null;
+      }
+      return raw[key];
+    };
+
+    const id = str('id', 'id');
+    if (id !== null) {
+      if (SCHEMA.id_pattern) executed.push('pattern: id ' + SCHEMA.id_pattern);
+      if (SCHEMA.id_pattern && !new RegExp(SCHEMA.id_pattern).test(id)) {
+        hit('PATTERN_MISMATCH', '$.id', '不匹配 ' + SCHEMA.id_pattern + '：' + JSON.stringify(id), 'pattern:id');
+      }
+    }
+    const name = str('name');
+    if (name !== null) {
+      executed.push('minLength/maxLength: name ' + SCHEMA.name_min_length + '..' + SCHEMA.name_max_length);
+      if (SCHEMA.name_min_length && name.length < SCHEMA.name_min_length) hit('TOO_SHORT', '$.name', '长度 ' + name.length + ' < ' + SCHEMA.name_min_length, 'minLength');
+      if (SCHEMA.name_max_length && name.length > SCHEMA.name_max_length) hit('TOO_LONG', '$.name', '长度 ' + name.length + ' > ' + SCHEMA.name_max_length, 'maxLength');
+    }
+    const version = str('version');
+    if (version !== null) {
+      if (SCHEMA.version_pattern) executed.push('pattern: version ' + SCHEMA.version_pattern);
+      if (SCHEMA.version_pattern && !new RegExp(SCHEMA.version_pattern).test(version)) {
+        hit('PATTERN_MISMATCH', '$.version', '不匹配 ' + SCHEMA.version_pattern + '：' + JSON.stringify(version), 'pattern:version');
+      }
+    }
+    const type = str('type');
+    if (type !== null) {
+      executed.push('enum: type = ' + typeEnum.join(' | '));
+      if (typeEnum.length && typeEnum.indexOf(type) < 0) {
+        hit('ENUM_MISMATCH', '$.type', '取值必须是 ' + typeEnum.join(' | ') + ' 之一，实际 ' + JSON.stringify(type), 'enum:type');
+      }
+    }
+    const desc = str('description');
+    if (desc !== null && SCHEMA.description_max_length && desc.length > SCHEMA.description_max_length) {
+      hit('TOO_LONG', '$.description', '长度 ' + desc.length + ' > ' + SCHEMA.description_max_length, 'maxLength:description');
+    }
+    const author = str('author');
+    if (author !== null && SCHEMA.author_max_length && author.length > SCHEMA.author_max_length) {
+      hit('TOO_LONG', '$.author', '长度 ' + author.length + ' > ' + SCHEMA.author_max_length, 'maxLength:author');
+    }
+    const homepage = str('homepage');
+    if (homepage !== null && SCHEMA.homepage_pattern) {
+      executed.push('pattern: homepage ' + SCHEMA.homepage_pattern);
+      if (!new RegExp(SCHEMA.homepage_pattern).test(homepage)) {
+        hit('PATTERN_MISMATCH', '$.homepage', '不匹配 ' + SCHEMA.homepage_pattern + '：' + JSON.stringify(homepage), 'pattern:homepage');
+      }
+    }
+
+    if (!('signature' in raw)) {
+      // 缺签不是结构错误（ui/preset 允许降级），但必须提示，不能让"本地校验通过"被读成"可信"
+      notes.push('缺 signature：Node 侧按类型分档 —— model/node/exec 拒载（PLUGIN_UNSIGNED），ui/preset 降级 unsigned 并告警');
+    }
+
+    /* engines：必填 platform，只允许 platform / registry，范围串要过 pattern 且要真满足 */
+    if ('engines' in raw) {
+      const eng = raw.engines;
+      if (!isObj(eng)) {
+        hit('TYPE_MISMATCH', '$.engines', '期望 object，实际 ' + (Array.isArray(eng) ? 'array' : typeof eng), 'type:object');
+      } else {
+        executed.push('engines.required: ' + (SCHEMA.engines_required || []).join(', '));
+        for (const need of (SCHEMA.engines_required || [])) {
+          if (!(need in eng)) hit('REQUIRED_MISSING', '$.engines.' + need, '缺少必填字段 ' + need, 'required:engines');
+        }
+        executed.push('additionalProperties(engines): only ' + (SCHEMA.engines_keys || []).join(', '));
+        for (const k of Object.keys(eng)) {
+          if ((SCHEMA.engines_keys || []).indexOf(k) < 0) hit('UNKNOWN_FIELD', '$.engines.' + k, 'engines 下未声明的字段', 'additionalProperties:engines');
+        }
+        for (const k of ['platform', 'registry']) {
+          if (!(k in eng)) continue;
+          if (typeof eng[k] !== 'string') {
+            hit('TYPE_MISMATCH', '$.engines.' + k, '期望 string，实际 ' + typeof eng[k], 'type:string');
+            continue;
+          }
+          if (SCHEMA.engines_pattern) executed.push('pattern: engines.' + k + ' ' + SCHEMA.engines_pattern);
+          if (SCHEMA.engines_pattern && !new RegExp(SCHEMA.engines_pattern).test(eng[k])) {
+            hit('PATTERN_MISMATCH', '$.engines.' + k, '不匹配范围串允许字符集：' + JSON.stringify(eng[k]), 'pattern:engines.' + k);
+            continue;
+          }
+          executed.push('satisfies(' + HOST_VER + ', engines.' + k + ')');
+          const against = k === 'platform' ? HOST_VER : (HOST.registry_version || HOST_VER);
+          if (!satisfies(against, eng[k])) {
+            const code = k === 'platform' ? 'VERSION_UNSATISFIED' : 'REGISTRY_VERSION_UNSATISFIED';
+            hit(code, '$.engines.' + k, (k === 'platform' ? '平台版本 ' : '注册表版本 ') + against + ' 不满足插件要求 ' + eng[k], 'engines.' + k + ' 版本比较');
+          }
+        }
+      }
+    }
+
+    /* permissions：数组 / 去重 / 上限 / 每一项必须在白名单内 */
+    if ('permissions' in raw) {
+      const perms = raw.permissions;
+      if (!Array.isArray(perms)) {
+        hit('TYPE_MISMATCH', '$.permissions', '期望 array，实际 ' + typeof perms, 'type:array');
+      } else {
+        if (SCHEMA.permissions_max_items) executed.push('maxItems(permissions) ' + SCHEMA.permissions_max_items);
+        if (SCHEMA.permissions_max_items && perms.length > SCHEMA.permissions_max_items) {
+          hit('TOO_MANY_ITEMS', '$.permissions', '数组长度 ' + perms.length + ' > ' + SCHEMA.permissions_max_items, 'maxItems');
+        }
+        executed.push(SCHEMA.permissions_unique ? 'uniqueItems(permissions)' : 'uniqueItems 未启用');
+        if (SCHEMA.permissions_unique) {
+          const seen = {};
+          perms.forEach((p, i) => {
+            const sig = JSON.stringify(p);
+            if (seen[sig]) hit('DUPLICATE_ITEM', '$.permissions[' + i + ']', '数组成员重复', 'uniqueItems');
+            seen[sig] = true;
+          });
+        }
+        executed.push('enum(permissions) = ' + permEnum.join(' | '));
+        perms.forEach((p, i) => {
+          if (permEnum.indexOf(p) < 0) {
+            hit('ENUM_MISMATCH', '$.permissions[' + i + ']', '取值必须是 ' + permEnum.join(' | ') + ' 之一，实际 ' + JSON.stringify(p), 'enum:permissions');
+          }
+        });
+      }
+    }
+
+    /* contributes：类型专属必填（allOf → if type then contributes.<key>） */
+    if ('contributes' in raw) {
+      const c = raw.contributes;
+      if (!isObj(c)) {
+        hit('TYPE_MISMATCH', '$.contributes', '期望 object，实际 ' + (Array.isArray(c) ? 'array' : typeof c), 'type:object');
+      } else {
+        executed.push('additionalProperties(contributes): ' + contribKeys.join(', '));
+        for (const k of Object.keys(c)) {
+          if (contribKeys.indexOf(k) < 0) hit('UNKNOWN_FIELD', '$.contributes.' + k, 'contributes 下未声明的字段', 'additionalProperties:contributes');
+        }
+        const clause = typeReq.find((t) => t.type === type);
+        if (clause) {
+          executed.push('allOf: type = ' + clause.type + ' → contributes.' + (clause.contributes_required || []).join(' / '));
+          for (const need of (clause.contributes_required || [])) {
+            if (!(need in c)) hit('REQUIRED_MISSING', '$.contributes.' + need, 'type=' + type + ' 必须提供 contributes.' + need, 'allOf:type');
+          }
+        }
+      }
+    } else if (type && typeReq.some((t) => t.type === type)) {
+      const clause = typeReq.find((t) => t.type === type);
+      executed.push('allOf: type = ' + type + ' → contributes');
+      for (const need of (clause.contributes_required || [])) {
+        hit('REQUIRED_MISSING', '$.contributes.' + need, 'type=' + type + ' 必须提供 contributes.' + need, 'allOf:type');
+      }
+    }
+
+    return {
+      ok: rules.length === 0,
+      id: id || '',
+      name: name || '',
+      rules: rules,
+      notes: notes,
+      executed: executed
+    };
+  }
+
+  function localResultHtml(res, meta) {
+    if (!res) {
+      return '<div class="zero"><span class="hint">还没有校验过文件。选择一份 manifest.json，按 schema 子集逐项判定。</span></div>';
+    }
+    const hit = res.rules.length
+      ? '<ul class="rulelist">' + res.rules.map((r) => '<li><span class="mono">' + esc(r.code) + '</span>'
+        + '<span>@' + esc(r.path) + '</span><span class="hint">' + esc(r.rule) + '</span></li>').join('') + '</ul>'
+      : '<div class="zero"><span class="hint">没有命中任何规则</span></div>';
+    const noteHtml = (res.notes && res.notes.length)
+      ? '<ul class="rulelist">' + res.notes.map((n) => '<li><span class="chip warn">提示</span><span>' + esc(n) + '</span></li>').join('') + '</ul>'
+      : '';
+    return '<div class="verdict-line">'
+      + '<span class="badge ' + (res.ok ? 'ok' : 'bad') + '">' + (res.ok ? '0 · 通过' : '1 · 不通过') + '</span>'
+      + '<b>' + esc(res.id || '（无 id）') + '</b>'
+      + '<span class="hint">' + esc(meta && meta.file ? meta.file : '') + '</span>'
+      + '<span class="hint">命中 ' + res.rules.length + ' 条规则</span>'
+      + '</div>'
+      + hit
+      + noteHtml
+      + '<details class="raw"><summary>本次执行的规则（' + res.executed.length + ' 条）</summary>'
+      + '<pre class="code">' + esc(res.executed.join('\n')) + '</pre></details>';
+  }
+
+  function localPanel() {
+    const runs = localChecks.length
+      ? '<div class="runs">' + localChecks.slice(0, 6).map((r, i) => '<div class="run' + (i === 0 ? ' latest' : '') + '">'
+        + '<span class="at">' + esc(r.at) + '</span>'
+        + '<span class="what"><span class="fname mono">' + esc(r.file) + '</span>'
+        + ' <span class="chip ' + (r.ok ? 'ok' : 'bad') + '">' + (r.ok ? '通过' : '不通过') + '</span>'
+        + ' <span class="hint">' + esc(r.id || '无 id') + '</span></span>'
+        + '<span class="codes">' + esc(r.codes.length ? r.codes.join(' ') : '无命中') + '</span>'
+        + '</div>').join('') + '</div>'
+      : '<div class="zero"><span class="hint">还没有记录。校验一次就会在这里留一条（内存态，刷新即清空）。</span></div>';
+
+    return '<div class="panel" id="localPanel">'
+      + '<div class="panel-h">本地校验<span class="spacer"></span>'
+      + '<span class="hint">宿主 avp ' + esc(HOST_VER) + ' · required ' + (SCHEMA.required || []).length + ' 项 · 白名单 ' + WHITELIST.length + ' 条</span></div>'
+      + '<div class="panel-b">'
+      + '<div class="localbar">'
+      + '<input type="file" id="fileInput" class="input file" accept=".json,application/json" aria-label="选择 manifest.json">'
+      + '<span class="hint" id="fileNote">读一份 manifest 做结构校验：required 字段 / 字段类型与 pattern / 枚举 / 权限白名单 / engines 版本比较</span>'
+      + '</div>'
+      + '<div id="localResult">' + localResultHtml(lastLocal ? lastLocal.res : null, lastLocal ? lastLocal.meta : null) + '</div>'
+      + '</div>'
+      + '<div class="panel-h">最近一次本地校验<span class="spacer"></span><span class="num">' + localChecks.length + ' 次</span></div>'
+      + '<div class="panel-b">' + runs + '</div>'
+      + '<div class="panel-b"><p class="note">校验范围是<b>子集</b>：只覆盖 manifest 顶层结构、engines 门禁与 signature 的形状，'
+      + '不含 contributes 内部参数的语义校验（key 冲突 / stage 是否存在 / impact 范围 / 预设校验和），'
+      + '也<b>不做</b> Ed25519 验签——浏览器里没有可信公钥，验签只在 Node 侧的 plugins/loader.js 做。</p></div>'
+      + '</div>';
+  }
+
+  /* 文件读取：真读、真校验、真记录 */
+  document.addEventListener('change', function (ev) {
+    const input = ev.target;
+    if (!input || input.id !== 'fileInput' || !input.files || !input.files[0]) return;
+    const file = input.files[0];
+    const reader = new FileReader();
+    reader.onload = function () {
+      let parsed = null;
+      let res;
+      try {
+        parsed = JSON.parse(String(reader.result));
+        res = localCheck(parsed);
+      } catch (err) {
+        res = {
+          ok: false, id: '', name: '',
+          rules: [{ code: 'JSON_SYNTAX', path: '$', message: String(err && err.message || err), rule: 'JSON.parse' }],
+          executed: ['JSON.parse']
+        };
+      }
+      const meta = { file: file.name, size: file.size, at: clock(new Date()) };
+      localChecks.unshift({
+        at: meta.at, file: file.name, id: res.id, ok: res.ok,
+        codes: res.rules.map((r) => r.code)
+      });
+      lastLocal = { res: res, meta: meta };
+      if (tab === 'check') renderDetail();
+      toast((res.ok ? '本地校验通过：0 条规则命中' : '本地校验不通过：命中 ' + res.rules.length + ' 条规则')
+        + '（' + file.name + '）');
+    };
+    reader.onerror = function () { toast('读取文件失败：' + file.name); };
+    reader.readAsText(file);
+    input.value = '';   // 允许重复选同一个文件
+  });
+
+  /* ═══════════════════════════ 详情渲染 ═══════════════════════════ */
+  function renderEmptyDetail() {
+    $('#mainB').innerHTML = '<div class="empty">'
+      + '<b>快照里没有插件</b>'
+      + '<div>页面读的是构建期注入的 <span class="mono">plugins/snapshot.json</span>。让它不空的办法有两条：</div>'
+      + '<div>1. 在项目根跑 <span class="mono">node tools/snap_plugins.mjs</span> 重新生成快照，再跑 <span class="mono">node tools/build_module.mjs plugins</span>；</div>'
+      + '<div>2. 把插件包放进 <span class="mono">plugins/packs/</span>，异常样例放进 <span class="mono">plugins/fixtures/</span>（每个包一个目录，内含 plugin.json）。</div>'
+      + '<div class="hint">校验器是 plugins/loader.js：页面上的 state、errors[]、warnings[] 全部由它真跑得出，本页不生成任何结论。</div>'
+      + '</div>';
+    $('#mainF').textContent = '数据来源 plugins/snapshot.json（' + SNAP_AT + '）';
+  }
+
+  function renderDetail() {
+    if (!ENTRIES.length) { renderEmptyDetail(); return; }
+    const e = entryOf(selected) || ENTRIES[0];
+    selected = e.id;
+    let html = '';
+    if (tab === 'manifest') html = renderManifestTab(e);
+    else if (tab === 'perm') html = renderPermTab(e);
+    else if (tab === 'ui') html = renderUiTab();
+    else html = renderCheckTab(e);
+    $('#mainB').innerHTML = html;
+    $('#mainF').innerHTML = '条目 <span class="mono">' + esc(e.dir) + '</span>'
+      + ' · state 由 <span class="mono">' + esc(e.state_from || '') + '</span> 推导'
+      + ' · 签名 <span class="mono">' + esc(sigOf(e).code) + '</span>'
+      + ' · 错 <span class="num">' + (e.errors || []).length + '</span> 警 <span class="num">' + (e.warnings || []).length + '</span>'
+      + ' · 启停只记本地意图（<span class="mono">' + LS_KEY + '</span>），执行在 loader 侧';
+  }
+
+  /* ═══════════════════════════ 页脚与徽标 ═══════════════════════════ */
+  function renderChrome() {
+    const active = ENTRIES.filter((e) => e.state === 'active').length;
+    const review = ENTRIES.filter((e) => e.state === 'needs-review').length;
+    const unsigned = ENTRIES.filter((e) => e.state === 'unsigned').length;
+    const rejected = ENTRIES.filter((e) => e.state === 'rejected').length;
+    const signedOk = ENTRIES.filter((e) => sigOf(e).ok).length;
+    $('#bActive').innerHTML = '<span class="dot ok"></span><span class="num">' + active + '</span> 可用';
+    $('#bReview').innerHTML = '<span class="dot warn"></span><span class="num">' + review + '</span> 需复核';
+    if ($('#bUnsigned')) $('#bUnsigned').innerHTML = '<span class="dot warn"></span><span class="num">' + unsigned + '</span> 未签名';
+    $('#bRejected').innerHTML = '<span class="dot bad"></span><span class="num">' + rejected + '</span> 被拒';
+
+    const c = COUNTS || {};
+    $('#provenance').innerHTML = '数据来源 <span class="mono">plugins/snapshot.json</span>'
+      + ' · 生成时间 <span class="num">' + esc(SNAP_AT) + '</span>'
+      + ' · 宿主 avp <span class="num">' + esc(HOST_VER) + '</span>'
+      + ' · 校验器 <span class="mono">plugins/loader.js</span>';
+    $('#stCounts').innerHTML = '包 <span class="num">' + num(c.entries || ENTRIES.length) + '</span>'
+      + ' · 可用 <span class="num">' + active + '</span>'
+      + ' · 需复核 <span class="num">' + review + '</span>'
+      + ' · 未签名 <span class="num">' + unsigned + '</span>'
+      + ' · 被拒 <span class="num">' + rejected + '</span>'
+      + ' · 签名通过 <span class="num">' + signedOk + '</span>'
+      + ' · 错 <span class="num">' + num(c.errors) + '</span>'
+      + ' · 警 <span class="num">' + num(c.warnings) + '</span>';
+  }
+
+  /* ═══════════════════════════ 标签页 ═══════════════════════════ */
+  function setTab(next) {
+    tab = next;
+    const tabs = document.querySelectorAll('#tabs .tab');
+    for (let i = 0; i < tabs.length; i++) {
+      tabs[i].setAttribute('aria-selected', tabs[i].dataset.tab === tab ? 'true' : 'false');
+    }
+    if (ENTRIES.length) renderDetail();
+  }
+  document.querySelectorAll('#tabs .tab').forEach((btn) => {
+    btn.addEventListener('click', () => setTab(btn.dataset.tab));
+  });
+
+  /* ═══════════════════════════ 导出审计报告 ═══════════════════════════ */
+  function buildAudit() {
+    const now = new Date();
+    const plugins = ENTRIES.map((e) => ({
+      id: e.id,
+      name: e.name,
+      version: e.version,
+      type: e.type,
+      dir: e.dir,
+      origin: e.origin,
+      listed_in_runtime: e.listed_in_runtime,
+      state: e.state,
+      state_from: e.state_from,
+      reason: e.reason,
+      applies: e.applies,
+      applied: e.applied,
+      engines: e.engines,
+      engines_check: e.engines_check,
+      permissions_declared: e.permissions_declared,
+      permissions_recognized: e.permissions_recognized,
+      permissions_unknown: e.permissions_unknown,
+      contributes: e.contributes,
+      signature: sigOf(e),
+      manifest_signature: (e.manifest && e.manifest.signature) || null,
+      errors: e.errors,
+      warnings: e.warnings,
+      local_intent: intentOf(e.id)
+    }));
+    return {
+      schema: 'ai-video-platform/plugins-audit',
+      format: 1,
+      generated_at: now.toISOString(),
+      generated_at_local: stamp(now),
+      host_version: HOST_VER,
+      host: {
+        platform_version: HOST.platform_version,
+        registry_version: HOST.registry_version,
+        platform_version_source: HOST.platform_version_source,
+        version_rule: HOST.version_rule,
+        base_params: HOST.base_params
+      },
+      snapshot: {
+        file: 'plugins/snapshot.json',
+        generated_at: SNAP_AT,
+        generated_at_utc: (SNAP && SNAP.generated_at_utc) || null,
+        built_by: (SNAP && SNAP.built_by) || 'tools/snap_plugins.mjs',
+        validator: 'plugins/loader.js',
+        schema_file: (SNAP && SNAP.schema_file) || 'plugins/schema/plugin.schema.json'
+      },
+      permission_whitelist: WHITELIST,
+      counts: COUNTS,
+      runtime: (SNAP && SNAP.runtime) || null,
+      ui_runtime: {
+        host: 'plugins/index.html',
+        host_mounted: true,
+        cross_module_hosts: HOSTS,
+        cross_module_mounted: false,
+        note: '主题写 documentElement 的 CSS 变量、面板挂 slot dock —— 只在 plugins/index.html 本页真渲染；'
+          + 'app/ web/ canvas/ inspector/ 未订阅，跨模块 slot 只登记不渲染。',
+        applied_theme: appliedTheme,
+        applied_css_vars: appliedProps.slice(),
+        themes: themeEntries().map((x) => ({ plugin_id: x.entry.id, plugin_state: x.entry.state, id: x.theme.id, title: x.theme.title, tokens: Object.keys(x.theme.tokens || {}).length })),
+        panels: panelEntries().map((x) => ({ plugin_id: x.entry.id, plugin_state: x.entry.state, id: x.panel.id, slot: x.panel.slot, fields: (x.panel.fields || []).map((f) => f.key) }))
+      },
+      schema_contract: SCHEMA,
+      plugins: plugins,
+      local_state_intent_key: LS_KEY,
+      local_state_intent: intent,
+      local_validations: localChecks
+    };
+  }
+
+  $('#btnExport').addEventListener('click', function () {
+    if (!ENTRIES.length) { toast('快照里没有插件，导出的审计报告只会有空清单'); }
+    const audit = buildAudit();
+    const text = JSON.stringify(audit, null, 2) + '\n';
+    const blob = new Blob([text], { type: 'application/json' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'plugins-audit.json';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(a.href); }, 4000);
+    toast('已导出 plugins-audit.json · ' + pluginsSummary(audit) + ' · ' + (blob.size / 1024).toFixed(1) + ' KB');
+  });
+
+  function pluginsSummary(audit) {
+    const errs = audit.plugins.reduce((a, p) => a + p.errors.length, 0);
+    const warns = audit.plugins.reduce((a, p) => a + p.warnings.length, 0);
+    return audit.plugins.length + ' 个包 · 错 ' + errs + ' · 警 ' + warns;
+  }
+
+  /* 顶栏「本地校验」= 切到校验页并把焦点放到文件输入上；不做任何假动作 */
+  $('#btnLocal').addEventListener('click', function () {
+    if (!ENTRIES.length) {
+      toast('快照里没有插件，但本地校验仍然可用：先切到空态页再看提示');
+      return;
+    }
+    setTab('check');
+    const input = document.getElementById('fileInput');
+    if (input) { input.focus(); input.click(); }
+  });
+
+  /* ═══════════════════════════ 提示条 ═══════════════════════════ */
+  let toastTimer = null;
+  function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg;
+    el.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { el.classList.remove('on'); }, 3200);
+  }
+
+  /* ═══════════════════════════ 启动 ═══════════════════════════ */
+  function render() {
+    renderChrome();
+    renderList();
+    renderHeader();
+    renderDetail();
+  }
+  render();
+  setTab('manifest');
+
+  /* 自检钩子：给自动化验证用（不参与界面） */
+  window.__AVPPLUGINS = {
+    get snapshot() { return SNAP; },
+    get entries() { return ENTRIES; },
+    get selected() { return selected; },
+    get tab() { return tab; },
+    get intent() { return intent; },
+    get localChecks() { return localChecks; },
+    get appliedTheme() { return appliedTheme; },
+    get appliedCssVars() { return appliedProps.slice(); },
+    select: function (id) { if (entryOf(id)) { selected = id; render(); } },
+    setTab: setTab,
+    localCheck: localCheck,
+    sigOf: sigOf,
+    themeEntries: themeEntries,
+    panelEntries: panelEntries,
+    applyTheme: applyTheme,
+    resetTheme: resetTheme,
+    slots: SLOTS,
+    validateText: function (text) {
+      let parsed;
+      try { parsed = JSON.parse(text); } catch (e) { return { ok: false, rules: [{ code: 'JSON_SYNTAX', path: '$', message: String(e.message), rule: 'JSON.parse' }] }; }
+      return localCheck(parsed);
+    },
+    satisfies: satisfies,
+    buildAudit: buildAudit
+  };
+})();
+</script>
+</body>
+</html>

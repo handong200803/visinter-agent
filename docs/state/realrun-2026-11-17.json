@@ -1,0 +1,85 @@
+{
+  "at": "2026-11-17T14:03:59.239Z",
+  "provenance": "measured",
+  "provider": "dashscope",
+  "model": "wan2.2-t2v-plus",
+  "prompt": "一个温柔的夏日午后，一位身着素白宽松宋式汉服的年轻女子优雅地坐在一棵茂密树下，专注地弹奏着古筝。画面从略低角度拍摄，突显出她舒展的体态与柔和宁静的笑容。阳光透过浓密的树叶洒落下来，斑驳的光影在她飘逸的裙摆和乐器表面交织成细腻的纹路。缕缕黑发随夏风轻柔飘动，她优雅的棉麻衣裳以白色与翡翠绿相间，自然垂落，褶皱精致，质感真实。前景是翠绿的草地与模糊的树干，而浅淡的虚化光晕笼罩的树冠与远处被阳光照耀的公园，则营造出明亮前梦幻的背景。光自然温暖，对比度低且柔和扩散，凸显她面色如瓷般清润，面部轮廓清晰锐利。整体氛围宁静、诗意而浪漫，呈现出一种治愈人心的田园气息，通过精致真实的纹理与和谐轻盈的摄影风格，传递出一种和谐面空灵的艺术意境。，同一人物，写实摄影质感，面部轮廓清晰锐利，，约24岁，鹅蛋脸，标准体态，皮肤写实纹理，黑色长直发，自然黑发色，面部特征前后一致，不换脸，身穿白色与翡翠绿相间的棉麻衣裳；光线：暖钨丝灯，平光，几乎无阴影，侧逆光；镜头：中景，写实剧镜头，浅景深，背景奶油化；画风：东方暖调配色，厚涂，古风题材；质感：发丝分层清晰，瞳孔有清晰高光，织物纹理可辨，细颗粒；运动：视差运动，中等运动，拉，缓慢运镜，单格 3 秒，4 层视差，发丝随风微动，衣摆轻晃，薄雾缓慢流动，光斑浮动，空气尘埃可见，光点，粒子 120 个，运动模糊自然，胸腔随呼吸起伏。",
+  "style": "guofeng_immortal（基线）+ 场景对齐覆写：ch.outfit_1 汉服 / ch.style 厚涂 / kf.color_temp 4100 / kf.light_ratio 1.4 / kf.dof 60",
+  "device": "T0",
+  "jobId": "job_mwkrgjsu_fa47ad",
+  "providerTaskId": "8c99b4bd-fc68-470f-bd74-939c031c6192",
+  "ms": 94111,
+  "bytes": 3209147,
+  "file": "D:\\云盘\\02-视频\\成片\\avp-2026-11-17T14-03-03.mp4",
+  "ledger": "D:\\云盘\\02-视频\\成片\\avp-2026-11-17T14-03-03.ledger.json",
+  "actualPeakMib": null,
+  "usage": {
+    "video_duration": 5,
+    "video_ratio": "1920*1080",
+    "video_count": 1
+  },
+  "cloudTimes": {
+    "submit": "2026-11-17 22:01:31.012",
+    "end": "2026-11-17 22:03:01.593"
+  },
+  "quality": {
+    "summary": {
+      "frames": 150,
+      "problem_frames": 0,
+      "mean": 96.9,
+      "min": 93,
+      "max": 99,
+      "status": {
+        "ok": 150,
+        "warn": 0,
+        "bad": 0
+      }
+    },
+    "probe": {
+      "width": 1920,
+      "height": 1080,
+      "fps": 30,
+      "duration": 5,
+      "nbFrames": 150,
+      "framesSource": "nb_frames",
+      "bitrate": 5128668,
+      "pixFmt": "yuv420p",
+      "colorSpace": null
+    },
+    "timing": {
+      "ffmpegMs": 745,
+      "totalMs": 844
+    }
+  },
+  "warnings": [
+    {
+      "code": "DS_DURATION_CLAMPED",
+      "text": "mo.duration=3s 超出 wan2.2-t2v-plus 支持范围 [5,5]s，夹到 5s",
+      "key": "mo.duration"
+    },
+    {
+      "code": "DS_UNBOUND",
+      "text": "237 个参数没有落到 DashScope 请求（注册表缺 bind_ds），见 unbound[]"
+    }
+  ],
+  "history": [
+    {
+      "jobId": "job_mwkr3z0o_c8ac38",
+      "state": "canceled",
+      "reason": "预设冲突词（米色针织衫/云海仙宫/工笔）与用户提示词矛盾，人工取消后调参"
+    },
+    {
+      "jobId": "job_mwkrabb1_df5678",
+      "state": "failed",
+      "reason": "DS_DOWNLOAD_FAILED：Node22 原生 fetch res.body 无 .pipe；云端已 SUCCEEDED",
+      "recoveredFile": "D:云盘\u0002-视频成片avp-2026-11-17T14-01-14.mp4",
+      "recoveredBytes": 3512362,
+      "fix": "server/providers/dashscope.js 改 Readable.fromWeb + pipeline"
+    },
+    {
+      "jobId": "job_mwkrgjsu_fa47ad",
+      "state": "succeeded",
+      "note": "修复后重跑，全链路绿"
+    }
+  ]
+}

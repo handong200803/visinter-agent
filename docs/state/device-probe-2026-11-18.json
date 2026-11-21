@@ -1,0 +1,28 @@
+{
+ "schema": "ai-video-platform/device-probe",
+ "at": "2026-11-18T12:52:21.526Z",
+ "probe": {
+  "at": "2026-11-18T12:52:21.454Z",
+  "source": "nvidia-smi",
+  "gpu": {
+   "name": "NVIDIA GeForce RTX 5060 Laptop GPU",
+   "total_mib": 8151,
+   "used_mib": 4754,
+   "compute_cap": "12.0",
+   "driver": "576.80",
+   "extra_gpus": 0
+  },
+  "usable_mib": 2885,
+  "provenance": "measured",
+  "free_mib": 3397,
+  "tier_suggestion": null,
+  "detail": {
+   "formula": "total 8151 - used 4754 - reserve 512",
+   "reserve_mib": 512,
+   "extra_gpus": 0
+  },
+  "ok": true,
+  "reason": null
+ },
+ "note": "卡④ 显存真值探测实测；usable=total-used-512"
+}

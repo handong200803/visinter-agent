@@ -1,0 +1,744 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>质检 · VisInter-Agent v0.1</title>
+<style>
+/*__TOKENS__*/
+
+/*__UI__*/
+/*__SKIN__*/
+
+/* ═══════════════════════════════════════════════════════════════════════
+   质检入口专属样式（骨架与令牌来自 ui/module-ui.css 与 ui/tokens.css）
+   只补三样东西：总判区、检查项行、问题时间轴条带。
+   不新增色值、不加阴影、不做装饰动效 —— lint 会逐条判。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.main-b > .panel:first-child { margin-top: 0; }
+
+/* ── 总判区：一块玻璃卡，左侧 3px 语义竖条（只竖条带色，卡面仍是银灰）── */
+.q-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 168px 176px;
+  gap: var(--sp3);
+  align-items: center;
+  padding: var(--sp3) var(--sp4);
+  border: 1px solid var(--line);
+  border-left: 3px solid var(--text-dim2);
+  border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen); background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.q-hero[data-tone="bad"]  { border-left-color: var(--bad); }
+.q-hero[data-tone="warn"] { border-left-color: var(--warn); }
+.q-hero[data-tone="ok"]   { border-left-color: var(--ok); }
+.q-hero .cap { font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: .4px; }
+.q-hero .verdict {
+  font-size: 24px; font-weight: 600; letter-spacing: .5px; line-height: 1.25; margin-top: 2px;
+}
+/* 判定文字用 --bad-ink / --warn：--bad (#6b2020) 当文字在 #08080a 上读不出来 */
+.q-hero[data-tone="bad"]  .verdict { color: var(--bad-ink); }
+.q-hero[data-tone="warn"] .verdict { color: var(--warn); }
+.q-hero[data-tone="ok"]   .verdict { color: var(--ok); }
+.q-hero .rule { font-size: var(--fz-xs); color: var(--text-dim2); margin-top: 3px; }
+.q-hero .score { font-size: 26px; font-weight: 600; line-height: 1.15; }
+.q-hero .score-unit { font-size: var(--fz-xs); color: var(--text-dim); font-weight: 400; }
+.q-hero .pct { font-size: var(--fz-xs); color: var(--text-dim); margin-top: 3px; }
+.q-hero .counts { display: flex; flex-direction: column; gap: 4px; align-items: flex-start; }
+
+/* 修复对比条：一级玻璃（--panel2 膜），左侧 3px warn 竖条 + 内亮线；
+   不挂 hover 位移 —— 它是结论，不是可点的卡片 */
+.q-fix {
+  display: flex; align-items: baseline; gap: var(--sp2); flex-wrap: wrap;
+  margin-top: var(--sp2); padding: var(--sp2) var(--sp3);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  border-radius: var(--r2); background-color: var(--panel2);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  box-shadow: var(--shadow-inset);
+  font-size: var(--fz-s);
+}
+.q-fix .k { color: var(--text-dim); font-size: var(--fz-xs); letter-spacing: .4px; }
+.q-fix .v { color: var(--text); }
+.q-fix .s { color: var(--text-dim2); font-size: var(--fz-xs); }
+
+/* ── 检查项行：只提亮，不位移（整块是长列表，位移会变成果冻）──────────── */
+.chk {
+  display: grid; grid-template-columns: 8px minmax(0, 1fr); gap: var(--sp2);
+  align-items: start; padding: var(--sp2) var(--sp3);
+  border-bottom: 1px solid var(--line);
+  transition: background-color var(--t-fast) var(--ease);
+}
+.chk:hover { background-color: var(--panel2); }
+.chk:last-child { border-bottom: 0; }
+.chk .dot { margin-top: 5px; }
+.chk-top { display: flex; align-items: center; gap: var(--sp2); flex-wrap: wrap; }
+.chk-top b { font-size: var(--fz); font-weight: 600; }
+.chk-act { font-size: var(--fz-s); color: var(--text); margin-top: 3px; }
+.chk-act .mono { font-size: var(--fz-xs); color: var(--text-dim); }
+.chk-bas { font-size: var(--fz-xs); color: var(--text-dim2); margin-top: 2px; line-height: 1.5; }
+.chk-bas .mono { color: var(--text-dim); }
+.chk-subs {
+  display: grid; grid-template-columns: max-content minmax(0, 1fr);
+  gap: 1px var(--sp2); margin-top: 4px;
+  font-size: var(--fz-xs); color: var(--text-dim);
+}
+.chk-subs .k { color: var(--text-dim2); }
+
+/* ── 问题时间轴（纯 div + 百分比定位）：膜内凹槽，不铺毛玻璃 ────────── */
+.tl-track {
+  position: relative; height: 34px; overflow: hidden;
+  background-color: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.tl-track .gl { position: absolute; top: 0; bottom: 0; width: 1px; background: var(--line); }
+.seg {
+  position: absolute; top: 5px; bottom: 5px; min-width: 2px; padding: 0;
+  border: 0; border-radius: 1px; background: var(--panel4); cursor: pointer;
+}
+.seg.warn { background: var(--warn); }
+.seg.bad  { background: var(--bad); }
+.seg:hover, .seg:focus-visible { outline: 2px solid var(--acc); outline-offset: 1px; }
+.tl-axis {
+  display: flex; justify-content: space-between; gap: var(--sp2);
+  margin-top: 3px; font-size: var(--fz-xs); color: var(--text-dim2);
+}
+.tl-read { min-height: 18px; margin-top: var(--sp1); font-size: var(--fz-xs); color: var(--text-dim); }
+.tl-legend { display: flex; gap: var(--sp3); align-items: center; font-size: var(--fz-xs); color: var(--text-dim); }
+.tl-legend .item { display: inline-flex; align-items: center; gap: 5px; }
+.tl-chip { width: 10px; height: 10px; border-radius: 1px; display: inline-block; }
+
+/* ── 窄屏：单列铺满，时间轴与表格仍不出横向滚动 ───────────────────── */
+@media (max-width: 1100px) {
+  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  /* 侧栏从悬浮玻璃板改为顶部条带：与骨架 ≤900 的处理同一套（贴边全宽、无圆角、无外投影） */
+  .body > .aside {
+    margin: 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none; max-height: 156px;
+  }
+  .aside-b { overflow: auto; }
+  .q-hero { grid-template-columns: minmax(0, 1fr); }
+  .q-hero .counts { flex-direction: row; }
+}
+
+/* ── 诊断行 / 提示 ───────────────────────────────────────────────── */
+.diagbar { display: flex; align-items: center; gap: var(--sp2); }
+.diagbar .input { flex: 1; min-width: 0; height: 22px; font-size: var(--fz-xs); }
+#notice { color: var(--text-dim); }
+#notice.on { color: var(--text); }
+.sec-h { display: flex; align-items: baseline; gap: var(--sp2); margin-bottom: var(--sp2); flex-wrap: wrap; }
+.sec-h h3 { margin: 0; font-size: var(--fz); font-weight: 600; }
+.sec-h .hint { font-size: var(--fz-xs); }
+.tbl-wrap { width: 100%; }
+.nowrap { white-space: nowrap; }
+
+/* ── 窄屏（≤900）：诊断行占满一行，图例收紧 ───────────────────────── */
+@media (max-width: 900px) {
+  .diagbar { flex-wrap: wrap; }
+  .diagbar .input { flex: 1 1 100%; }
+  .tl-legend { gap: var(--sp2); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <header class="topbar">
+    <a class="btn mini ghost" data-backlink href="../app/index.html" title="返回平台工作台（各模块页共用的回程路）">← 工作台</a>
+    <div class="brand"><b>质检</b><span>逐帧管线 · quality</span></div>
+    <span class="crumbs">工作台<i>/</i>质检</span>
+    <span class="spacer"></span>
+    <span class="badge" id="modeBadge"><span class="dot off" id="modeDot"></span><span id="modeText">模式 —</span></span>
+    <a class="btn" href="../inspector/index.html" target="_blank" rel="noopener">打开帧检查器</a>
+    <button class="btn" type="button" id="btnCopy">复制诊断行</button>
+    <button class="btn acc" type="button" id="btnExport">导出报告 JSON</button>
+  </header>
+
+  <div class="body" style="--col:272px">
+    <aside class="aside">
+      <div class="aside-h">样例<span class="spacer"></span><span class="num" id="sampleCount">—</span></div>
+      <div class="aside-b">
+        <div class="list" id="sampleList" role="listbox" aria-label="质检样例"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-h">
+        <h2 id="sampleTitle">—</h2>
+        <span class="sub" id="sampleSub"></span>
+        <span class="spacer"></span>
+        <span class="hint" id="sampleMeta"></span>
+      </div>
+
+      <div class="main-b" id="mainBody">
+
+        <div id="verdictSlot"></div>
+
+        <div class="panel">
+          <div class="panel-h">检查项
+            <span class="badge" id="checkCount">—</span>
+            <span class="spacer"></span>
+            <span class="hint">只列 quality/frames.js 与 quality/probe.js 里真实存在的判定</span>
+          </div>
+          <div id="checkSlot"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">问题时间轴
+            <span class="spacer"></span>
+            <span class="tl-legend">
+              <span class="item"><i class="tl-chip" style="background:var(--warn)"></i>warn</span>
+              <span class="item"><i class="tl-chip" style="background:var(--bad)"></i>bad</span>
+            </span>
+          </div>
+          <div class="panel-b">
+            <div class="tl-track" id="tlTrack"></div>
+            <div class="tl-axis" id="tlAxis"></div>
+            <div class="tl-read" id="tlRead">把指针放到色块上，或 Tab 到色块上，看该段起止时间与缺陷名</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">最差帧
+            <span class="badge" id="worstCount">—</span>
+            <span class="spacer"></span>
+            <span class="hint">按分数升序；同一分数按帧号升序 · 时间列由帧号 ÷ fps 推算</span>
+          </div>
+          <div class="tbl-wrap" id="worstSlot"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">阈值表
+            <span class="spacer"></span>
+            <span class="hint">源 quality/frames.js DEFAULTS</span>
+          </div>
+          <div class="tbl-wrap" id="thresholdSlot"></div>
+          <div class="panel-b" style="border-top:1px solid var(--line)">
+            <div class="hint" id="thresholdNote">阈值是硬编码默认值，改阈值要改代码。</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">注入帧号对照
+            <span class="spacer"></span>
+            <span class="hint">测试素材的缺陷是定点注入的，帧号已知</span>
+          </div>
+          <div class="tbl-wrap" id="crossSlot"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">已知缺口
+            <span class="spacer"></span>
+            <span class="hint">docs/06-quality.md §7</span>
+          </div>
+          <div id="gapSlot"></div>
+        </div>
+
+      </div>
+
+      <div class="main-f">
+        <div class="diagbar">
+          <span class="hint">诊断行</span>
+          <input class="input mono" id="diagLine" readonly value="—" aria-label="诊断行">
+          <span class="hint" id="notice"></span>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="footLeft">数据来源 quality/snapshot.json</span>
+    <span class="spacer"></span>
+    <span class="num" id="footRight">—</span>
+  </footer>
+</div>
+
+<script>
+/*__SNAP__*/
+(function () {
+  'use strict';
+
+  var SNAP = window.__SNAP || null;
+  var SAMPLES = (SNAP && Array.isArray(SNAP.samples)) ? SNAP.samples.filter(function (s) { return s && s.ok; }) : [];
+  var MODE = (SNAP && SNAP.mode) ? SNAP.mode : 'none';
+  var STORE_KEY = 'avp.quality.sample.v1';
+  var STATUS_CN = { ok: '达标', warn: '注意', bad: '命中', na: '未实现' };
+  var TONE_BADGE = { ok: 'ok', warn: 'warn', bad: 'bad', na: '' };
+  var cur = null;
+  var noticeTimer = null;
+
+  var $ = function (sel, root) { return (root || document).querySelector(sel); };
+  var $$ = function (sel, root) { return Array.prototype.slice.call((root || document).querySelectorAll(sel)); };
+
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+  function num(v, digits) {
+    if (v === null || v === undefined || (typeof v === 'number' && !isFinite(v))) return '—';
+    if (typeof v !== 'number') return esc(v);
+    return digits === undefined ? String(v) : v.toFixed(digits);
+  }
+  function secs(v) {
+    if (v === null || v === undefined || (typeof v === 'number' && !isFinite(v))) return '—';
+    return (Math.round(v * 1000) / 1000) + 's';
+  }
+  function localTime(iso) {
+    if (!iso) return '—';
+    var d = new Date(iso);
+    if (isNaN(d.getTime())) return String(iso);
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate()) + ' ' + p(d.getHours()) + ':' + p(d.getMinutes());
+  }
+  function stamp() {
+    var d = new Date();
+    var p = function (n) { return (n < 10 ? '0' : '') + n; };
+    return '' + d.getFullYear() + p(d.getMonth() + 1) + p(d.getDate()) + '-' + p(d.getHours()) + p(d.getMinutes()) + p(d.getSeconds());
+  }
+  function notice(msg) {
+    var el = $('#notice');
+    if (!el) return;
+    el.textContent = msg;
+    el.className = 'hint on';
+    if (noticeTimer) clearTimeout(noticeTimer);
+    noticeTimer = setTimeout(function () { el.className = 'hint'; }, 7000);
+  }
+  function store(id) {
+    try { localStorage.setItem(STORE_KEY, String(id)); } catch (e) { /* file:// 下可能禁用本地存储，选中态退回内存 */ }
+  }
+  function restore() {
+    try { return localStorage.getItem(STORE_KEY); } catch (e) { return null; }
+  }
+
+  /* ── 顶部模式徽标 ─────────────────────────────────────────────── */
+  function renderMode() {
+    var text = { real: '模式 real · 真实报告', synthetic: '模式 synthetic · 口径说明', none: '无快照' }[MODE] || ('模式 ' + MODE);
+    $('#modeText').textContent = text;
+    $('#modeDot').className = 'dot ' + (MODE === 'real' ? 'acc' : MODE === 'synthetic' ? 'warn' : 'off');
+    $('#modeBadge').title = (SNAP && SNAP.mode_note) ? SNAP.mode_note : '未读到 quality/snapshot.json';
+  }
+
+  /* ── 左栏样例列表 ─────────────────────────────────────────────── */
+  function renderList() {
+    var box = $('#sampleList');
+    $('#sampleCount').textContent = SAMPLES.length ? SAMPLES.length + ' 条' : '0 条';
+    if (!SAMPLES.length) {
+      box.innerHTML = '<div class="sect">测试素材</div>' +
+        '<div class="empty-row">没有可用报告。跑 node tools/snap_quality.mjs 生成快照后重新构建本页。</div>';
+      return;
+    }
+    box.innerHTML = '<div class="sect">测试素材 · quality/fixtures.js 合成</div>' + SAMPLES.map(function (s) {
+      var st = s.summary.status;
+      return '<button type="button" class="row" role="option" data-id="' + esc(s.id) + '" aria-selected="false">' +
+        '<span class="ico"><span class="dot ' + esc(s.verdict.tone) + '"></span></span>' +
+        '<span class="t">' + esc(s.label) + '</span>' +
+        '<span class="s num">' + (st.bad ? 'bad ' + st.bad : 'ok ' + st.ok) + '</span>' +
+        '</button>';
+    }).join('');
+    $$('#sampleList .row').forEach(function (row) {
+      row.addEventListener('click', function () { select(row.getAttribute('data-id')); });
+    });
+    $('#sampleList').addEventListener('keydown', onListKey);
+  }
+
+  function onListKey(ev) {
+    if (ev.key !== 'ArrowDown' && ev.key !== 'ArrowUp' && ev.key !== 'Home' && ev.key !== 'End') return;
+    var rows = $$('#sampleList .row');
+    if (!rows.length) return;
+    var i = rows.indexOf(document.activeElement);
+    if (ev.key === 'ArrowDown') i = Math.min(rows.length - 1, i + 1);
+    if (ev.key === 'ArrowUp') i = Math.max(0, i < 0 ? 0 : i - 1);
+    if (ev.key === 'Home') i = 0;
+    if (ev.key === 'End') i = rows.length - 1;
+    ev.preventDefault();
+    rows[i].focus();
+    select(rows[i].getAttribute('data-id'));
+  }
+
+  function markSelected(id) {
+    $$('#sampleList .row').forEach(function (r) {
+      r.setAttribute('aria-selected', r.getAttribute('data-id') === id ? 'true' : 'false');
+    });
+  }
+
+  function select(id) {
+    var next = null;
+    for (var i = 0; i < SAMPLES.length; i++) { if (SAMPLES[i].id === id) { next = SAMPLES[i]; break; } }
+    if (!next) next = SAMPLES[0];
+    cur = next;
+    store(next.id);
+    markSelected(next.id);
+    renderMain();
+  }
+
+  /* ── 总判区 ───────────────────────────────────────────────────── */
+  function renderVerdict(s) {
+    var st = s.summary.status;
+    var top = s.summary.worst[0] || null;
+    var html = '' +
+      '<div class="q-hero" data-tone="' + esc(s.verdict.tone) + '">' +
+        '<div>' +
+          '<div class="cap">总判</div>' +
+          '<div class="verdict">' + esc(s.verdict.label) + '</div>' +
+          '<div class="rule">判定规则：' + esc(s.verdict.rule) + '（页面口径，见 quality/README.md）</div>' +
+        '</div>' +
+        '<div>' +
+          '<div class="cap">均分 / 百分位</div>' +
+          '<div class="score num">' + num(s.summary.mean, 1) + ' <span class="score-unit">分</span></div>' +
+          '<div class="pct">p5 <span class="num">' + num(s.summary.p5, 1) + '</span> · p95 <span class="num">' + num(s.summary.p95, 1) + '</span></div>' +
+          '<div class="pct">最低 <span class="num">' + num(s.summary.min, 1) + '</span> · 最高 <span class="num">' + num(s.summary.max, 1) + '</span></div>' +
+        '</div>' +
+        '<div class="counts">' +
+          '<span class="badge ok"><span class="dot ok"></span>ok <b class="num">' + st.ok + '</b></span>' +
+          '<span class="badge warn"><span class="dot warn"></span>warn <b class="num">' + st.warn + '</b></span>' +
+          '<span class="badge bad"><span class="dot bad"></span>bad <b class="num">' + st.bad + '</b></span>' +
+          '<span class="hint">共 <span class="num">' + s.summary.frames + '</span> 帧 · 问题帧 <span class="num">' + s.summary.problems + '</span></span>' +
+        '</div>' +
+      '</div>';
+
+    if (top && s.top_fix) {
+      html += '<div class="q-fix">' +
+        '<span class="k">最需要先修</span>' +
+        '<span class="v">第 <b class="num">' + top.frame + '</b> 帧（t=' + secs(top.t) + '）· ' + esc(top.defect_cn) + ' <span class="mono hint">' + esc(top.defect || '') + '</span> —— ' + esc(top.reasons[0] || '') + '</span>' +
+        '<span class="s">' + esc(top.suggestion || '') + '</span>' +
+        '</div>';
+    } else if (s.verdict.key === 'pass') {
+      html += '<div class="q-fix" style="border-left-color:var(--ok)">' +
+        '<span class="k">最需要先修</span><span class="v">没有需要修的帧：' + esc(s.headline) + '</span></div>';
+    }
+    $('#verdictSlot').innerHTML = html;
+  }
+
+  /* ── 检查项 ───────────────────────────────────────────────────── */
+  function renderChecks(s) {
+    var checks = s.checks || [];
+    $('#checkCount').textContent = checks.filter(function (c) { return c.status !== 'na'; }).length + ' 项已实现';
+    $('#checkSlot').innerHTML = checks.map(function (c) {
+      var dot = c.status === 'na' ? 'off' : (TONE_BADGE[c.status] || 'off');
+      var cls = TONE_BADGE[c.status] || '';
+      var badge = '<span class="badge ' + cls + '">' + esc(STATUS_CN[c.status] || c.status) + '</span>';
+      var th = c.threshold ? '<span class="badge">阈值 ' + esc(c.threshold) + '</span>' : '';
+      var subs = (c.subs && c.subs.length) ? '<div class="chk-subs">' + c.subs.map(function (x) {
+        return '<span class="k">' + esc(x.k) + '</span><span>' + esc(x.v) + '</span>';
+      }).join('') + '</div>' : '';
+      return '<div class="chk">' +
+        '<span class="dot ' + dot + '"></span>' +
+        '<div>' +
+          '<div class="chk-top"><b>' + esc(c.name) + '</b>' + badge + th + '</div>' +
+          '<div class="chk-act">实测 ' + esc(c.actual) + '</div>' +
+          '<div class="chk-bas">判定依据 ' + esc(c.basis) + '</div>' +
+          subs +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* ── 问题时间轴 ───────────────────────────────────────────────── */
+  function renderTimeline(s) {
+    var total = s.frames || 0;
+    var segs = (s.summary.segments || []).slice(0, 240);
+    var track = $('#tlTrack');
+    if (!segs.length) {
+      track.innerHTML = '<div style="padding:8px 10px;font-size:var(--fz-xs);color:var(--text-dim2)">本片没有问题区间：所有帧 status 均为 ok</div>';
+      $('#tlAxis').innerHTML = '';
+      $('#tlRead').textContent = '无问题区间';
+      return;
+    }
+    var gl = '';
+    for (var g = 1; g < 4; g++) gl += '<div class="gl" style="left:' + (g * 25) + '%"></div>';
+    track.innerHTML = gl + segs.map(function (seg, i) {
+      var left = total ? (seg.start / total) * 100 : 0;
+      var width = total ? (seg.frames / total) * 100 : 0;
+      var label = '帧 ' + seg.start + '–' + seg.end + ' · ' + secs(seg.t0) + '–' + secs(seg.t1) + ' · ' + seg.defect_cn + ' ' + (seg.defect || '') + ' · 均分 ' + seg.score_avg;
+      return '<button type="button" class="seg ' + esc(seg.grade) + '" data-i="' + i + '"' +
+        ' style="left:' + left.toFixed(3) + '%;width:' + Math.max(width, 0.4).toFixed(3) + '%"' +
+        ' title="' + esc(label) + '" aria-label="' + esc(label) + '"></button>';
+    }).join('');
+    var dur = total && s.fps ? total / s.fps : 0;
+    $('#tlAxis').innerHTML = '<span>帧 0</span><span>' + esc(s.frames + ' 帧 · ' + (Math.round(dur * 100) / 100) + 's') + '</span><span>帧 ' + s.frames + '</span>';
+    var allSegs = (s.summary.segments || []).length;
+    $('#tlRead').textContent = allSegs > segs.length
+      ? '共 ' + allSegs + ' 段问题区间，仅画前 ' + segs.length + ' 段'
+      : segs.length + ' 段问题区间（' + segs.reduce(function (a, b) { return a + b.frames; }, 0) + ' 帧）';
+
+    var tip = function (seg) {
+      return '帧 ' + seg.start + '–' + seg.end + '（' + seg.frames + ' 帧）· ' + secs(seg.t0) + '–' + secs(seg.t1) +
+        ' · ' + seg.defect_cn + ' ' + (seg.defect || '') + ' · 段内均分 ' + seg.score_avg;
+    };
+    $$('#tlTrack .seg').forEach(function (el) {
+      var seg = segs[Number(el.getAttribute('data-i'))];
+      var show = function () { $('#tlRead').textContent = tip(seg); };
+      el.addEventListener('mouseenter', show);
+      el.addEventListener('focus', show);
+    });
+  }
+
+  /* ── 最差帧表 ─────────────────────────────────────────────────── */
+  function renderWorst(s) {
+    var rows = s.summary.worst || [];
+    $('#worstCount').textContent = rows.length + ' 帧';
+    if (!rows.length) {
+      $('#worstSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>没有可取样的帧</b><span>frames 数组为空，检查 ffmpeg 是否能解出画面。</span></div>';
+      return;
+    }
+    var body = rows.map(function (w) {
+      return '<tr>' +
+        '<td class="num">' + w.frame + '</td>' +
+        '<td class="num">' + secs(w.t) + '</td>' +
+        '<td class="num">' + num(w.score) + '</td>' +
+        '<td><span class="badge ' + esc(TONE_BADGE[w.status] || '') + '"><span class="dot ' + esc(TONE_BADGE[w.status] || 'off') + '"></span>' + esc(w.status) + '</span></td>' +
+        '<td>' + esc(w.defect_cn || '低分') + '</td>' +
+        '<td class="mono">' + esc(w.defect || '—') + '</td>' +
+        '<td class="num">' + num(w.yavg, 2) + '</td>' +
+        '<td class="num">' + num(w.lapVar, 2) + '</td>' +
+        '<td>' + esc((w.reasons || []).join('；') || '无结构性缺陷命中（仅作为全片最弱帧列出）') + '</td>' +
+        '</tr>';
+    }).join('');
+    $('#worstSlot').innerHTML = '<table class="tbl">' +
+      '<thead><tr>' +
+        '<th class="num">帧号</th><th class="num">时间</th><th class="num">分数</th>' +
+        '<th>状态</th><th>缺陷</th><th>defect</th>' +
+        '<th class="num">YAVG</th><th class="num">LapVar</th><th>理由</th>' +
+      '</tr></thead><tbody>' + body + '</tbody></table>';
+  }
+
+  /* ── 阈值表（全量 DEFAULTS） ─────────────────────────────────── */
+  function renderThresholds() {
+    var t = (SNAP && SNAP.thresholds) || null;
+    if (!t || !Array.isArray(t.items) || !t.items.length) {
+      $('#thresholdSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>没有阈值数据</b><span>快照缺 thresholds，重跑 node tools/snap_quality.mjs。</span></div>';
+      return;
+    }
+    var rows = t.items.map(function (it) {
+      var dormant = it.dormant ? ' <span class="badge warn">未参与判定</span>' : '';
+      return '<tr>' +
+        '<td class="mono">' + esc(it.key) + dormant + '</td>' +
+        '<td class="num">' + esc(String(it.value)) + '</td>' +
+        '<td class="mono">' + esc(it.group) + '</td>' +
+        '<td>' + esc(it.meaning) + '</td>' +
+        '<td class="hint">' + esc(it.note || '') + '</td>' +
+        '</tr>';
+    }).join('');
+    var extra = (t.extra || []).map(function (it) {
+      return '<tr>' +
+        '<td class="mono">' + esc(it.key) + '</td>' +
+        '<td class="num">' + esc(String(it.value)) + '</td>' +
+        '<td class="mono">派生</td>' +
+        '<td>' + esc(it.meaning) + '</td>' +
+        '<td class="hint mono">' + esc(it.ref || '') + '</td>' +
+        '</tr>';
+    }).join('');
+    $('#thresholdSlot').innerHTML = '<table class="tbl">' +
+      '<thead><tr><th>键</th><th class="num">值</th><th>分组</th><th>含义</th><th>备注</th></tr></thead>' +
+      '<tbody>' + rows + extra + '</tbody></table>';
+    $('#thresholdNote').textContent = t.note || '阈值是硬编码默认值，改阈值要改代码。';
+  }
+
+  /* ── 注入帧号对照 ─────────────────────────────────────────────── */
+  function renderCross(s) {
+    var cov = s.coverage;
+    if (!cov || !cov.length) {
+      $('#crossSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)">' +
+        '<b>该样片没有注入缺陷</b><span>正常片没有 ground truth 可对照；对照表只在坏片上出现（fixtures.js 声明的注入帧号 vs 实际检出帧号）。</span></div>';
+      return;
+    }
+    var rows = cov.map(function (c) {
+      var miss = c.total - c.hit;
+      var cls = miss === 0 ? 'ok' : 'bad';
+      return '<tr>' +
+        '<td>' + esc(c.defect_cn) + ' <span class="mono hint">' + esc(c.defect) + '</span></td>' +
+        '<td class="num">' + esc(c.expect) + '</td>' +
+        '<td class="num">' + c.total + '</td>' +
+        '<td class="num">' + c.hit + '</td>' +
+        '<td class="num">' + miss + '</td>' +
+        '<td><span class="badge ' + cls + '">' + (miss === 0 ? '全部命中' : '有漏检') + '</span></td>' +
+        '</tr>';
+    }).join('');
+    $('#crossSlot').innerHTML = '<table class="tbl">' +
+      '<thead><tr><th>缺陷</th><th class="num">声明帧号</th><th class="num">声明帧数</th><th class="num">检出命中</th><th class="num">漏检</th><th>结论</th></tr></thead>' +
+      '<tbody>' + rows + '</tbody></table>';
+  }
+
+  /* ── 已知缺口 ─────────────────────────────────────────────────── */
+  function renderGaps() {
+    var gaps = (SNAP && Array.isArray(SNAP.gaps)) ? SNAP.gaps : [];
+    if (!gaps.length) { $('#gapSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>快照没有缺口清单</b></div>'; return; }
+    $('#gapSlot').innerHTML = gaps.map(function (g) {
+      return '<div class="chk">' +
+        '<span class="dot warn"></span>' +
+        '<div>' +
+          '<div class="chk-top"><b>' + esc(g.title) + '</b><span class="badge">' + esc(g.ref) + '</span></div>' +
+          '<div class="chk-bas" style="color:var(--text-dim)">' + esc(g.detail) + '</div>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+  }
+
+  /* ── 诊断行 ───────────────────────────────────────────────────── */
+  function diagLine() {
+    if (!cur) return 'quality: verdict=no_data, bad=0, worst_frame=—';
+    var top = cur.summary.worst[0];
+    return 'quality: verdict=' + cur.verdict.key + ', bad=' + cur.summary.status.bad + ', worst_frame=' + (top ? top.frame : '—');
+  }
+  function renderDiag() {
+    var el = $('#diagLine');
+    el.value = diagLine();
+    el.title = el.value;
+  }
+
+  /* ── 底部口径条 ───────────────────────────────────────────────── */
+  function renderFoot() {
+    var gen = (SNAP && SNAP.generated_at) ? localTime(SNAP.generated_at) : '—';
+    var modeCn = MODE === 'real' ? 'real' : MODE === 'synthetic' ? 'synthetic' : '无';
+    $('#footLeft').textContent = '数据来源 quality/snapshot.json · 生成时间 ' + gen + ' · 模式 ' + modeCn + ' · 阈值源 quality/frames.js DEFAULTS';
+    var th = (SNAP && SNAP.thresholds && SNAP.thresholds.items) ? SNAP.thresholds.items.length : 0;
+    $('#footRight').textContent = cur
+      ? ('样例 ' + SAMPLES.length + ' 条 · 当前 ' + cur.frames + ' 帧 · 阈值 ' + th + ' 项')
+      : ('阈值 ' + th + ' 项');
+  }
+
+  /* ── 降级态：无真实报告时只讲口径 ─────────────────────────────── */
+  function renderEmpty() {
+    var reason = (SNAP && SNAP.mode_note) ? SNAP.mode_note : '没有读到 quality/snapshot.json';
+    var caps = (SNAP && SNAP.capabilities) ? SNAP.capabilities : { implemented: [], not_implemented: [] };
+    var req = (SNAP && Array.isArray(SNAP.real_requires)) ? SNAP.real_requires : [
+      '安装 ffmpeg / ffprobe 全量包并把 bin 目录加入 PATH',
+      '或设置环境变量：set FFMPEG_BIN=D:\\path\\ffmpeg.exe 与 set FFPROBE_BIN=D:\\path\\ffprobe.exe',
+      '然后重跑 node tools/snap_quality.mjs'
+    ];
+    $('#sampleTitle').textContent = MODE === 'synthetic' ? '本页为口径说明' : '还没有报告';
+    $('#sampleSub').textContent = '没有逐帧数据';
+    $('#sampleMeta').textContent = '';
+
+    $('#verdictSlot').innerHTML = '<div class="empty">' +
+      '<b>' + (MODE === 'synthetic' ? '本页为口径说明，真实报告需本机 ffmpeg' : '跑 node tools/snap_quality.mjs 生成报告') + '</b>' +
+      '<span>原因：' + esc(reason) + '</span>' +
+      (SNAP && SNAP.mode_caveat ? '<span>说明：' + esc(SNAP.mode_caveat) + '</span>' : '') +
+      '<span>恢复路径：</span>' +
+      '<pre class="code" style="width:100%">' + esc(req.join('\n')) + '\nnode tools/build_module.mjs quality</pre>' +
+      '<span class="hint">FFMPEG_BIN / FFPROBE_BIN 只在当前命令行窗口生效；写进系统环境变量则全局生效。</span>' +
+      '</div>';
+
+    $('#checkSlot').innerHTML = '<div class="chk"><span class="dot off"></span><div>' +
+      '<div class="chk-top"><b>能力清单（来自代码，无实测数字）</b><span class="badge">口径</span></div>' +
+      '<div class="chk-act">已实现：' + esc((caps.implemented || []).join('、') || '—') + '</div>' +
+      '<div class="chk-bas">未实现：' + esc((caps.not_implemented || []).join('、') || '—') + '</div>' +
+      '</div></div>';
+    $('#checkCount').textContent = '0 项实测';
+
+    $('#tlTrack').innerHTML = '<div style="padding:8px 10px;font-size:var(--fz-xs);color:var(--text-dim2)">没有帧数据，画不出时间轴</div>';
+    $('#tlAxis').innerHTML = '';
+    $('#tlRead').textContent = '本页为口径说明：阈值与报告结构是真实的，帧号与分数不是';
+    $('#worstSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>没有最差帧</b><span>synthetic 模式不生成帧数据；生成真实报告后本表自动填充。</span></div>';
+    $('#worstCount').textContent = '0 帧';
+    $('#crossSlot').innerHTML = '<div class="empty" style="margin:var(--sp3)"><b>没有注入帧号对照</b><span>需要先跑通 fixtures + 分析。</span></div>';
+  }
+
+  function renderMain() {
+    if (!cur) { renderEmpty(); return; }
+    $('#sampleTitle').textContent = cur.file;
+    $('#sampleSub').textContent = (cur.probe.displayWidth + '×' + cur.probe.displayHeight) +
+      ' · ' + cur.frames + ' 帧 · ' + cur.probe.fps + ' fps · ' + (cur.probe.duration || 0) + 's' +
+      (cur.probe.audio ? ' · ' + cur.probe.audio.codec + ' ' + cur.probe.audio.sampleRate + 'Hz ' + cur.probe.audio.channels + 'ch' : ' · 无音轨');
+    $('#sampleMeta').textContent = '分析尺寸 ' + (cur.analysisSize || '—') + ' 灰度 · ffmpeg ' + (cur.timing ? cur.timing.ffmpegMs + 'ms' : '—');
+    renderVerdict(cur);
+    renderChecks(cur);
+    renderTimeline(cur);
+    renderWorst(cur);
+    renderCross(cur);
+    renderDiag();
+    renderFoot();
+  }
+
+  /* ── 导出报告 JSON ────────────────────────────────────────────── */
+  function metaBlock() {
+    return {
+      tool: SNAP ? SNAP.tool : null,
+      schema: SNAP ? SNAP.schema : null,
+      snapshot_generated_at: SNAP ? SNAP.generated_at : null,
+      mode: MODE,
+      mode_note: SNAP ? SNAP.mode_note : null,
+      sources: SNAP ? SNAP.sources : null,
+      thresholds: SNAP ? SNAP.thresholds : null,
+      exported_at: new Date().toISOString(),
+    };
+  }
+
+  function download(name, text) {
+    var blob = new Blob([text], { type: 'application/json' });
+    var url = URL.createObjectURL(blob);
+    var a = document.createElement('a');
+    a.href = url;
+    a.download = name;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    setTimeout(function () { URL.revokeObjectURL(url); }, 3000);
+  }
+
+  function onExport() {
+    if (!SNAP) { notice('没有 window.__SNAP：先跑 node tools/snap_quality.mjs 与 node tools/build_module.mjs quality'); return; }
+    var payload;
+    var name;
+    if (cur) {
+      payload = { meta: metaBlock(), sample: cur, fixtures: SNAP.fixture_spec || null };
+      name = 'quality-' + cur.id + '-' + stamp() + '.json';
+    } else {
+      payload = { meta: metaBlock(), sample: null, caveat: SNAP.mode_caveat || null, thresholds: SNAP.thresholds, gaps: SNAP.gaps, report_fields: SNAP.report_fields };
+      name = 'quality-synthetic-' + stamp() + '.json';
+    }
+    download(name, JSON.stringify(payload, null, 2));
+    notice('已导出 ' + name);
+  }
+
+  /* ── 复制诊断行 ───────────────────────────────────────────────── */
+  function onCopy() {
+    var line = diagLine();
+    var selectFallback = function () {
+      var el = $('#diagLine');
+      el.value = line;
+      el.focus();
+      el.select();
+      notice('剪贴板不可用（file:// 下常见），诊断行已选中，按 Ctrl+C 复制');
+    };
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(line).then(function () {
+        notice('已复制：' + line);
+      }, selectFallback);
+    } else {
+      selectFallback();
+    }
+  }
+
+  /* ── 启动 ─────────────────────────────────────────────────────── */
+  renderMode();
+  renderList();
+  renderThresholds();
+  renderGaps();
+  if (SAMPLES.length) {
+    var saved = restore();
+    select(saved || SAMPLES[0].id);
+  } else {
+    renderEmpty();
+    renderDiag();
+    renderFoot();
+  }
+  $('#btnExport').addEventListener('click', onExport);
+  $('#btnCopy').addEventListener('click', onCopy);
+
+  /* 测试钩子：不参与界面逻辑，供人工在控制台核对渲染结果 */
+  window.__QC_UI = {
+    mode: MODE,
+    samples: SAMPLES.map(function (s) { return s.id; }),
+    diagLine: diagLine,
+    checkCount: function () { return $$('#checkSlot .chk').length; },
+    gapCount: function () { return $$('#gapSlot .chk').length; },
+    segCount: function () { return $$('#tlTrack .seg').length; },
+    current: function () { return cur ? cur.id : null; },
+  };
+})();
+</script>
+</body>
+</html>

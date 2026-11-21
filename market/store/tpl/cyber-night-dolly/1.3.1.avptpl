@@ -1,0 +1,252 @@
+{
+  "schema": "ai-video-platform/template",
+  "format": 1,
+  "id": "cyber-night-dolly",
+  "name": "赛博夜景运镜",
+  "version": "1.3.1",
+  "author": "云盘工坊",
+  "license": "revenue_share",
+  "registry_version": "0.1.0",
+  "created": "2026-11-16T09:40:00.000Z",
+  "tags": [
+    "赛博",
+    "夜景",
+    "运镜",
+    "霓虹",
+    "视差"
+  ],
+  "stage_focus": [
+    "motion",
+    "look",
+    "keyframe"
+  ],
+  "cover_params": [
+    "mo.parallax_layers",
+    "mo.lens_distortion",
+    "lk.bloom",
+    "kf.ratio"
+  ],
+  "values": {
+    "ch.line_weight": 30,
+    "ch.palette": "冷青电影",
+    "ch.style": "国潮",
+    "ch.subject": "赛博夜雨中的霓虹街区：湿滑柏油路、全息招牌、飞驰的悬浮车",
+    "ex.bitrate": 26,
+    "ex.codec": "H.265",
+    "ex.color_space": "Rec.2020",
+    "ex.fps": "30",
+    "ex.resolution": "1440p",
+    "ex.transition": "闪白",
+    "ex.transition_duration": 0.12,
+    "kf.cfg": 4.8,
+    "kf.color_temp": 6800,
+    "kf.composition": "黄金分割",
+    "kf.dof": 62,
+    "kf.grain": 5,
+    "kf.key_light_dir": "底光",
+    "kf.light_ratio": 4.2,
+    "kf.ratio": "2.35:1",
+    "kf.refine_denoise": 0.4,
+    "kf.refine_scale": 1.4,
+    "kf.resolution": 2048,
+    "kf.steps": 30,
+    "kf.tonemap": "aces",
+    "kf.usm_amount": 0.42,
+    "lk.bloom": 48,
+    "lk.chroma": 24,
+    "lk.contrast": 118,
+    "lk.film_halation": 26,
+    "lk.lens_flare": 22,
+    "lk.lut": "赛博",
+    "lk.lut_strength": 82,
+    "lk.saturation": 112,
+    "lk.sharpen": 36,
+    "lk.vignette": 36,
+    "mo.camera": "移",
+    "mo.camera_speed": 0.42,
+    "mo.flow_stabilize": 44,
+    "mo.fps": 30,
+    "mo.fx_bloom_light": 55,
+    "mo.fx_fog": 38,
+    "mo.fx_rain": 62,
+    "mo.interp_factor": "4x",
+    "mo.layer1_shift": 90,
+    "mo.layer2_shift": 52,
+    "mo.layer3_shift": 26,
+    "mo.lens_distortion": 14,
+    "mo.motion_blur": 34,
+    "mo.parallax_layers": 5,
+    "mo.strength": 0.72,
+    "sb.camera_language": "快剪",
+    "sb.closeup_ratio": 15,
+    "sb.conflict_intensity": 66,
+    "sb.duration": 20,
+    "sb.emotion_curve": 74,
+    "sb.genre": "科幻",
+    "sb.grid_count": 14,
+    "sb.medium_ratio": 35,
+    "sb.rhythm": "快",
+    "sb.shot_scale": "全景",
+    "sb.wide_ratio": 50,
+    "vo.bgm_genre": "电子",
+    "vo.bgm_strength": 46,
+    "vo.emotion": "激动",
+    "vo.lipsync": false,
+    "vo.sfx_tracks": 3,
+    "vo.voice_id": "苏打"
+  },
+  "checksum": "djb2:8801f928",
+  "lineage": {
+    "derived_from": [
+      "oriental-ink-portrait"
+    ],
+    "parent_checksum": null,
+    "origin": "manual"
+  },
+  "compat": {
+    "min_platform": "0.1.0",
+    "max_tested": "0.1.0",
+    "platform": "ai-video-platform"
+  },
+  "pricing": {
+    "mode": "revenue_share",
+    "price_cny": 22,
+    "share": {
+      "creator_pct": 60,
+      "platform_pct": 40
+    },
+    "basis": "净流水（扣除支付通道费与税费后的实收）"
+  },
+  "signature": {
+    "algo": "HMAC-SHA256",
+    "key_id": "bcbe68321eca99c8",
+    "value": "0305a43fb521ccb50213be9179ebc68413f2c3c41aaca11a452aef135d8e1dee",
+    "signed_at": "2026-11-16T09:40:00.000Z",
+    "issuer": "market/build_samples.js",
+    "scope": "payload = 模板对象去掉 signature 字段后按 key 递归排序的 JSON"
+  },
+  "estimate_meta": {
+    "device": "T3",
+    "peak_mib": 6177,
+    "usable_mib": 21800,
+    "ratio": 0.283,
+    "state": "ok",
+    "dominant": "keyframe",
+    "shot_sec": 140,
+    "episode_sec": 2012,
+    "quality": 82,
+    "cost_episode_yuan": 0.1073
+  },
+  "workflow_ref": {
+    "kind": "inline",
+    "format": "comfyui-api",
+    "path": "workflow",
+    "synthetic": true,
+    "registry_version": "0.1.0",
+    "nodes": 4,
+    "params": 6,
+    "targets": [
+      "CLIP Text Encode",
+      "Character Builder",
+      "EmptyLatentImage",
+      "KSampler"
+    ],
+    "bindings": [
+      {
+        "key": "ch.subject",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.face_detail",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.age",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "age"
+      },
+      {
+        "key": "ch.face_shape",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "face_shape"
+      },
+      {
+        "key": "kf.resolution",
+        "stage": "keyframe",
+        "node": "3",
+        "target": "EmptyLatentImage",
+        "widget": "width"
+      },
+      {
+        "key": "kf.steps",
+        "stage": "keyframe",
+        "node": "4",
+        "target": "KSampler",
+        "widget": "steps"
+      }
+    ]
+  },
+  "workflow": {
+    "1": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "赛博夜雨中的霓虹街区：湿滑柏油路、全息招牌、飞驰的悬浮车"
+      },
+      "_meta": {
+        "title": "CLIP Text Encode",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "2": {
+      "class_type": "CharacterBuilder",
+      "inputs": {
+        "age": 24,
+        "face_shape": "鹅蛋"
+      },
+      "_meta": {
+        "title": "Character Builder",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "3": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 2048
+      },
+      "_meta": {
+        "title": "EmptyLatentImage",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "4": {
+      "class_type": "KSampler",
+      "inputs": {
+        "steps": 30
+      },
+      "_meta": {
+        "title": "KSampler",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    }
+  },
+  "build": {
+    "engine": "core/engine.js",
+    "preset_schema": "ai-video-platform/preset",
+    "preset_format": 1,
+    "packer": "market/pack.js@1"
+  }
+}

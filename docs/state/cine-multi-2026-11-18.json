@@ -1,0 +1,24 @@
+{
+  "schema": "ai-video-platform/cine-multishot",
+  "at": "2026-11-18T08:50:13Z",
+  "plan": "灰境方案§7 第二步：M1 多镜分镜 + M4 一致性 + M7 组接",
+  "job": {
+    "id": "job_mwlvjhzg_1e3d7f", "state": "failed", "ms": 403608,
+    "failure_note": "全部生产阶段成功（12 t2i + 3 i2v + 逐镜 filmic + xfade 组接 + 整片声 + 终审 QA）并已 publish 到云盘；崩溃点在 publish 之后对已被 renameSync 移走的缓存文件做 ffprobe（CINE_FFPROBE_FAILED）。bug 已修（探针移到 publish 前）。成片已 salvaged 验证，未重跑（防重复计费）。",
+    "first_attempt_bug": "job_mwlvh29u 误传本地路径作 i2v img_url（云端只收公网 URL，No connection adapters）→ 已改为关键帧远程 URL"
+  },
+  "salvaged_output": {
+    "file": "D:\\云盘\\02-视频\\成片\\cine-轮渡上年轻女生安静侧脸，傍晚海边阳光-2026-11-18T08-50-13.mp4",
+    "ffprobe_measured": { "video": "h264 1080x1608@48", "audio": "aac", "duration_s": 13.8125, "frames": 663, "bytes": 14136925 },
+    "qa_measured": { "ok": true, "frames": 663, "sharpMean": 0.99, "flickerMean": 0.225, "flowMean": 0.1, "badFrames": 0, "pass_vs_baseline": true },
+    "timeline": { "shots": 3, "shotSizes": ["广角环境", "中景", "特写"], "transition": "crossfade", "crossfade_s": 0.5, "totalDuration_s": 13.81 },
+    "visual_verdict": "三镜景别递进（中远→中近→特写）；同一女生/同灰衬衫/同轮渡栏杆海面夕阳/同 filmic 青橙调 → M4 锁定描述跨镜一致目视成立；皮肤纹理保留；crossfade 转场平滑；含环境声轨",
+    "frames_inspected": ["D:/缓存/avp/multi-frame-1.png", "D:/缓存/avp/multi-frame-6.png", "D:/缓存/avp/multi-frame-11.png"]
+  },
+  "m4_honest_limit": "尾帧继承不可执行：云端 i2v 只收公网 URL，本地尾帧无 URL → cineContinuity 发 CINE_CONTINUITY_UNAVAILABLE；跨镜一致靠锁定描述(same character/outfit/location/grade)真实生效（目视确认）",
+  "cost": { "t2i": 12, "i2v": 3, "note": "3 镜×4 候选；比单镜(8 t2i+1 i2v)贵，属多镜头短片预期成本" },
+  "gates": { "build": "7/0", "selftest_all": "PASS 9 FAIL 0 (server 141/0)", "lint_ui": "7 pages green", "e2e": "52/0" },
+  "local_zero_billing_tests": { "xfade_concat_3x": { "total_s": 13.813, "frames": 663, "transition": "crossfade" }, "multi_fake_selftest": "3 shots/12 imgs/timeline/qa/audio PASS" },
+  "deferred_next": ["M2 资产参考库", "M10 IndexedDB 五表", "L1 adapter 统一接口重构"],
+  "provenance": { "ffprobe": "measured", "qa": "measured(quality/frames)", "visual": "human-inspection", "timeline": "measured-from-concat" }
+}

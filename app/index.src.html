@@ -1,0 +1,2778 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="color-scheme" content="dark">
+<title>VisInter-Agent · 平台外壳</title>
+<!--
+  构建说明：本文件是源件，不要直接双击它。
+  node tools/build_app.mjs 会把 core/engine.js、app/state.js、spec/*.json 内联进
+  下面三个占位注释，产出单文件 app/index.html，双击即可用。
+  为什么要单文件：file:// 下 fetch 相对 JSON 会被 CORS 拦死，内联是把"能跑"这件事
+  从运行时赌运气，变成构建时保证。
+-->
+<style>
+/*__TOKENS__*/
+  /* :root 已收口到 ui/tokens.css（构建期内联） */
+
+/* 碑铭衬线：Cinzel（SIL OFL，本地 woff2，见 assets/fonts/LICENSE-Cinzel.txt） */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-700.woff2") format("woff2");
+}
+
+/* ── 基础层：深黑 + 双冷色光晕（玻璃的「景」）+ 胶片颗粒 ─────────── */
+html {
+  background:
+    radial-gradient(56% 46% at 10% 4%, var(--amb-blue) 0%, rgba(98, 118, 158, 0) 72%),
+    radial-gradient(52% 44% at 92% 98%, var(--amb-purple) 0%, rgba(126, 106, 160, 0) 72%),
+    var(--bg);
+  background-attachment: fixed;
+}
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background: url("../assets/grain.png") repeat;
+  background-size: 160px 160px;
+}
+.serif {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+/* 数字等宽：所有数值读数都用它 */
+.num, kbd, code, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点环：冷银描边 + 一圈极淡银光，键盘可达 */
+:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(200, 205, 212, 0.12);
+}
+
+/* 滚动条：细、暗、银灰thumb，hover 提亮；不用系统默认蓝条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+*::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* 选区：银的低透明填充，不用系统蓝 */
+::selection { background: var(--acc-fill); color: var(--acc-hover); }
+
+/* ── 通用玻璃类：与 ui/tokens.css 同一配方 ─────────────────────── */
+.glass-card {
+  background: var(--panel);
+  /* 页面这份 background 简写会把 tokens 的迎光层清成 none，这里补回同一层 */
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.glass-card.hoverable {
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.glass-card.hoverable:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.glass-btn {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--glass-line-hover);
+  color: var(--acc-hover);
+  box-shadow: 0 0 20px var(--glow-cool);
+}
+.glass-input {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease),
+              background var(--t) var(--ease);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: var(--glass-line-hover);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: var(--glow);
+}
+.glass-input::placeholder { color: var(--text-dim2); }
+@media (max-width: 900px) {
+  /* :root 已收口到 ui/tokens.css（构建期内联） */
+}
+  * { box-sizing: border-box; }
+  html, body { height: 100%; margin: 0; }
+  body {
+    background: transparent;
+    color: var(--text);
+    font: var(--fz)/var(--lh) var(--sans);
+    overflow: hidden;
+  }
+  button { font-family: inherit; }
+  [hidden] { display: none !important; }
+
+  /* ── 骨架 ── */
+  #mistBg { position: fixed; inset: 0; z-index: 0; pointer-events: none; }
+  #app { display: grid; grid-template-rows: auto minmax(0, 1fr) 33px; height: 100vh; position: relative; z-index: 1; }
+
+  /* ── 顶栏：悬浮玻璃条（margin 16 / 圆角 16 / blur 20）── */
+  header#topbar {
+    display: flex; align-items: center; gap: 13px; padding: 0 15px;
+    margin: var(--sp4) var(--sp4) 0; min-height: 44px;
+    border: 1px solid var(--line); border-radius: var(--r3);
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+    position: sticky; top: var(--sp4); z-index: 30;
+  }
+  .brand { display: flex; align-items: center; gap: 10px; }
+  .logo { width: 26px; height: 26px; flex: none; color: var(--acc); }
+  .brand-txt { display: flex; flex-direction: column; line-height: 1.15; }
+  .brand-txt b { font-family: var(--serif); font-size: 14px; letter-spacing: .16em; font-weight: 700; color: var(--acc); }
+  .brand-txt small { font: 10.5px var(--mono); color: var(--dim2); letter-spacing: .3px; }
+  .spacer { flex: 1; }
+  .projline { display: flex; align-items: center; gap: 7px; padding-left: 14px; border-left: 1px solid var(--line); }
+  .projline .plabel { font: 10.5px var(--mono); color: var(--dim2); }
+  select#projectSelect {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2);
+    padding: 5px 8px; font-size: 12px; max-width: 230px; outline: none;
+    -webkit-backdrop-filter: var(--glass-blur-lite);
+    backdrop-filter: var(--glass-blur-lite);
+  }
+  select#projectSelect:focus { border-color: var(--glass-line-hover); box-shadow: var(--glow); }
+  .btn {
+    border: 1px solid var(--line); background: rgba(255, 255, 255, 0.10); color: var(--text); border-radius: var(--r2);
+    padding: 6px 11px; font-size: 12px; cursor: pointer; white-space: nowrap; letter-spacing: .06em;
+    -webkit-backdrop-filter: var(--glass-blur-lite);
+    backdrop-filter: var(--glass-blur-lite);
+    transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+                box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+  }
+  .btn:hover:not(:disabled) { border-color: var(--glass-line-hover); background: rgba(255, 255, 255, 0.14); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+  .btn:disabled { opacity: .42; cursor: not-allowed; box-shadow: none; }
+  .btn.acc { border-color: var(--acc-dim); color: var(--acc-hover); background: var(--panel3); letter-spacing: .12em; }
+  .btn.acc:hover:not(:disabled) { background: var(--panel4); border-color: var(--acc-hover); box-shadow: var(--glow); }
+  .btn.vio { border-color: var(--line); color: var(--acc-dim); background: var(--panel2); }
+  .btn.mini { padding: 4px 9px; font-size: 11.5px; }
+  .statepill {
+    display: flex; align-items: center; gap: 7px; padding: 5px 11px 5px 9px; border-radius: var(--r2);
+    border: 1px solid var(--line); background: var(--panel2); font-size: 12px; cursor: default;
+    -webkit-backdrop-filter: var(--glass-blur-lite);
+    backdrop-filter: var(--glass-blur-lite);
+  }
+  .statepill .sd { width: 7px; height: 7px; border-radius: 50%; background: var(--dim2); }
+  .statepill.t-acc .sd { background: var(--acc);  }
+  .statepill.t-violet .sd { background: var(--acc-dim);   }
+  .statepill.t-warn .sd { background: var(--warn);  }
+  .statepill.t-ok .sd { background: var(--ok);  }
+  .statepill.t-dim .sd { background: var(--dim); }
+
+  /* ── 主体 ── */
+  #shell { display: grid; grid-template-columns: 214px minmax(0, 1fr); min-height: 0; }
+
+  nav#sidenav {
+    border-right: 1px solid var(--line);
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    padding: 12px 9px;
+    display: flex; flex-direction: column; gap: 3px; overflow-y: auto;
+  }
+  .navsec { font: 10px var(--mono); color: var(--dim2); letter-spacing: 1.2px; padding: 10px 10px 5px; text-transform: uppercase; }
+  .nav-item {
+    display: flex; align-items: center; gap: 10px; padding: 9px 10px; border-radius: var(--r2); cursor: pointer;
+    color: var(--dim); border: 1px solid transparent; background: transparent; text-align: left; width: 100%;
+    font-size: 13px;
+    transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+                color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+  }
+  .nav-item:hover {
+    background: var(--glass-hover); border-color: var(--line); color: var(--acc-hover);
+    box-shadow: 0 0 20px var(--glow-cool);
+  }
+  .nav-item.on {
+    background: var(--panel2); border-color: var(--line2); color: var(--text);
+    box-shadow: inset 2px 0 0 var(--acc);
+  }
+  .ni-ico { width: 20px; text-align: center; color: var(--acc2); font-size: 13px; }
+  .nav-item.on .ni-ico { color: var(--acc); }
+  .nav-item .ni-t { flex: 1; }
+  .ni-badge { font: 9.5px var(--mono); color: var(--dim2); border: 1px solid var(--line); border-radius: var(--r); padding: 0 4px; }
+  .ni-badge.on { color: var(--acc); border-color: var(--line2); background: var(--panel2); }
+  .nav-foot { margin-top: auto; padding: 12px 10px 4px; border-top: 1px solid var(--line); font: 10.5px/1.7 var(--mono); color: var(--dim2); }
+
+  #content { overflow-y: auto; padding: 0 0 26px; min-width: 0; }
+  .view { display: none; }
+  .view.on { display: block; }
+  .viewhead { padding: 18px 22px 12px; border-bottom: 1px solid var(--line); background: transparent; }
+  .viewhead h1 { margin: 0 0 3px; font-family: var(--serif); font-size: 19px; letter-spacing: .14em; font-weight: 700; color: var(--acc); }
+  .viewhead p { margin: 0; color: var(--dim); font-size: 12.5px; max-width: 900px; }
+  .viewhead .pitch { margin: 0 0 6px; font-family: var(--serif); font-size: 15px; letter-spacing: .06em; color: var(--acc-hover); }
+  .vh-row { display: flex; align-items: flex-end; gap: 12px; flex-wrap: wrap; }
+  .stamp {
+    margin-left: auto; font: 11px var(--mono); color: var(--dim2); border: 1px solid var(--line);
+    border-radius: var(--r2); padding: 3px 8px; white-space: nowrap; background: var(--panel2);
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  }
+  .body { padding: 16px 22px; }
+
+  /* ── 模块卡片 ── */
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(292px, 1fr)); gap: 12px; }
+  .card {
+    position: relative; border: 1px solid var(--line); border-radius: var(--r3); padding: 14px 15px 13px;
+    background: var(--panel);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+    transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+                transform var(--t) var(--ease), box-shadow var(--t) var(--ease); overflow: hidden;
+  }
+  .card::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 1px;
+    background: var(--acc); opacity: 0; transition: .2s;
+  }
+  .card:hover { background: var(--glass-hover); border-color: var(--glass-line-hover); transform: translateY(-3px); box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool); }
+  .card:hover::before { opacity: 1; }
+  .card-h { display: flex; align-items: center; gap: 9px; margin-bottom: 7px; }
+  .card-ico {
+    width: 27px; height: 27px; border-radius: var(--r2); display: grid; place-items: center; flex: none;
+    background: var(--panel2); color: var(--acc2); font-size: 13px; border: 1px solid var(--line2);
+  }
+  .card-t { font-family: var(--serif); font-weight: 700; font-size: 13.5px; letter-spacing: .1em; color: var(--acc); }
+  .card-t small { font: 10px var(--mono); color: var(--dim2); font-weight: 400; margin-left: 5px; }
+  .card-line { color: var(--dim); font-size: 12px; min-height: 34px; }
+  .card-f { display: flex; align-items: center; gap: 8px; margin-top: 11px; }
+  .badge {
+    font: 10px var(--mono); padding: 1.5px 6px; border-radius: var(--r); border: 1px solid; white-space: nowrap;
+    flex: none;
+  }
+  .badge.exists { color: var(--acc); border-color: var(--line2); background: var(--panel2); }
+  .badge.missing { color: var(--dim); border-color: var(--line2); background: var(--panel2); }
+  .badge.probing { color: var(--acc2); border-color: var(--line2); background: var(--panel); }
+  .badge.self { color: var(--acc-dim); border-color: var(--line2); background: var(--panel); }
+  .card-path { font: 10.5px var(--mono); color: var(--dim2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .card-f .spacer { flex: 1; }
+  .card-f .btn, .card-f .guide { flex: none; }
+  .guide { color: var(--acc2); font-size: 11px; text-decoration: none; border-bottom: 1px dotted var(--line2); }
+  .guide:hover { color: var(--acc); border-color: var(--line2); }
+  .probe-note { margin-top: 8px; font-size: 11px; color: var(--dim2); border-top: 1px dashed var(--line); padding-top: 6px; }
+
+  /* ── 顶部状态条 ── */
+  footer#statusbar {
+    display: flex; align-items: center; gap: 0; padding: 0 14px; border-top: 1px solid var(--line);
+    background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    font-size: 11.5px; overflow-x: auto; white-space: nowrap;
+  }
+  .sb { display: flex; align-items: center; gap: 6px; padding: 0 13px; border-right: 1px solid var(--line); height: 100%; }
+  .sb:first-child { padding-left: 0; }
+  .sb i { color: var(--dim2); font-style: normal; font: 10.5px var(--mono); }
+  .sb b { font: 11.5px var(--mono); color: var(--text); font-weight: 600; }
+  .dotv { width: 7px; height: 7px; border-radius: 50%; background: var(--ok); display: inline-block; }
+  .dotv.ok { background: var(--ok); box-shadow: none; }
+  .dotv.warn { background: var(--warn); box-shadow: none; }
+  .dotv.block { background: var(--bad); box-shadow: none;  }
+  .dotv.dim { background: var(--dim2); }
+  .sb b.ok { color: var(--ok); } .sb b.warn { color: var(--warn); } .sb b.block { color: var(--bad-ink); }
+
+  /* 服务桥状态点：JS 里一直挂着 .dot，此前没有样式 = 不显示。
+     与 .dotv 同一口径（7px 冷银小点），off 态不发光。 */
+  .svc .dot {
+    width: 7px; height: 7px; border-radius: 50%; flex: none; display: inline-block;
+    background: var(--dim2); box-shadow: 0 0 10px var(--glow-cool);
+  }
+  .svc .dot.ok { background: var(--ok); }
+  .svc .dot.acc { background: var(--acc); }
+  .svc .dot.warn { background: var(--warn); }
+  .svc .dot.bad { background: var(--bad); }
+  .svc .dot.off { background: var(--dim2); box-shadow: none; }
+
+  /* ── 快速调参条 ── */
+  .quick {
+    border: 1px solid var(--line); border-radius: var(--r3); background: var(--panel);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset); margin-bottom: 14px;
+  }
+  .quick-h {
+    display: flex; align-items: center; gap: 9px; padding: 9px 13px; border-bottom: 1px solid var(--line);
+    font-size: 12px; color: var(--dim);
+  }
+  .quick-h b { color: var(--text); font-size: 12.5px; }
+  .quick-h .tag { font: 10px var(--mono); color: var(--acc-dim); border: 1px solid var(--line2); background: var(--panel); border-radius: var(--r); padding: 1px 5px; }
+  .quick-b { display: grid; grid-template-columns: repeat(auto-fill, minmax(228px, 1fr)); gap: 10px 16px; padding: 12px 13px 14px; }
+  .qrow { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+  .qrow .ql { display: flex; align-items: baseline; gap: 6px; }
+  .qrow .ql span { font-size: 11.5px; color: var(--dim); }
+  .qrow .ql code { font: 9.5px var(--mono); color: var(--dim2); }
+  .qrow .qc { display: flex; align-items: center; gap: 7px; }
+  .qrow input[type=range] { flex: 1; min-width: 0; height: 18px; }
+  .qrow .qv { font: 11px var(--mono); color: var(--acc); min-width: 42px; text-align: right; }
+  .qrow select, .qrow input[type=number] {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2);
+    padding: 3px 6px; font: 11px var(--mono); outline: none; width: 100%;
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  }
+  .qrow select:focus, .qrow input:focus { border-color: var(--glass-line-hover); box-shadow: var(--glow); }
+  .qrow.disabled { opacity: .5; }
+
+  /* ── 状态机面板 ── */
+  .flow {
+    border: 1px solid var(--line); border-radius: var(--r3); background: var(--panel);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset); margin-top: 16px;
+  }
+  .flow-h { display: flex; align-items: center; gap: 10px; padding: 10px 13px; border-bottom: 1px solid var(--line); }
+  .flow-h b { font-size: 12.5px; }
+  .flow-h small { color: var(--dim2); font: 10.5px var(--mono); }
+  .flow-b { padding: 14px 13px; }
+  .chain { display: flex; align-items: center; gap: 0; flex-wrap: wrap; margin-bottom: 14px; }
+  .node {
+    padding: 5px 11px; border-radius: var(--r); border: 1px solid var(--line); background: var(--bg-deep);
+    font-size: 11.5px; color: var(--dim2); position: relative;
+  }
+  .node.done { color: var(--dim); border-color: var(--line2); background: var(--panel2); }
+  .node.cur { color: var(--text); background: var(--acc-fill); border-color: var(--acc); font-weight: 700; box-shadow: none; }
+  .arrow { color: var(--text-dim2); padding: 0 7px; font-size: 11px; }
+  .acts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .act {
+    display: flex; flex-direction: column; gap: 1px; align-items: flex-start; text-align: left;
+    border: 1px solid var(--line); background: rgba(255, 255, 255, 0.10); color: var(--text); border-radius: var(--r2);
+    padding: 6px 11px; font-size: 12px; cursor: pointer; letter-spacing: .06em;
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+    transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+    min-width: 92px;
+  }
+  .act:hover:not(:disabled) { border-color: var(--glass-line-hover); background: rgba(255, 255, 255, 0.14); box-shadow: 0 0 20px var(--glow-cool); }
+  .act .why { font: 9.5px var(--mono); color: var(--dim2); }
+  .act:disabled { opacity: .38; cursor: not-allowed; box-shadow: none; }
+  .act.primary { border-color: var(--acc-dim); color: var(--acc-hover); background: var(--panel3); letter-spacing: .12em; }
+  .act.primary:hover:not(:disabled) { box-shadow: var(--glow); }
+  .flow-note { margin-top: 12px; font-size: 11px; color: var(--dim2); }
+  .hist {
+    margin-top: 10px; font: 10.5px/1.8 var(--mono); color: var(--dim2); max-height: 96px; overflow-y: auto;
+    padding: 7px 9px; border: 1px solid var(--line); border-radius: var(--r2); background: var(--bg-deep);
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  }
+  .hist span { color: var(--dim); }
+
+  /* 服务桥：渲染任务的真实提交状态。它不是装饰——离线时整条会变成"未提交"，
+     提醒用户此刻的状态推进只发生在本地，还没有任何产物。 */
+  .svc {
+    display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+    margin-top: 10px; padding: 7px 9px;
+    border: 1px solid var(--line2); border-radius: var(--r2); background: var(--panel2);
+    font: 10.5px/1.6 var(--mono); color: var(--dim);
+  }
+  .svc b { font: 12px/1.6 var(--sans); font-weight: 600; color: var(--text); }
+  .svc .spacer { flex: 1; }
+  .svc .bar { width: 110px; height: 4px; background: var(--panel4); border-radius: var(--r); overflow: hidden; }
+  .svc .bar > i { display: block; height: 100%; background: var(--acc); }
+  .svc .bar.ok > i { background: var(--ok); }
+  .svc .bar.bad > i { background: var(--bad); }
+  .svc .cmd { color: var(--dim); background: var(--bg-deep); border: 1px solid var(--line); border-radius: var(--r); padding: 0 4px; }
+
+  /* ── 错误卡片 / 降级条 / toast ── */
+  .errcard {
+    position: fixed; right: 18px; bottom: 48px; width: min(460px, 92vw); z-index: 60;
+    border: 1px solid var(--line2); border-radius: var(--r3); background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset); overflow: hidden;
+  }
+  .errcard-h { display: flex; align-items: center; gap: 9px; padding: 9px 12px; border-bottom: 1px solid var(--line); background: var(--panel2); }
+  .errcard-h .ico {
+    width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; flex: none;
+    background: var(--bad-fill); color: var(--bad-ink); font: 700 11px var(--mono); border: 1px solid var(--bad);
+  }
+  .errcard-h b { font-size: 12.5px; color: var(--bad-ink); flex: 1; }
+  .errcard-h button { background: transparent; border: 0; color: var(--text-dim2); font-size: 16px; cursor: pointer; line-height: 1; }
+  .errcard-b { padding: 11px 12px 12px; display: flex; flex-direction: column; gap: 7px; }
+  .kv { display: grid; grid-template-columns: 44px 1fr; gap: 8px; align-items: start; font-size: 11.5px; }
+  .kv span:first-child { color: var(--text-dim2); font: 10.5px var(--mono); padding-top: 1px; }
+  .kv code { font: 11px/1.5 var(--mono); color: var(--bad-ink); word-break: break-all; }
+  .kv .sugg { color: var(--text); }
+  .errcard-actions { display: flex; gap: 8px; margin-top: 3px; }
+  .errcard-actions .btn { border-color: var(--bad); background: var(--panel2); color: var(--bad-ink); }
+
+  #degradeBar {
+    position: fixed; left: 50%; transform: translateX(-50%); top: 74px; z-index: 55;
+    display: flex; align-items: center; gap: 10px; padding: 7px 13px; border-radius: var(--r3);
+    border: 1px solid var(--line2); background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    color: var(--warn); font-size: 12px; max-width: min(860px, 94vw);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+  #degradeBar b { color: var(--warn); }
+  #degradeBar button { background: transparent; border: 0; color: var(--text-dim2); cursor: pointer; font-size: 15px; line-height: 1; }
+
+  #toast {
+    position: fixed; left: 50%; bottom: 52px; transform: translate(-50%, 14px); z-index: 70;
+    background: var(--glass); border: 1px solid var(--line2); color: var(--text); border-radius: var(--r3);
+    padding: 9px 16px; font-size: 12px; opacity: 0; pointer-events: none; transition: .2s;
+    max-width: min(560px, 92vw); text-align: center; line-height: 1.55;
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+  }
+  #toast.on { opacity: 1; transform: translate(-50%, 0); }
+  #toast.bad { border-color: var(--bad); color: var(--bad-ink); }
+
+  /* ── 向导 ── */
+  #wizard {
+    position: fixed; inset: 0; z-index: 80; display: grid; place-items: center;
+    background: rgba(6, 6, 8, 0.82);
+    -webkit-backdrop-filter: blur(10px);
+    backdrop-filter: blur(10px);
+  }
+  .wiz {
+    width: min(880px, 94vw); max-height: 90vh; overflow: auto; border-radius: var(--r3);
+    border: 1px solid var(--line2); background: var(--panel);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset); position: relative;
+  }
+  .wiz::before {
+    content: ""; position: absolute; inset: 0 0 auto 0; height: 2px; border-radius: var(--r2) var(--r2) 0 0;
+    background: var(--acc);
+  }
+  .wiz-h { padding: 18px 24px 0; }
+  .wiz-h .kw { font: 10.5px var(--mono); color: var(--acc); letter-spacing: 1.4px; text-transform: uppercase; }
+  .wiz-h h2 { margin: 4px 0 0; font-family: var(--serif); font-size: 19px; letter-spacing: .1em; color: var(--acc); }
+  .wiz-h p { margin: 5px 0 0; color: var(--dim); font-size: 12.5px; }
+  .wiz-steps { display: flex; gap: 8px; padding: 15px 24px 0; }
+  .wstep { flex: 1; display: flex; flex-direction: column; gap: 5px; }
+  .wstep .bar { height: 3px; border-radius: var(--r2); background: var(--panel2); overflow: hidden; }
+  .wstep .bar i { display: block; height: 100%; width: 0; background: var(--acc); transition: .3s; }
+  .wstep.done .bar i, .wstep.cur .bar i { width: 100%; }
+  .wstep .wlab { font: 10px var(--mono); color: var(--dim2); letter-spacing: .4px; }
+  .wstep.cur .wlab { color: var(--acc); }
+  .wiz-b { padding: 18px 24px 4px; }
+  .wiz-screen { animation: fadein .22s ease; }
+  @keyframes fadein { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: none; } }
+
+  .honest {
+    display: flex; gap: 10px; padding: 10px 12px; border-radius: var(--r2); margin-bottom: 14px;
+    border: 1px solid var(--line2); background: var(--panel2); font-size: 12px; color: var(--warn);
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  }
+  .honest .hi { color: var(--warn); flex: none; font-size: 13px; line-height: 1.35; }
+  .honest b { color: var(--warn); }
+
+  .field { display: grid; grid-template-columns: 150px 1fr; gap: 10px 14px; align-items: center; margin-bottom: 11px; }
+  .field > label { font-size: 12.5px; color: var(--dim); }
+  .field .ctl { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .field input[type=number], .field select {
+    background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2);
+    padding: 6px 9px; font: 12px var(--mono); outline: none; min-width: 130px;
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  }
+  .field input[type=number]:focus, .field select:focus { border-color: var(--glass-line-hover); box-shadow: var(--glow); }
+  .field .unitxt { font: 11px var(--mono); color: var(--dim2); }
+  .mono-val { font: 11.5px var(--mono); color: var(--acc); }
+  .reco {
+    margin-top: 4px; padding: 10px 13px; border-radius: var(--r3); border: 1px solid var(--line2);
+    background: var(--panel); font-size: 12px; color: var(--acc);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+  .reco b { color: var(--acc); }
+
+  .tiers { display: grid; grid-template-columns: repeat(3, 1fr); gap: 11px; }
+  .tier {
+    border: 1px solid var(--line); border-radius: var(--r3); background: var(--panel);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+    padding: 13px 13px 11px; cursor: pointer; position: relative; text-align: left;
+    color: var(--text); font-family: inherit; display: block; width: 100%;
+    transition: background var(--t) var(--ease), border-color var(--t) var(--ease), transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+  }
+  .tier:hover { background: var(--glass-hover); border-color: var(--glass-line-hover); transform: translateY(-3px); box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool); }
+  .tier.on { border-color: var(--acc); background: var(--panel3); box-shadow: var(--glow); }
+  .tier .tn { font-weight: 700; font-size: 13.5px; display: flex; align-items: center; gap: 7px; }
+  .tier .td { color: var(--dim); font-size: 11.5px; margin: 3px 0 9px; min-height: 30px; }
+  .tmetrics { display: grid; grid-template-columns: 1fr 1fr; gap: 5px 8px; font: 10.5px var(--mono); }
+  .tmetric { display: flex; justify-content: space-between; gap: 4px; border-top: 1px dashed var(--line); padding-top: 4px; }
+  .tmetric span { color: var(--dim2); }
+  .tmetric b { color: var(--text); font-weight: 600; }
+  .tmetric b.ok { color: var(--ok); } .tmetric b.warn { color: var(--warn); } .tmetric b.block { color: var(--bad-ink); }
+  .tier .pickmark {
+    position: absolute; top: 10px; right: 11px; width: 15px; height: 15px; border-radius: 50%;
+    border: 1px solid var(--line2); display: grid; place-items: center; font-size: 9px; color: var(--bg-deep);
+  }
+  .tier.on .pickmark { background: var(--acc); border-color: var(--acc); }
+  .tier.on .pickmark::after { content: "✓"; }
+
+  .summary {
+    border: 1px solid var(--line); border-radius: var(--r2); background: var(--panel2); padding: 12px 14px;
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  }
+  .srow { display: flex; justify-content: space-between; gap: 10px; padding: 5px 0; border-bottom: 1px dashed var(--line); font-size: 12px; }
+  .srow:last-child { border-bottom: 0; }
+  .srow span { color: var(--dim); }
+  .srow b { font: 12px var(--mono); font-weight: 600; }
+  .wiz-f { display: flex; align-items: center; gap: 10px; padding: 16px 24px 20px; }
+  .wiz-f .hint { font: 10.5px var(--mono); color: var(--dim2); }
+  .wiz-f .spacer { flex: 1; }
+
+  .empty { padding: 40px 22px; text-align: center; color: var(--dim); }
+  .empty code { font: 11px var(--mono); color: var(--acc2); }
+  ::-webkit-scrollbar { width: 8px; height: 8px; }
+  ::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+  ::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+  ::-webkit-scrollbar-track { background: transparent; }
+
+  /* ── 风格圣殿：八张暗黑雕塑主题卡 ─────────────────────────────── */
+  .sanctuary { margin-bottom: 16px; }
+  .sanc-h { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; padding: 2px 2px 10px; }
+  .sanc-h h2 { margin: 0; font-family: var(--serif); font-size: 17px; letter-spacing: .2em; color: var(--acc); font-weight: 700; }
+  .sanc-h .sanc-sub { font-size: 11.5px; color: var(--dim); }
+  .sanc-h .spacer { flex: 1; }
+  .sanc-h .sanc-note { font: 10px var(--mono); color: var(--dim2); letter-spacing: .08em; }
+  .sanc-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+  @media (max-width: 1280px) { .sanc-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); } }
+  @media (max-width: 980px) { .sanc-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 620px) { .sanc-grid { grid-template-columns: minmax(0, 1fr); } }
+  .noir-card {
+    position: relative; display: block; width: 100%; text-align: left; cursor: pointer;
+    border: 1px solid var(--line); border-radius: var(--r3); overflow: hidden;
+    background: var(--panel);
+    -webkit-backdrop-filter: var(--glass-blur);
+    backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset); padding: 0;
+    color: var(--text); font-family: inherit;
+    transition: background var(--t) var(--ease), border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), transform var(--t) var(--ease);
+    animation: rise .5s var(--ease-out) backwards;
+  }
+  .noir-card:hover { background: var(--glass-hover); border-color: var(--glass-line-hover); box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool); transform: translateY(-3px); }
+  .noir-card.on { border-color: var(--acc); box-shadow: var(--glow); }
+  .noir-card.on::after {
+    content: "已装载"; position: absolute; top: 8px; right: 8px;
+    font: 9.5px var(--mono); letter-spacing: .1em; color: var(--acc-hover);
+    background: var(--panel3); border: 1px solid var(--acc-dim); border-radius: var(--r); padding: 2px 6px;
+    -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+    box-shadow: 0 0 20px var(--glow-cool);
+  }
+  .noir-cover { position: relative; aspect-ratio: 3 / 4; overflow: hidden; background: var(--bg-deep); }
+  .noir-cover img {
+    width: 100%; height: 100%; object-fit: cover; display: block;
+    filter: grayscale(1) contrast(1.08);
+    transition: filter var(--t-slow) var(--ease), transform var(--t-slow) var(--ease);
+  }
+  .noir-card:hover .noir-cover img { filter: grayscale(1) contrast(1.12) brightness(1.12); transform: scale(1.03); }
+  .noir-cover::after {
+    content: ""; position: absolute; inset: 0;
+    background: linear-gradient(180deg, rgba(6, 6, 8, 0) 55%, rgba(6, 6, 8, 0.88) 100%);
+  }
+  .noir-b { padding: 10px 12px 12px; }
+  .noir-t { font-family: var(--serif); font-weight: 700; font-size: 13.5px; letter-spacing: .12em; color: var(--acc); }
+  .noir-tag { display: block; margin-top: 3px; font-size: 10.5px; color: var(--dim); letter-spacing: .04em; }
+  .noir-meta { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .noir-meta span {
+    font: 9.5px var(--mono); color: var(--dim); border: 1px solid var(--line2);
+    border-radius: var(--r); padding: 1px 5px; background: var(--panel2); white-space: nowrap;
+  }
+  @keyframes rise { from { opacity: 0; transform: translateY(14px); } to { opacity: 1; transform: none; } }
+
+  /* ── 已装载风格面板：提示词与推荐参数的可见回执 ───────────────── */
+  .loaded {
+    display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 14px;
+    border: 1px solid var(--acc-dim); border-radius: var(--r3); background: var(--panel);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset), var(--glow-soft); padding: 12px 14px; margin-bottom: 14px;
+    animation: rise .32s var(--ease-out);
+  }
+  .loaded img { width: 96px; height: 128px; object-fit: cover; border-radius: var(--r2); border: 1px solid var(--line2); filter: grayscale(1) contrast(1.08); }
+  .loaded-h { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .loaded-h b { font-family: var(--serif); font-size: 14px; letter-spacing: .14em; color: var(--acc-hover); }
+  .loaded-h small { font-size: 10.5px; color: var(--dim); }
+  .loaded-h .spacer { flex: 1; }
+  .loaded-prompt {
+    margin: 7px 0 0; font-size: 11.5px; line-height: 1.7; color: var(--text);
+    border-left: 2px solid var(--acc); padding-left: 10px;
+  }
+  .loaded-neg { margin: 6px 0 0; font: 10.5px/1.6 var(--mono); color: var(--dim2); }
+  .loaded-neg b { color: var(--bad-ink); font-weight: 600; }
+  .loaded-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .loaded-chips span {
+    font: 10px var(--mono); color: var(--acc); border: 1px solid var(--line2);
+    background: var(--panel2); border-radius: var(--r); padding: 2px 7px;
+  }
+  .loaded-f { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+  @media (max-width: 620px) { .loaded { grid-template-columns: minmax(0, 1fr); } .loaded img { width: 72px; height: 96px; } }
+
+  /* ── 响应式外壳：窄屏顶栏换行、侧栏转横向导航，杜绝横向溢出 ── */
+  @media (max-width: 900px) {
+    #app { grid-template-rows: auto 1fr 33px; }
+    header#topbar { flex-wrap: wrap; gap: 8px 12px; padding: 8px 12px; margin: 12px 12px 0; }
+    .projline { flex-wrap: wrap; padding-left: 0; border-left: 0; gap: 6px; }
+    select#projectSelect { max-width: 170px; }
+    #shell { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+    nav#sidenav {
+      flex-direction: row; align-items: center; overflow-x: auto; overflow-y: hidden;
+      border-right: 0; border-bottom: 1px solid var(--line); padding: 7px 9px; gap: 5px;
+    }
+    .navsec, .nav-foot { display: none; }
+    .nav-item { width: auto; flex: none; padding: 7px 10px; white-space: nowrap; }
+    .nav-item .ni-t { flex: none; }
+    .nav-item.on { box-shadow: inset 0 -2px 0 var(--acc); }
+  }
+  @media (max-width: 620px) {
+    .brand-txt small { display: none; }
+    .viewhead { padding: 14px 14px 10px; }
+    .field { grid-template-columns: minmax(0, 1fr); gap: 5px; }
+    .tiers { grid-template-columns: minmax(0, 1fr); }
+  }
+
+  /* ── 铸造加载器：银粒子 + 烟雾，不用彩色转圈 ─────────────────── */
+  #forgeOverlay {
+    position: fixed; inset: 0; z-index: 75; display: grid; place-items: center;
+    background: rgba(6, 6, 8, 0.78);
+    -webkit-backdrop-filter: blur(8px);
+    backdrop-filter: blur(8px);
+  }
+  #forgeCanvas { position: absolute; inset: 0; width: 100%; height: 100%; }
+  .forge-box {
+    position: relative; text-align: center; padding: 24px 32px;
+    border: 1px solid var(--line2); border-radius: var(--r3); background: var(--glass);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+  .forge-box .forge-t { font-family: var(--serif); font-size: 22px; letter-spacing: .3em; color: var(--acc-hover); font-weight: 700; }
+  .forge-box .forge-s { margin-top: 8px; font: 11px var(--mono); color: var(--dim); letter-spacing: .08em; }
+  .forge-box .forge-note { margin-top: 4px; font-size: 10.5px; color: var(--dim2); }
+  .forge-box .btn { margin-top: 16px; }
+
+  /* ── 玻璃一致性收口 ─────────────────────────────────────────────
+     本页各玻璃件都用 background 简写写死，简写会把 tokens 里的
+     迎光斜光（--sheen）一起清成 none，于是同一套令牌在不同组件上
+     观感不一致。这里按 tokens 的口径把迎光层补回来：只引用现有令牌，
+     不新增色值、不动布局；窄屏由 --glass-blur 自动降到 12px。 */
+  header#topbar,
+  nav#sidenav,
+  footer#statusbar,
+  .card, .quick, .flow, .tier, .noir-card, .loaded, .reco,
+  .wiz, .errcard, .forge-box, #degradeBar, #toast {
+    background-image: var(--sheen);
+    background-repeat: no-repeat;
+  }
+
+  /* 关闭类小按钮（× ）：不加实心底，hover 只提亮一层玻璃 */
+  .errcard-h button,
+  #degradeBar button {
+    border-radius: var(--r);
+    transition: background var(--t) var(--ease), color var(--t) var(--ease);
+  }
+  .errcard-h button:hover,
+  #degradeBar button:hover {
+    background: var(--glass-hover);
+    color: var(--acc-hover);
+  }
+  /* ── 低置信阻断确认卡：推断出来的值必须先确认才往下走 ── */
+  #lcMask {
+    position: fixed; inset: 0; z-index: 9200; display: flex; align-items: center; justify-content: center;
+    padding: var(--sp4); background: rgba(0, 0, 0, 0.66);
+  }
+  #lcMask[hidden] { display: none; }
+  #lcCard { width: min(560px, 100%); max-height: 86vh; overflow-y: auto; padding: 16px 18px 14px; }
+  #lcCard h4 { margin: 0 0 6px; font-family: var(--serif); font-size: var(--fz-l); line-height: 1.4; letter-spacing: .08em; color: var(--acc-hover); }
+  #lcCard .lc-sub { margin: 0 0 3px; font-size: var(--fz-s); line-height: 1.65; color: var(--text-dim); }
+  #lcCard h5 { margin: 12px 0 4px; font-size: var(--fz-s); line-height: 1.4; letter-spacing: .04em; color: var(--text); }
+  #lcCard ul { margin: 0; padding-left: 16px; }
+  #lcCard li { font-size: var(--fz-s); line-height: 1.7; color: var(--text-dim); }
+  #lcCard li b { color: var(--acc); font-weight: 600; }
+  #lcCard .lc-btns { display: flex; gap: var(--sp2); justify-content: flex-end; margin-top: 14px; }
+  #lcCard .lc-foot { margin-top: 9px; font: var(--fz-xs) var(--mono); color: var(--text-dim2); }
+/*__SKIN__*/
+</style>
+</head>
+<body>
+
+
+<canvas id="mistBg" aria-hidden="true"></canvas>
+<div id="app" hidden>
+  <header id="topbar">
+    <div class="brand">
+      <svg class="logo" viewBox="0 0 32 32" aria-hidden="true">
+        <path d="M6 25C7 17 12 9 27 5c-4 4-6 6-7 9 3-2 5-3 8-3-3 4-6 6-9 7 3 0 5 0 8 1-5 4-12 6-21 6z"
+          fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round"/>
+        <path d="M6 25c5-1 10-3 14-7" fill="none" stroke="currentColor" stroke-width="1" stroke-linecap="round" opacity="0.55"/>
+      </svg>
+      <div class="brand-txt"><b>VisInter-Agent</b><small>platform shell · 唯一入口</small></div>
+    </div>
+
+    <div class="projline">
+      <span class="plabel">项目</span>
+      <select id="projectSelect" title="切换项目"></select>
+      <button class="btn mini" id="btnSaveAs" title="把当前状态与参数存成一个新项目">另存为…</button>
+      <button class="btn mini" id="btnExportProj" title="导出项目 JSON（含状态与历史）">导出</button>
+      <button class="btn mini" id="btnImportProj" title="导入项目 JSON">导入</button>
+      <input type="file" id="projFile" accept=".json,application/json" hidden>
+    </div>
+
+    <div class="spacer"></div>
+    <div class="statepill t-dim" id="statePill"><i class="sd"></i><span id="stateText">草稿</span></div>
+    <button class="btn acc" id="btnRender" title="双引擎一键出片（本地 ComfyUI：MiniMax H3 / Wan2.2）">出片</button>
+    <button class="btn" id="btnWizard" title="重新跑一遍三屏向导">向导</button>
+  </header>
+
+  <main id="shell">
+    <nav id="sidenav">
+      <div class="navsec">模块</div>
+      <button class="nav-item on" id="nav-workbench" data-view="workbench"><i class="ni-ico">◈</i><span class="ni-t">工作台</span><span class="ni-badge on" data-nb="workbench">本页</span></button>
+      <button class="nav-item" id="nav-params" data-view="params"><i class="ni-ico">◎</i><span class="ni-t">参数面板</span><span class="ni-badge" data-nb="params">—</span></button>
+      <button class="nav-item" id="nav-canvas" data-view="canvas"><i class="ni-ico">▦</i><span class="ni-t">画布</span><span class="ni-badge" data-nb="canvas">—</span></button>
+      <button class="nav-item" id="nav-inspector" data-view="inspector"><i class="ni-ico">◐</i><span class="ni-t">帧检查器</span><span class="ni-badge" data-nb="inspector">—</span></button>
+      <button class="nav-item" id="nav-market" data-view="market"><i class="ni-ico">◇</i><span class="ni-t">模板市场</span><span class="ni-badge" data-nb="market">—</span></button>
+      <button class="nav-item" id="nav-plugins" data-view="plugins"><i class="ni-ico">⬡</i><span class="ni-t">插件</span><span class="ni-badge" data-nb="plugins">—</span></button>
+      <button class="nav-item" id="nav-quality" data-view="quality"><i class="ni-ico">✓</i><span class="ni-t">质检</span><span class="ni-badge" data-nb="quality">—</span></button>
+      <button class="nav-item" id="nav-server" data-view="server"><i class="ni-ico">⇄</i><span class="ni-t">服务</span><span class="ni-badge" data-nb="server">—</span></button>
+      <div class="nav-foot">
+        外壳只做入口聚合与状态机<br>
+        模块界面各自归位，不在此复制
+      </div>
+    </nav>
+
+    <div id="content">
+      <!-- 工作台 -->
+      <section class="view on" id="view-workbench">
+        <div class="viewhead">
+          <div class="vh-row">
+            <div>
+              <h1>工作台</h1>
+              <p class="pitch">258 个参数，AI 帮你调到最优。开源模型，也能出 Muse 级电影画面。</p>
+              <p>入口聚合：每个模块只给一张卡片（标题 / 一句话 / 状态徽标），点「打开」跳过去；模块自己的界面不在本文件里重画。</p>
+            </div>
+            <div class="stamp" id="regStamp">参数 258 个 · 7 板块 · 注册表 —</div>
+          </div>
+        </div>
+        <div class="body">
+          <div class="sanctuary">
+            <div class="sanc-h">
+              <h2>风格圣殿</h2>
+              <span class="sanc-sub">八座暗黑雕塑主题 · 点击即装载提示词与推荐参数</span>
+              <span class="spacer"></span>
+              <span class="sanc-note">DPM++ 2M SDE Karras · CFG 6.0–7.0 · 22–28 steps</span>
+            </div>
+            <div class="sanc-grid" id="sancGrid"></div>
+          </div>
+          <div class="loaded" id="loadedStyle" hidden></div>
+          <div class="quick" id="quickBar">
+            <div class="quick-h"><b>高频参数</b><span>改动即时走 engine 重算，状态栏同步</span><span class="tag">参数一改即回草稿</span></div>
+            <div class="quick-b" id="quickGrid"></div>
+          </div>
+          <div class="grid" id="moduleGrid"></div>
+          <div class="flow" id="flowCard"></div>
+        </div>
+      </section>
+
+      <!-- 各模块视图（同一套骨架，只换内容） -->
+      <section class="view" id="view-params"></section>
+      <section class="view" id="view-canvas"></section>
+      <section class="view" id="view-inspector"></section>
+      <section class="view" id="view-market"></section>
+      <section class="view" id="view-plugins"></section>
+      <section class="view" id="view-quality"></section>
+      <section class="view" id="view-server"></section>
+    </div>
+  </main>
+  </div>
+
+
+  <footer id="statusbar">
+    <span class="sb"><i>档位</i><b id="sbTier">—</b></span>
+    <span class="sb"><i>显存比</i><b id="sbRatio">—</b><em class="dotv dim" id="sbVramDot"></em><span class="sb" style="border:0;padding:0;color:var(--text-dim2);font-size:10.5px" id="sbVramNote"></span></span>
+    <span class="sb"><i>单格秒</i><b id="sbShot">—</b></span>
+    <span class="sb"><i>单集分钟</i><b id="sbEp">—</b></span>
+    <span class="sb"><i>质量分</i><b id="sbQ">—</b></span>
+    <span class="spacer"></span>
+    <span class="sb"><i>注册表</i><b id="sbVer">—</b></span>
+    <span class="sb"><i>参数</i><b id="sbCount">—</b></span>
+  </footer>
+</div>
+
+<!-- ─────────── 首启向导：三屏 ─────────── -->
+<div id="wizard" hidden>
+  <div class="wiz">
+    <div class="wiz-h">
+      <div class="kw">首次启动 · 三步走完就能干活</div>
+      <h2 id="wizTitle">① 确认本机条件</h2>
+      <p id="wizSub">先把「这台机器能跑多重」这件事对齐，再谈画质。</p>
+    </div>
+    <div class="wiz-steps">
+      <div class="wstep cur" id="wstep-1"><div class="bar"><i></i></div><div class="wlab">1 · 本机条件</div></div>
+      <div class="wstep" id="wstep-2"><div class="bar"><i></i></div><div class="wlab">2 · 画质档</div></div>
+      <div class="wstep" id="wstep-3"><div class="bar"><i></i></div><div class="wlab">3 · 生成工作台</div></div>
+    </div>
+
+    <div class="wiz-b">
+      <!-- 第 1 屏 -->
+      <section class="wiz-screen" id="wiz-step-1" data-step="1">
+        <div class="honest">
+          <div class="hi">▲</div>
+          <div>浏览器<b>没有读取显存的 API</b>。我们能拿到的只有 WebGL 上报的 GPU 型号字符串——不是总显存，更不是可用显存。
+            下面的数字是<b>你确认的可用显存</b>，不是硬件探测结果；外壳不会用任何"技巧"去假装探测到了显存（那类技巧在核显/共享内存机器上会给出荒谬数字）。
+            核实方法：终端跑 <code>nvidia-smi</code>，或任务管理器 → 性能 → GPU → 专用 GPU 内存。</div>
+        </div>
+        <div class="field">
+          <label>GPU 型号（浏览器上报）</label>
+          <div class="ctl"><span class="mono-val" id="wizGpu">读取中…</span></div>
+        </div>
+        <div class="field">
+          <label>分档表（注册表口径）</label>
+          <div class="ctl">
+            <select id="wizDevice"></select>
+            <span class="unitxt" id="wizDeviceNote"></span>
+          </div>
+        </div>
+        <div class="field">
+          <label>可用显存（你确认）</label>
+          <div class="ctl">
+            <input type="number" id="wizUsable" min="1024" max="98304" step="128" value="6900">
+            <span class="unitxt">MiB</span>
+            <span class="unitxt">← 以这个数为预算跑估算，选档只是给个起点</span>
+          </div>
+        </div>
+        <div class="reco" id="wizReco">—</div>
+      </section>
+
+      <!-- 第 2 屏 -->
+      <section class="wiz-screen" id="wiz-step-2" data-step="2" hidden>
+        <div class="honest" style="border-color:var(--line2);background: var(--panel);color:var(--acc)">
+          <div class="hi" style="color:var(--acc)">◈</div>
+          <div>质量预设走 <code>AVP.applyPreset</code> 拿真实参数集，再用 <code>AVP.estimate</code> 在
+            <b id="wizBudget">6900 MiB</b> 预算下算一遍。下面的秒数/分钟是<b>估算</b>（口径见 engine 头部），不是实测。</div>
+        </div>
+        <div class="tiers" id="wizTiers"></div>
+        <div class="reco" id="wizTierNote" style="margin-top:12px">选中一档后进入下一步。</div>
+      </section>
+
+      <!-- 第 3 屏 -->
+      <section class="wiz-screen" id="wiz-step-3" data-step="3" hidden>
+        <div class="honest" style="border-color:var(--line2);background: var(--bg-deep);color:var(--acc)">
+          <div class="hi" style="color:var(--acc)">✓</div>
+          <div>点「生成工作台」会把推荐参数、档位、显存预算一起写进项目存储（localStorage），并把项目状态置为
+            <b>已配置</b>——因为你在上一步已经确认过画质档了。写不进去会如实告诉你，不会假装保存成功。</div>
+        </div>
+        <div class="summary" id="wizSummary"></div>
+      </section>
+    </div>
+
+    <div class="wiz-f">
+      <span class="hint" id="wizHint">第 1 / 3 屏</span>
+      <span class="spacer"></span>
+      <button class="btn" id="wizSkip">稍后再说</button>
+      <button class="btn" id="wizPrev">上一步</button>
+      <button class="btn acc" id="wizNext">下一步</button>
+    </div>
+  </div>
+</div>
+
+<!-- 异常与提示 -->
+<div class="errcard" id="errorCard" hidden>
+  <div class="errcard-h"><span class="ico">!</span><b id="errTitle">估算失败</b><button id="errClose" title="关闭">×</button></div>
+  <div class="errcard-b">
+    <div class="kv"><span>错误</span><code id="errMsg"></code></div>
+    <div class="kv"><span>位置</span><code id="errWhere"></code></div>
+    <div class="kv"><span>建议</span><span class="sugg" id="errHint"></span></div>
+    <div class="errcard-actions">
+      <button class="btn mini" id="errReset">重置参数为默认</button>
+      <button class="btn mini" id="errCopy">复制详情</button>
+    </div>
+  </div>
+</div>
+
+<div id="degradeBar" hidden>
+  <b>存储降级</b><span id="degradeText"></span>
+  <button id="degradeClose" title="关闭">×</button>
+</div>
+
+<div id="toast"></div>
+
+<div id="forgeOverlay" hidden>
+  <canvas id="forgeCanvas"></canvas>
+  <div class="forge-box">
+    <div class="forge-t">正在铸造画面</div>
+    <div class="forge-s" id="forgeStage">银粒凝聚 · 等待管线回执</div>
+    <div class="forge-note" id="forgeNote"></div>
+    <button class="btn" id="forgeCancel">中止铸造</button>
+  </div>
+</div>
+
+<script>
+/*__BYOK__*/
+
+/*__ENGINE__*/
+/*__STATE__*/
+/*__DATA__*/
+
+/* ═══════════════════════════════════════════════════════════════════
+   外壳逻辑
+   —— 顺序：依赖校验 → 存储/项目 → 渲染 → 交互。
+   任何一个环节抛错都必须变成可读的卡片，而不是白屏；这是外壳的第一职责。
+   ═══════════════════════════════════════════════════════════════════ */
+(function () {
+  'use strict';
+
+  var R = window.__REG, C = window.__CATALOG, RU = window.__RULES;
+  var E = window.AVP, S = window.AVP_STATE;
+
+  function $(id) { return document.getElementById(id); }
+
+  /* ── 兜底：连内联资产都没了就没什么可修的，只报清楚缺什么 ── */
+  var missing = [];
+  if (!R || !R.params) missing.push('window.__REG（参数注册表）');
+  if (!C || !C.devices) missing.push('window.__CATALOG（模型与设备目录）');
+  if (!RU || !RU.rules) missing.push('window.__RULES（联动规则）');
+  if (!E || !E.estimate) missing.push('window.AVP（engine）');
+  if (!S || !S.can) missing.push('window.AVP_STATE（状态机）');
+  if (missing.length) {
+    var box = document.createElement('div');
+    box.style.cssText = 'position:fixed;inset:0;display:grid;place-items:center;background:var(--bg-deep);color:var(--bad);font:13px/1.7 "Microsoft YaHei UI",system-ui;padding:40px;text-align:center;z-index:99';
+    box.innerHTML = '<div><h2 style="margin:0 0 10px">构建产物不完整</h2>'
+      + '<p style="color:var(--text-dim);max-width:560px">缺少：' + missing.join('、') + '</p>'
+      + '<p style="color:var(--text-dim2);font:11px ui-monospace,monospace">这不是运行时故障：请执行 node tools/build_app.mjs 重新内联后刷新。</p></div>';
+    document.body.appendChild(box);
+    return;
+  }
+
+  var MONO = 'var(--mono)';
+  var cfg = {
+    probeTimeout: 2600,
+    version: (R && R.version) || '—',
+    paramCount: (R.params || []).length,
+    stateCount: (R.stages || []).length,
+    ruleCount: ((RU && RU.rules) || []).length
+  };
+
+  /* 八个导航项 + 约定入口。
+     probe=null 表示就是本页；其余按「相对路径 fetch 失败即未安装」判定。
+     docs 统一指向 docs/08-shell.md 的接入约定锚点——这是真实存在的锚点，不会 404。 */
+  var DOCS = '../docs/08-shell.md#模块接入约定';
+  var MODULES = [
+    { id: 'workbench', name: '工作台', icon: '◈', self: true, probe: null,
+      line: '入口聚合 + 项目状态机 + 实时估算。这个页面本身就是它。',
+      ent: 'app/index.html' },
+    { id: 'params', name: '参数面板', icon: '◎', probe: '../web/params.html',
+      line: '三层折叠调参台（核心 5 / 常用 39 / 高级 214）：小白 5 步向导 + AI 推荐 + 7 个风格预设，一键配齐 258 参数，含四向预估与质量优先显存提示。',
+      ent: 'web/params.html' },
+    { id: 'canvas', name: '画布', icon: '▦', probe: '../canvas/canvas.html',
+      line: '分镜画布：格子排布、缩略图、镜头级增删改。',
+      ent: 'canvas/canvas.html' },
+    { id: 'inspector', name: '帧检查器', icon: '◐', probe: '../inspector/index.html',
+      line: '逐帧看画面、比对角色一致性、挑废帧重跑。',
+      ent: 'inspector/index.html' },
+    { id: 'market', name: '模板市场', icon: '◇', probe: '../market/index.html',
+      line: '预设模板的浏览、安装、评分与版本回退。',
+      ent: 'market/index.html' },
+    { id: 'plugins', name: '插件', icon: '⬡', probe: '../plugins/index.html',
+      line: '插件清单、依赖与权限声明、启停与更新。',
+      ent: 'plugins/index.html' },
+    { id: 'quality', name: '质检', icon: '✓', probe: '../quality/index.html',
+      line: '成片质检：白屏 / 静音 / 字幕对齐 / 参数合规。',
+      ent: 'quality/index.html' },
+    { id: 'server', name: '服务', icon: '⇄', probe: '../server/index.html',
+      line: '本地渲染服务：队列、GPU 占用、任务日志。',
+      ent: 'server/index.html' }
+  ];
+
+  /* ── 运行时状态 ── */
+  var project = null;
+  var report = null;
+  var resolved = null;
+  var probeMap = {};
+  var view = 'workbench';
+  var store = null;
+  var wiz = { step: 1, device: 'T0', usable: 6900, tier: 'standard', gpu: '', tiers: [], gpuConfident: true, gpuDetail: '' };
+
+  /* ─────────── 提示 / 错误 ─────────── */
+
+  var toastTimer = null;
+  function toast(msg, bad) {
+    var t = $('toast');
+    t.textContent = msg;
+    t.className = 'on' + (bad ? ' bad' : '');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(function () { t.className = ''; }, 2600);
+  }
+
+  /** 结构化错误卡片：engine 抛错时用户至少要知道「哪一步、为什么、怎么办」 */
+  function showError(err, where, hint) {
+    var e = err || {};
+    $('errTitle').textContent = '估算/状态操作失败';
+    $('errMsg').textContent = (e.message || String(err) || '未知错误').slice(0, 400);
+    var stack = String(e.stack || '').split('\n')[1] || '';
+    $('errWhere').textContent = (where || '未知位置') + (stack ? ' · ' + stack.trim().slice(0, 120) : '');
+    $('errHint').textContent = hint || '参数组合可能超出引擎假定范围。先点「重置参数为默认」回到已知可用状态；仍失败请检查 spec/*.json 是否被改动。';
+    $('errorCard').hidden = false;
+  }
+  function clearError() { $('errorCard').hidden = true; }
+
+  function showDegrade(text) {
+    $('degradeText').textContent = text;
+    $('degradeBar').hidden = false;
+  }
+  function hideDegrade() { $('degradeBar').hidden = true; }
+
+  /* ─────────── 估算（唯一会抛的入口，集中包一层） ─────────── */
+
+  function compute(values, device, usable) {
+    var r = E.resolve(R, RU, values, {});
+    var est = E.estimate(R, C, r.values, { device: device, usable_mib: usable });
+    return { resolved: r, est: est };
+  }
+
+  function recompute() {
+    if (!project) return false;
+    try {
+      var out = compute(project.values, project.device, project.usable_mib);
+      resolved = out.resolved;
+      report = out.est;
+      // 规则回写后的参数集才是真相，直接覆盖（否则状态栏和参数会互相打架）
+      project.values = resolved.values;
+      project.summary = S.summarize(report);
+      clearError();
+      renderStatus();
+      return true;
+    } catch (err) {
+      report = null;
+      renderStatus();
+      showError(err, 'engine.resolve + engine.estimate');
+      return false;
+    }
+  }
+
+  /* ─────────── 状态栏 ─────────── */
+
+  function fmtSec(s) { return s >= 60 ? Math.round(s / 60) + '分' + (s % 60 ? (s % 60) + 's' : '') : Math.round(s) + 's'; }
+
+  function renderStatus() {
+    var tier = (project && project.tier) || 'standard';
+    $('sbTier').textContent = (S.PRESET_NAMES[tier] || tier) + ' · ' + ((project && project.device) || '—');
+    $('sbTier').title = '画质档 + 设备档（设备档来自注册表分档表，可用显存由用户确认）';
+
+    if (!report) {
+      ['sbRatio', 'sbShot', 'sbEp', 'sbQ'].forEach(function (id) { $(id).textContent = '—'; $(id).className = ''; });
+      $('sbVramDot').className = 'dotv dim';
+      $('sbVramNote').textContent = '';
+    } else {
+      var v = report.vram;
+      $('sbRatio').textContent = (v.ratio * 100).toFixed(0) + '%';
+      $('sbRatio').className = v.state;
+      $('sbVramDot').className = 'dotv ' + v.state;
+      $('sbVramNote').textContent = v.peak_mib + ' / ' + v.usable_mib + ' MiB';
+      $('sbShot').textContent = fmtSec(report.time.shot_sec);
+      $('sbShot').className = '';
+      $('sbEp').textContent = report.time.episode_min + ' min';
+      $('sbEp').className = '';
+      $('sbQ').textContent = report.quality.score + ' / 99';
+      $('sbQ').className = '';
+    }
+    $('sbVer').textContent = cfg.version;
+    $('sbCount').textContent = cfg.paramCount;
+    var stamp = $('regStamp');
+    if (stamp) stamp.textContent = '参数 ' + cfg.paramCount + ' 个 · ' + cfg.stateCount + ' 板块 · 规则 ' + cfg.ruleCount + ' 条 · 注册表 ' + cfg.version;
+  }
+
+  /* ─────────── 顶部项目条 ─────────── */
+
+  function renderProjectBar() {
+    var sel = $('projectSelect');
+    var list = store ? store.list() : [];
+    sel.innerHTML = '';
+    if (!list.length) {
+      var o0 = document.createElement('option');
+      o0.textContent = '（暂无项目）';
+      o0.value = '';
+      sel.appendChild(o0);
+    }
+    list.forEach(function (p) {
+      var o = document.createElement('option');
+      o.value = p.id;
+      o.textContent = p.name + ' · ' + (S.STATES.filter(function (s) { return s.id === p.state; })[0] || {}).name;
+      sel.appendChild(o);
+    });
+    if (project) sel.value = project.id;
+
+    var pill = $('statePill');
+    var st = project ? S.STATES.filter(function (s) { return s.id === project.state; })[0] : null;
+    pill.className = 'statepill ' + (st ? 't-' + st.tone : 't-dim');
+    $('stateText').textContent = st ? st.name : '无项目';
+    pill.title = st ? st.desc : '';
+
+    ['btnSaveAs', 'btnExportProj'].forEach(function (id) { $(id).disabled = !project; });
+    renderLoadedStyle();
+  }
+
+  /* ─────────── 快速调参 ─────────── */
+
+  var QUICK = ['kf.resolution', 'kf.steps', 'kf.model', 'mo.mode', 'mo.duration', 'sb.grid_count', 'sb.episode_count', 'ex.resolution'];
+
+  function renderQuickBar() {
+    var host = $('quickGrid');
+    host.innerHTML = '';
+    var locked = project && ['rendering', 'reviewing', 'exported'].indexOf(project.state) >= 0;
+
+    QUICK.forEach(function (key) {
+      var p = R.params.filter(function (x) { return x.key === key; })[0];
+      if (!p) return;
+      var val = project && project.values[key] !== undefined ? project.values[key] : p.default;
+      var row = document.createElement('div');
+      row.className = 'qrow' + (locked ? ' disabled' : '');
+      row.innerHTML = '<div class="ql"><span>' + p.label + '</span><code>' + key + '</code></div>';
+
+      var ctl = document.createElement('div');
+      ctl.className = 'qc';
+
+      if (p.type === 'enum') {
+        var sel = document.createElement('select');
+        (p.options || []).forEach(function (opt) {
+          var o = document.createElement('option');
+          o.value = opt; o.textContent = opt;
+          sel.appendChild(o);
+        });
+        sel.value = val;
+        sel.disabled = !!locked;
+        sel.addEventListener('change', function () { setValue(key, sel.value); });
+        ctl.appendChild(sel);
+      } else if (p.type === 'bool') {
+        var cb = document.createElement('input');
+        cb.type = 'checkbox'; cb.checked = !!val; cb.disabled = !!locked;
+        cb.addEventListener('change', function () { setValue(key, cb.checked); });
+        ctl.appendChild(cb);
+      } else {
+        var range = document.createElement('input');
+        range.type = 'range';
+        range.min = p.min; range.max = p.max;
+        range.step = p.type === 'float' ? 0.1 : 1;
+        range.value = val;
+        range.disabled = !!locked;
+        var out = document.createElement('span');
+        out.className = 'qv';
+        out.textContent = val + (p.unit ? ' ' + p.unit : '');
+        range.addEventListener('input', function () {
+          out.textContent = range.value + (p.unit ? ' ' + p.unit : '');
+          setValue(key, range.value);
+        });
+        ctl.appendChild(range);
+        ctl.appendChild(out);
+      }
+      row.appendChild(ctl);
+      host.appendChild(row);
+    });
+  }
+
+  /** 改一个参数：重算 + 若处于已配置则自动打回草稿（配置必须被重新确认才算数） */
+  function setValue(key, raw) {
+    if (!project) return;
+    var p = R.params.filter(function (x) { return x.key === key; })[0];
+    if (!p) return;
+    var v = E.coerce(p, raw);
+    project.values[key] = v;
+    if (project.state === 'configured') {
+      try {
+        project = S.apply(project, 'restart', { note: '参数变更 ' + key + '=' + v });
+        toast('参数已变更，项目回到「草稿」，需要重新确认配置');
+      } catch (e) { /* restart 的合法来源含 configured，这里不该抛；真抛了下面照常重算 */ }
+    }
+    recompute();
+    persist();
+    renderQuickBar();
+    renderFlow();
+    renderProjectBar();
+  }
+
+  /* ─────────── 状态机面板 ─────────── */
+
+  var FLOW = ['draft', 'configured', 'rendering', 'reviewing', 'exported'];
+
+  function renderFlow() {
+    var host = $('flowCard');
+    if (!project) { host.innerHTML = '<div class="flow-b empty">还没有项目。</div>'; return; }
+    var cur = FLOW.indexOf(project.state);
+    var chain = FLOW.map(function (id, i) {
+      var st = S.STATES.filter(function (s) { return s.id === id; })[0];
+      var cls = i === cur ? 'node cur' : (i < cur ? 'node done' : 'node');
+      var node = '<span class="' + cls + '" title="' + st.desc + '">' + st.name + '</span>';
+      return node + (i < FLOW.length - 1 ? '<span class="arrow">›</span>' : '');
+    }).join('');
+
+    var acts = S.actions(project).map(function (a) {
+      var primary = (a.id === 'configure' && project.state === 'draft') || (a.id === 'render' && project.state === 'configured')
+        || (a.id === 'export' && project.state === 'reviewing');
+      return '<button class="act' + (primary ? ' primary' : '') + '" data-act="' + a.id + '"' + (a.ok ? '' : ' disabled')
+        + ' title="' + (a.ok ? a.why : a.reason) + '">' + a.label
+        + '<span class="why">' + (a.ok ? a.reason : (a.reason.split('；')[1] || a.reason).slice(0, 16)) + '</span></button>';
+    }).join('');
+
+    var hist = (project.history || []).slice(-6).reverse().map(function (h) {
+      return '<div>' + String(h.at).replace('T', ' ').slice(0, 19) + ' · ' + h.label + ' <span>' + S.stateName(h.from) + '→' + S.stateName(h.to) + '</span>'
+        + (h.note ? ' <span>· ' + String(h.note).slice(0, 40) + '</span>' : '') + '</div>';
+    }).join('') || '<div>（还没有状态变更记录）</div>';
+
+    host.innerHTML =
+      '<div class="flow-h"><b>项目状态机</b><small>' + project.id + ' · 显式状态，动作按白名单放行</small>'
+      + '<span class="spacer" style="flex:1"></span>'
+      + '<small>草稿 → 已配置 → 渲染中 → 审片中 → 已导出</small></div>'
+      + '<div class="flow-b"><div class="chain">' + chain + '</div><div class="acts">' + acts + '</div>'
+      + '<div class="flow-note">外壳只驱动状态与入口；渲染下发到本地队列（8388），成片与质检由「服务」「质检」模块负责。</div>'
+      + '<div class="svc" id="svcLine"></div>'
+      + '<div class="hist">' + hist + '</div></div>';
+
+    Array.prototype.forEach.call(host.querySelectorAll('[data-act]'), function (btn) {
+      btn.addEventListener('click', function () { doAction(btn.getAttribute('data-act')); });
+    });
+    svcPaint();
+    Forge.sync();
+  }
+
+  function doAction(id) {
+    if (!project) return;
+    if (id === 'render' && (!window.shellTasks || window.shellTasks.busy())) { toast('正在同步任务或已有后台任务，请从「出片」查看进度'); return; }
+    try {
+      var next = S.apply(project, id, { note: id === 'render' ? ('按 ' + project.device + ' 队列') : '' });
+      project = next;
+      var st = S.STATES.filter(function (s) { return s.id === project.state; })[0];
+      toast('已执行「' + (S.ACTIONS.filter(function (a) { return a.id === id; })[0] || {}).label + '」→ ' + st.name);
+      clearError();
+    } catch (err) {
+      showError(err, '状态机 apply("' + id + '")', '这条动作在当前状态不被允许。合法路径：' + S.STATES.map(function (s) { return s.name; }).join(' → ') + '。');
+      toast('状态机拒绝：' + err.message, true);
+      return;
+    }
+    recompute();
+    persist();
+    renderFlow();
+    renderProjectBar();
+    renderQuickBar();
+    // 本地退回或离开不取消后台任务；取消仅保留显式「取消任务」操作。
+    if (id === 'render') submitJob();
+    if (id === 'fail' && svc.jobId) toast('任务在后台继续生成，可稍后回来看');
+    if (id === 'restart') { if (svc.timer) clearTimeout(svc.timer); svc.jobId = null; svc.state = svc.health ? 'online' : 'offline'; svcPaint(); }
+  }
+
+  /* ─────────── 服务桥：把「渲染中」接到本地队列 ───────────
+     为什么要有这一段：
+       上一版外壳只驱动状态与历史——点了「开始渲染」，状态机显示「渲染中」，
+       但没有任务、没有产物、没有失败原因。这等于把「配置」包装成了假的。
+       服务模块已经在 8388 端口提供 POST /api/jobs、GET /api/jobs/:id 与取消接口，
+       外壳把这三条接上：提交 → 轮询 → 按任务结果推进状态机。
+
+     诚实边界（不越过）：
+       - 后端未启动时动作照旧在本地生效（状态机是本地真相），但整条明确写「未提交」；
+       - 任务成功才允许推进到「审片中」；失败只提示并引导用「渲染失败退回」，不自动跳状态；
+       - 外壳不生成任何缩略图/帧/时长数字：产物由服务与质检模块负责。
+  */
+
+  var SVC_BASE = location.protocol === 'file:' ? 'http://127.0.0.1:8388' : location.origin;
+  var svc = { state: 'unknown', health: null, jobId: null, percent: 0, stage: '', error: null, timer: null };
+
+  function svcLabel() {
+    if (svc.state === 'unknown') return ['off', '探测中'];
+    if (svc.state === 'online') return ['ok', '已连接'];
+    if (svc.state === 'offline') return ['off', '未连接'];
+    if (svc.state === 'submitting') return ['acc', '提交中'];
+    if (svc.state === 'queued') return ['acc', '排队中'];
+    if (svc.state === 'running') return ['acc', '运行中'];
+    if (svc.state === 'succeeded') return ['ok', '已完成'];
+    if (svc.state === 'failed') return ['bad', '失败'];
+    if (svc.state === 'canceled') return ['warn', '已取消'];
+    return ['off', String(svc.state)];
+  }
+
+  function svcCall(path, init, ms) {
+    var opt = init || {};
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    if (ctl) opt.signal = ctl.signal;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms || 2500) : null;
+    return fetch(SVC_BASE + path, opt).then(function (r) {
+      if (timer) clearTimeout(timer);
+      return r.text().then(function (txt) {
+        var body = null;
+        try { body = txt ? JSON.parse(txt) : null; } catch (e) { body = { raw: String(txt).slice(0, 400) }; }
+        if (!r.ok) {
+          var err = new Error((body && body.error && body.error.message) || ('HTTP ' + r.status));
+          err.code = (body && body.error && body.error.code) || ('HTTP_' + r.status);
+          err.status = r.status;
+          throw err;
+        }
+        return body;
+      });
+    }, function (e) {
+      if (timer) clearTimeout(timer);
+      var err = new Error(e && e.name === 'AbortError' ? '请求超时（2.5s）' : '连接失败（服务未启动？）');
+      err.code = 'E_SVC_OFFLINE';
+      throw err;
+    });
+  }
+
+  function probeSvc() {
+    return svcCall('/api/health', null, 2500).then(function (h) {
+      svc.health = h;
+      if (!svc.jobId) svc.state = 'online';
+      svc.error = null;
+      svcPaint();
+    }).catch(function (e) {
+      if (!svc.jobId) svc.state = 'offline';
+      svc.error = e.code + ' · ' + e.message;
+      svcPaint();
+    });
+  }
+
+  function submitJob() {
+    if (!project) return;
+    // 推断档位下开渲 = 继续生成，同样先确认（一次会话确认一次，不重复打扰）
+    if (!wiz.gpuConfident && !lowConfOkAt) {
+      LOWCONF.show(lowConfCtxApp('外壳 · 开渲（继续生成）')).then(function (ans) {
+        if (!ans.confirmed) { toast('已取消开渲：任务没有提交，状态与参数保持原样'); return; }
+        lowConfOkAt = ans.at;
+        doSubmitJob(ans.at);
+      });
+      return;
+    }
+    doSubmitJob(lowConfOkAt);
+  }
+
+  function doSubmitJob(at) {
+    if (!project || !window.shellTasks || window.shellTasks.busy()) return;
+    svc.state = 'submitting'; svc.error = null; svcPaint();
+    var body = { values: project.values, device: project.device, experiment_id: project.id, canvasSnapshot: project.canvasSnapshot, note: '外壳 · ' + project.id + (at ? ' · 低置信确认 confirmedByUser: true @ ' + at : '') };
+    window.shellTasks.submit(body).then(function (job) {
+      if (!job) { svc.error = '受理结果未知，请查看「出片」后端任务历史'; svcPaint(); return; }
+      svc.jobId = job.id; svc.state = job.state || 'queued'; svcPaint();
+    });
+  }
+
+  function pollJob() {
+    if (!svc.jobId) return;
+    if (svc.timer) clearTimeout(svc.timer);
+    svc.timer = setTimeout(function () {
+      svcCall('/api/jobs/' + encodeURIComponent(svc.jobId), null, 2500).then(function (j) {
+        svc.percent = (j.progress && j.progress.percent) || 0;
+        svc.stage = (j.progress && j.progress.stage) || j.state;
+        if (j.state === 'succeeded') {
+          svc.state = 'succeeded'; svc.percent = 100; svcPaint(); onJobFinished(j); return;
+        }
+        if (j.state === 'failed') {
+          svc.state = 'failed';
+          svc.error = (j.error && j.error.code ? j.error.code + ' · ' : '') + ((j.error && j.error.message) || '任务失败');
+          svcPaint(); toast('渲染失败：' + svc.error, true); return;
+        }
+        if (j.state === 'canceled') { svc.state = 'canceled'; svcPaint(); return; }
+        svc.state = j.state === 'running' ? 'running' : 'queued';
+        svcPaint(); pollJob();
+      }).catch(function (e) {
+        svc.state = 'offline'; svc.error = e.code + ' · ' + e.message; svcPaint();
+      });
+    }, 1600);
+  }
+
+  /** 任务真成功才推进到审片——这是外壳唯一替后端推进状态的地方 */
+  function onJobFinished(j) {
+    if (!project || project.state !== 'rendering') return;
+    try {
+      project = S.apply(project, 'review', { note: '服务任务 ' + j.id + ' 完成' });
+      persist();
+      renderFlow(); renderProjectBar(); renderQuickBar();
+      toast('产物就绪：任务 ' + j.id + ' 完成，已进审片');
+    } catch (e) {
+      toast('任务完成但状态未推进：' + e.message, true);
+    }
+  }
+
+  function cancelJob() {
+    if (!svc.jobId) return;
+    svcCall('/api/jobs/' + encodeURIComponent(svc.jobId) + '/cancel', { method: 'POST' }, 3000)
+      .then(function (j) {
+        svc.state = (j && j.state) || 'canceled';
+        svcPaint();
+        toast('已请求取消任务 ' + svc.jobId);
+      })
+      .catch(function (e) { svc.error = e.code + ' · ' + e.message; svcPaint(); });
+  }
+
+  /** 后端字段进 HTML 前必须转义：stage/错误码来自服务，不能假定它干净 */
+  function se(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ───── 低置信阻断确认卡（与 web/params.src.html 同一份实现：向导 / 一键生成 / 电影入库 / 外壳向导共用）─────
+     为什么要有它：值一旦是「推断」出来的（规则轨兜底、或本机条件没探到），
+     再让用户一路点下去就等于系统替用户脑补参数。
+     现在「继续」必须显式确认，并把 confirmedByUser + 时间写进留痕（localStorage + 任务 note）。
+     卡片只吃调用方传进来的真实字段，不自己编任何一项。 */
+  const LOWCONF = (function () {
+    const KEY = 'avp.lowconf.trace.v1';
+    const DEF_TITLE = '解析置信低：本次走规则轨（非 AI）';
+    let open = null;
+    function es(v) {
+      return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function traces() { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } }
+    function remember(rec) {
+      try { const l = traces(); l.unshift(rec); localStorage.setItem(KEY, JSON.stringify(l.slice(0, 50))); } catch (e) { /* 存储不可用不阻断 */ }
+      return rec;
+    }
+    function rows(list) {
+      if (!list || !list.length) return '<li>无</li>';
+      return list.map(function (x) { return '<li><b>' + es(x.k) + '</b> · ' + es(x.v) + '</li>'; }).join('');
+    }
+    function paint(ctx) {
+      const mask = document.getElementById('lcMask');
+      document.getElementById('lcTitle').textContent = ctx.title || DEF_TITLE;
+      document.getElementById('lcSub').textContent = ctx.sub || '';
+      document.getElementById('lcScope').textContent = ctx.scope || '';
+      document.getElementById('lcInfer').innerHTML = rows(ctx.inferred);
+      document.getElementById('lcUnknown').innerHTML = rows(ctx.unknown);
+      document.getElementById('lcFoot').textContent = ctx.foot || '「按规则轨继续」会把 confirmedByUser: true 与确认时间写进留痕；Esc 与 Enter 都走「返回修改描述」，不提交。';
+      mask.hidden = false;
+      const back = document.getElementById('lcBack');
+      if (back) back.focus();
+    }
+    function close() {
+      const mask = document.getElementById('lcMask');
+      if (mask) mask.hidden = true;
+      const o = open; open = null;
+      if (o && o.prev && o.prev.focus) { try { o.prev.focus(); } catch (e) { /* 焦点目标已移出文档 */ } }
+      return o;
+    }
+    function settle(confirmed, ctx) {
+      const o = close();
+      if (!o) return;
+      const rec = remember({ at: new Date().toISOString(), scope: (ctx && ctx.scope) || '', source: (ctx && ctx.source) || '', reason: (ctx && ctx.reason) || '', confirmedByUser: confirmed });
+      o.resolve({ confirmed: confirmed, at: rec.at, trace: rec });
+    }
+    function mount() {
+      if (document.getElementById('lcMask')) return;
+      const wrap = document.createElement('div');
+      wrap.id = 'lcMask'; wrap.hidden = true;
+      wrap.innerHTML = '<div id="lcCard" class="glass-modal" role="dialog" aria-modal="true" aria-labelledby="lcTitle" aria-describedby="lcSub">'
+        + '<h4 id="lcTitle"></h4>'
+        + '<p class="lc-sub" id="lcSub"></p>'
+        + '<p class="lc-sub" id="lcScope"></p>'
+        + '<h5>被推断的关键项（规则轨按关键词给出，不是 AI 判断）</h5><ul id="lcInfer"></ul>'
+        + '<h5>未能确定、将使用默认值的项</h5><ul id="lcUnknown"></ul>'
+        + '<div class="lc-btns"><button class="btn" id="lcBack" type="button">返回修改描述</button><button class="btn acc" id="lcGo" type="button">按规则轨继续</button></div>'
+        + '<div class="lc-foot" id="lcFoot"></div>'
+        + '</div>';
+      document.body.appendChild(wrap);
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) settle(false, wrap.__ctx); });
+      document.getElementById('lcBack').addEventListener('click', function () { settle(false, wrap.__ctx); });
+      document.getElementById('lcGo').addEventListener('click', function () { settle(true, wrap.__ctx); });
+    }
+    function show(ctx) {
+      mount();
+      const wrap = document.getElementById('lcMask');
+      if (open && open.resolve) { const prev = open; open = null; prev.resolve({ confirmed: false, at: null, superseded: true }); }
+      wrap.__ctx = ctx || {};
+      return new Promise(function (resolve) { open = { resolve: resolve, prev: document.activeElement }; paint(wrap.__ctx); });
+    }
+    // 键盘：Esc = 返回修改描述；Enter 只在焦点明确落在「按规则轨继续」时才算确认（危险动作不做回车默认）
+    document.addEventListener('keydown', function (e) {
+      const mask = document.getElementById('lcMask');
+      if (!mask || mask.hidden) return;
+      if (e.key === 'Escape') { e.preventDefault(); settle(false, mask.__ctx); return; }
+      if (e.key === 'Enter') {
+        if (document.activeElement === document.getElementById('lcGo')) return;
+        e.preventDefault(); settle(false, mask.__ctx);
+      }
+    });
+    return { show: show, traces: traces };
+  })();
+
+  function svcPaint() {
+    var host = $('svcLine');
+    if (!host) return;
+    var meta = svcLabel();
+    var h = svc.health;
+    var out = ['<span class="dot ' + meta[0] + '"></span>', '<b>本地服务</b>'];
+    out.push('<span>' + se(meta[1] + (h ? ' · ' + (h.version || '') + ' · comfy ' + ((h.comfy && h.comfy.mode) || '?') : '')) + '</span>');
+
+    if (svc.state === 'offline') {
+      out.push('<span class="spacer"></span>');
+      out.push('<span>启动 <span class="cmd">node tools/serve.mjs</span></span>');
+      out.push('<button class="btn mini" data-svc="probe">重试探测</button>');
+      if (project && project.state === 'rendering') out.push('<button class="btn mini" data-svc="submit">重试提交</button>');
+    } else if (svc.jobId) {
+      var pct = Math.max(0, Math.min(100, svc.percent || 0));
+      out.push('<span class="num">#' + se(svc.jobId) + '</span>');
+      out.push('<span>' + se(svc.stage || '') + '</span>');
+      out.push('<span class="bar' + (svc.state === 'succeeded' ? ' ok' : svc.state === 'failed' ? ' bad' : '') + '"><i style="width:' + pct + '%"></i></span>');
+      out.push('<span class="num">' + pct + '%</span>');
+      if (svc.error) out.push('<span style="color:var(--bad)">' + se(svc.error) + '</span>');
+      out.push('<span class="spacer"></span>');
+      if (svc.state === 'queued' || svc.state === 'running') out.push('<button class="btn mini" data-svc="cancel">取消任务</button>');
+      if (svc.state === 'failed' && svc.canRetry) out.push('<button class="btn mini" data-svc="retry">重试原任务</button>');
+    } else {
+      out.push('<span class="spacer"></span>');
+      out.push('<span>未提交任务 · 点「铸造画面」把当前参数下发到队列</span>');
+    }
+    host.innerHTML = out.join('');
+    Forge.paint();
+  }
+
+  function svcBind() {
+    var card = $('flowCard');
+    if (!card || card.getAttribute('data-svc-bound')) return;
+    card.setAttribute('data-svc-bound', '1');
+    card.addEventListener('click', function (ev) {
+      var t = ev.target && ev.target.closest ? ev.target.closest('[data-svc]') : null;
+      if (!t) return;
+      var act = t.getAttribute('data-svc');
+      if (act === 'probe') probeSvc();
+      else if (act === 'submit') submitJob();
+      else if (act === 'retry' && svc.canRetry && window.shellTasks) window.shellTasks.submit(null, svc.jobId);
+      else if (act === 'cancel') cancelJob();
+    });
+  }
+
+  /* ─────────── 风格圣殿：八卡装载 + 回执面板 + 银粒铸造 ───────────
+     数据真相是 prompt/styles.json（构建期内联为 window.__STYLES）。
+     卡片只做「把推荐值写进项目」这一件事：每个键都过 E.coerce，
+     与手调参数走同一条校验路，不存在卡片专属的旁路。 */
+
+  var STYLES = window.__STYLES || { styles: [] };
+  var SAMPLER_LABEL = {
+    euler: 'Euler', euler_a: 'Euler a', dpmpp_2m: 'DPM++ 2M', dpmpp_2m_sde: 'DPM++ 2M SDE',
+    dpmpp_3m_sde: 'DPM++ 3M SDE', uni_pc: 'UniPC', lcm: 'LCM', ddim: 'DDIM'
+  };
+
+  function samplerText(v) {
+    var s = SAMPLER_LABEL[v['kf.sampler']] || v['kf.sampler'] || '—';
+    if (v['kf.scheduler'] === 'karras') s += ' Karras';
+    return s;
+  }
+
+  function noirStyles() {
+    return (STYLES.styles || []).filter(function (s) { return s.noir && s.card; });
+  }
+
+  /** 项目是否装载了某张圣殿卡：以提示词前缀全文匹配为准（存储层不新增字段） */
+  function currentNoir() {
+    if (!project) return null;
+    var pre = project.values['ch.prompt_prefix'];
+    return noirStyles().filter(function (s) { return s.card.prompt === pre; })[0] || null;
+  }
+
+  function renderSanctuary() {
+    var host = $('sancGrid');
+    if (!host) return;
+    host.innerHTML = '';
+    noirStyles().forEach(function (st, i) {
+      var p = st.params || {};
+      var card = document.createElement('button');
+      card.type = 'button';
+      card.className = 'noir-card';
+      card.setAttribute('data-style', st.id);
+      card.style.animationDelay = (i * 55) + 'ms';
+      card.title = '点击装载：提示词 + 推荐参数写入当前项目';
+      card.innerHTML =
+        '<span class="noir-cover"><img src="' + st.card.cover + '" alt="' + se(st.name) + ' 封面" loading="lazy"></span>'
+        + '<span class="noir-b"><span class="noir-t">' + se(st.name) + '</span>'
+        + '<span class="noir-tag">' + se(st.card.tagline) + '</span>'
+        + '<span class="noir-meta"><span>' + se(SAMPLER_LABEL[p['kf.sampler']] || p['kf.sampler'] || '') + (p['kf.scheduler'] === 'karras' ? ' Karras' : '') + '</span>'
+        + '<span>CFG ' + se(p['kf.cfg']) + '</span><span>' + se(p['kf.steps']) + ' steps</span></span></span>';
+      card.addEventListener('click', function () { applyNoirStyle(st); });
+      host.appendChild(card);
+    });
+  }
+
+  function applyNoirStyle(st) {
+    if (!project) {
+      project = S.create({ name: '圣殿 · ' + st.name, tier: 'standard', device: wiz.device, usable_mib: wiz.usable, values: E.defaults(R) });
+    }
+    Object.keys(st.params || {}).forEach(function (k) {
+      var p = R.params.filter(function (x) { return x.key === k; })[0];
+      if (p) project.values[k] = E.coerce(p, st.params[k]);
+    });
+    project.values['ch.prompt_prefix'] = st.card.prompt;
+    var negP = R.params.filter(function (x) { return x.key === 'kf.negative'; })[0];
+    var base = negP ? String(negP.default) : '';
+    var append = STYLES.noir_negative_append || '';
+    project.values['kf.negative'] = append ? base + '，' + append : base;
+
+    if (project.state !== 'draft') {
+      try {
+        project = S.apply(project, 'restart', { note: '装载风格 ' + st.name });
+        if (svc.timer) clearTimeout(svc.timer);
+        svc.jobId = null; svc.state = svc.health ? 'online' : 'offline';
+      } catch (e) { /* 状态机拒绝时保留原状态，参数照常写入 */ }
+    }
+    recompute();
+    persist();
+    renderQuickBar(); renderFlow(); renderProjectBar();
+    toast('已装载「' + st.name + '」：提示词与推荐参数已写入项目');
+  }
+
+  function unloadNoir() {
+    if (!project) return;
+    ['ch.prompt_prefix', 'kf.negative'].forEach(function (k) {
+      var p = R.params.filter(function (x) { return x.key === k; })[0];
+      if (p) project.values[k] = p.default;
+    });
+    if (project.state === 'configured') {
+      try { project = S.apply(project, 'restart', { note: '卸下圣殿风格' }); } catch (e) { }
+    }
+    recompute();
+    persist();
+    renderQuickBar(); renderFlow(); renderProjectBar();
+    toast('已卸下风格：提示词与负面回到默认');
+  }
+
+  /** 装载回执：封面 / 提示词全文 / 负面追加 / 参数 chips / 下一步动作 */
+  function renderLoadedStyle() {
+    var host = $('loadedStyle');
+    if (!host) return;
+    var st = currentNoir();
+    Array.prototype.forEach.call(document.querySelectorAll('.noir-card'), function (c) {
+      c.classList.toggle('on', !!st && c.getAttribute('data-style') === st.id);
+    });
+    if (!st) { host.hidden = true; host.innerHTML = ''; return; }
+    var v = project.values;
+    var chips = [samplerText(v), 'CFG ' + v['kf.cfg'], v['kf.steps'] + ' steps', 'LUT ' + v['lk.lut'], '色板 ' + v['ch.palette']];
+    host.innerHTML =
+      '<img src="' + st.card.cover + '" alt="' + se(st.name) + ' 封面">'
+      + '<div><div class="loaded-h"><b>' + se(st.name) + '</b><small>' + se(st.card.tagline) + '</small>'
+      + '<span class="spacer"></span><small>已写入当前项目 · 改动任一参数即回草稿</small></div>'
+      + '<p class="loaded-prompt">' + se(st.card.prompt) + '</p>'
+      + '<p class="loaded-neg"><b>负面追加</b> ' + se(STYLES.noir_negative_append || '') + '</p>'
+      + '<div class="loaded-chips">' + chips.map(function (c) { return '<span>' + se(c) + '</span>'; }).join('') + '</div>'
+      + '<div class="loaded-f">'
+      + (project.state === 'draft' ? '<button class="btn acc mini" data-ls="configure">确认配置</button>' : '')
+      + '<button class="btn mini" data-ls="params">去参数面板</button>'
+      + '<button class="btn mini" data-ls="unload">卸下风格</button>'
+      + '</div></div>';
+    host.hidden = false;
+    Array.prototype.forEach.call(host.querySelectorAll('[data-ls]'), function (btn) {
+      btn.addEventListener('click', function () {
+        var a = btn.getAttribute('data-ls');
+        if (a === 'configure') doAction('configure');
+        else if (a === 'params') switchView('params');
+        else if (a === 'unload') unloadNoir();
+      });
+    });
+  }
+
+  /* ── 铸造加载器：银粒上升 + 薄雾，rAF 只在「渲染中」存活 ── */
+  var Forge = {
+    on: false, raf: 0, parts: [], smoke: [], cv: null, ctx: null, w: 0, h: 0, last: 0,
+    sync: function () {
+      var want = !!(project && project.state === 'rendering');
+      if (want && !this.on) this.start();
+      else if (!want && this.on) this.stop();
+      if (this.on) this.paint();
+    },
+    resize: function () {
+      if (!this.cv) return;
+      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      this.w = window.innerWidth; this.h = window.innerHeight;
+      this.cv.width = Math.round(this.w * dpr); this.cv.height = Math.round(this.h * dpr);
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    },
+    ember: function (seed) {
+      return {
+        x: Math.random() * this.w, y: seed ? Math.random() * this.h : this.h + 8,
+        r: 0.6 + Math.random() * 1.7, vy: -(14 + Math.random() * 34), vx: (Math.random() - 0.5) * 12,
+        a: 0.2 + Math.random() * 0.55, tw: Math.random() * 6.28, ts: 1 + Math.random() * 2.4
+      };
+    },
+    puff: function (seed) {
+      return {
+        x: Math.random() * this.w, y: seed ? Math.random() * this.h : this.h + 60,
+        r: 60 + Math.random() * 130, vy: -(5 + Math.random() * 9), vx: (Math.random() - 0.5) * 6,
+        a: 0.02 + Math.random() * 0.03
+      };
+    },
+    start: function () {
+      this.on = true;
+      $('forgeOverlay').hidden = false;
+      this.cv = $('forgeCanvas'); this.ctx = this.cv.getContext('2d');
+      this.resize();
+      this.parts = []; this.smoke = [];
+      for (var i = 0; i < 90; i++) this.parts.push(this.ember(true));
+      for (var j = 0; j < 7; j++) this.smoke.push(this.puff(true));
+      this.last = performance.now();
+      var self = this;
+      var loop = function (t) { if (!self.on) return; self.tick(t); self.raf = requestAnimationFrame(loop); };
+      this.raf = requestAnimationFrame(loop);
+      this.paint();
+    },
+    stop: function () {
+      this.on = false;
+      if (this.raf) cancelAnimationFrame(this.raf);
+      this.raf = 0;
+      $('forgeOverlay').hidden = true;
+      if (this.ctx) this.ctx.clearRect(0, 0, this.w, this.h);
+    },
+    tick: function (t) {
+      var dt = Math.min(0.05, (t - this.last) / 1000); this.last = t;
+      var ctx = this.ctx, i, p;
+      ctx.clearRect(0, 0, this.w, this.h);
+      for (i = 0; i < this.smoke.length; i++) {
+        p = this.smoke[i];
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.y < -p.r) this.smoke[i] = p = this.puff(false);
+        var g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+        g.addColorStop(0, 'rgba(200,205,212,' + p.a + ')');
+        g.addColorStop(1, 'rgba(200,205,212,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+      for (i = 0; i < this.parts.length; i++) {
+        p = this.parts[i];
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.y < -8 || p.x < -8 || p.x > this.w + 8) this.parts[i] = p = this.ember(false);
+        var a = p.a * (0.55 + 0.45 * Math.sin(p.tw + t / 1000 * p.ts));
+        ctx.fillStyle = 'rgba(216,221,228,' + a.toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+    },
+    paint: function () {
+      if (!this.on) return;
+      var stage = $('forgeStage'), note = $('forgeNote');
+      if (svc.jobId && (svc.state === 'queued' || svc.state === 'running' || svc.state === 'submitting')) {
+        stage.textContent = '任务 #' + svc.jobId + ' · ' + (svc.stage || svc.state) + ' · ' + Math.round(svc.percent || 0) + '%';
+        note.textContent = '银粒随管线进度凝聚，产物由本地服务落盘。';
+      } else if (svc.state === 'offline') {
+        stage.textContent = '状态机已在「渲染中」· 任务未提交';
+        note.textContent = '本地服务未连接：启动 node tools/serve.mjs 后在状态机面板点「重试提交」。';
+      } else {
+        stage.textContent = '银粒凝聚 · 等待管线回执';
+        note.textContent = '';
+      }
+    }
+  };
+
+  window.addEventListener('resize', function () { if (Forge.on) Forge.resize(); });
+  $('forgeCancel').addEventListener('click', function () {
+    if (project && project.state === 'rendering') doAction('fail');
+  });
+
+  /* ── 背景烟雾：银雾 + 疏银粒，常驻于玻璃之下；页隐藏即停 rAF ── */
+  var Mist = {
+    raf: 0, parts: [], smoke: [], cv: null, ctx: null, w: 0, h: 0, last: 0,
+    reduced: !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches),
+    resize: function () {
+      var dpr = Math.min(window.devicePixelRatio || 1, 1.5);
+      this.w = window.innerWidth; this.h = window.innerHeight;
+      this.cv.width = Math.round(this.w * dpr); this.cv.height = Math.round(this.h * dpr);
+      this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    },
+    puff: function (seed) {
+      return {
+        x: Math.random() * this.w, y: seed ? Math.random() * this.h : this.h + 80,
+        r: 90 + Math.random() * 140, vy: -(3 + Math.random() * 5), vx: (Math.random() - 0.5) * 4,
+        a: 0.015 + Math.random() * 0.02
+      };
+    },
+    ember: function (seed) {
+      return {
+        x: Math.random() * this.w, y: seed ? Math.random() * this.h : this.h + 6,
+        r: 0.5 + Math.random() * 1.1, vy: -(6 + Math.random() * 12), vx: (Math.random() - 0.5) * 7,
+        a: 0.08 + Math.random() * 0.2, tw: Math.random() * 6.28, ts: 0.6 + Math.random() * 1.4
+      };
+    },
+    tick: function (t) {
+      var dt = Math.min(0.05, (t - this.last) / 1000); this.last = t;
+      var ctx = this.ctx, i, p;
+      ctx.clearRect(0, 0, this.w, this.h);
+      for (i = 0; i < this.smoke.length; i++) {
+        p = this.smoke[i];
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.y < -p.r) this.smoke[i] = p = this.puff(false);
+        var g = ctx.createRadialGradient(p.x, p.y, 0, p.x, p.y, p.r);
+        g.addColorStop(0, 'rgba(200,205,212,' + p.a + ')');
+        g.addColorStop(1, 'rgba(200,205,212,0)');
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+      for (i = 0; i < this.parts.length; i++) {
+        p = this.parts[i];
+        p.x += p.vx * dt; p.y += p.vy * dt;
+        if (p.y < -6 || p.x < -6 || p.x > this.w + 6) this.parts[i] = p = this.ember(false);
+        var a = p.a * (0.55 + 0.45 * Math.sin(p.tw + t / 1000 * p.ts));
+        ctx.fillStyle = 'rgba(216,221,228,' + a.toFixed(3) + ')';
+        ctx.beginPath(); ctx.arc(p.x, p.y, p.r, 0, 6.2832); ctx.fill();
+      }
+    },
+    loop: function (t) { this.tick(t); this.raf = requestAnimationFrame(this.bound); },
+    start: function () {
+      this.cv = $('mistBg'); this.ctx = this.cv.getContext('2d');
+      this.bound = this.loop.bind(this);
+      this.resize();
+      this.smoke = []; this.parts = [];
+      for (var j = 0; j < 5; j++) this.smoke.push(this.puff(true));
+      for (var i = 0; i < 26; i++) this.parts.push(this.ember(true));
+      this.last = performance.now();
+      this.tick(this.last);
+      if (!this.reduced) this.raf = requestAnimationFrame(this.bound);
+    },
+    pause: function () { if (this.raf) cancelAnimationFrame(this.raf); this.raf = 0; },
+    resume: function () {
+      if (this.reduced || this.raf) return;
+      this.last = performance.now();
+      this.raf = requestAnimationFrame(this.bound);
+    }
+  };
+  Mist.start();
+  window.addEventListener('resize', function () { Mist.resize(); if (Mist.reduced) Mist.tick(performance.now()); });
+  document.addEventListener('visibilitychange', function () {
+    if (document.hidden) Mist.pause(); else Mist.resume();
+  });
+
+  /* ─────────── 模块卡片 + 探测 ─────────── */
+
+  function probeBadge(state) {
+    if (state === 'exists') return '<span class="badge exists">存在</span>';
+    if (state === 'probing') return '<span class="badge probing">探测中</span>';
+    return '<span class="badge missing">未安装</span>';
+  }
+
+  function renderModules() {
+    var host = $('moduleGrid');
+    host.innerHTML = MODULES.filter(function (m) { return m.id !== 'workbench'; }).map(function (m) {
+      var pr = probeMap[m.id] || { state: m.self ? 'exists' : 'probing', detail: '' };
+      var canOpen = pr.state === 'exists';
+      // file:// 下 fetch 必失败，但"失败"不等于"不存在"：给一个「尝试打开」而不是判死刑
+      var maybe = pr.state === 'missing' && pr.fileProto;
+      var footer;
+      if (m.self) footer = '<span class="badge self">本页</span><span class="spacer"></span>';
+      else if (canOpen) footer = probeBadge(pr.state) + '<span class="spacer"></span><a class="btn mini acc" style="text-decoration:none" href="' + m.probe + '">打开</a>';
+      else if (maybe) footer = '<span class="badge missing" title="file:// 下无法判定，不等于缺件">未验证</span><span class="spacer"></span>'
+        + '<a class="btn mini" style="text-decoration:none" href="' + m.probe + '" title="file:// 下无法判定存在性，点了才知道">尝试打开</a>'
+        + '<a class="guide" href="' + DOCS + '">指引</a>';
+      else footer = probeBadge(pr.state) + '<span class="spacer"></span><a class="guide" href="' + DOCS + '" title="该模块应产出什么入口文件、怎么构建">安装/构建指引</a>';
+      return '<div class="card">'
+        + '<div class="card-h"><div class="card-ico">' + m.icon + '</div>'
+        + '<div class="card-t">' + m.name + '<small>' + m.ent + '</small></div></div>'
+        + '<div class="card-line">' + m.line + '</div>'
+        + '<div class="card-f">' + footer + '</div>'
+        + (pr.detail ? '<div class="probe-note" title="' + pr.detail + '">' + pr.detail + '</div>' : '')
+        + '</div>';
+    }).join('');
+    // 侧栏徽标同步
+    MODULES.forEach(function (m) {
+      var b = document.querySelector('[data-nb="' + m.id + '"]');
+      if (!b) return;
+      var pr = probeMap[m.id] || {};
+      if (m.self) { b.textContent = '本页'; b.className = 'ni-badge on'; return; }
+      b.textContent = pr.state === 'exists' ? '有' : (pr.state === 'probing' ? '…' : (pr.fileProto ? '?' : '缺'));
+      b.className = 'ni-badge' + (pr.state === 'exists' ? ' on' : '');
+      b.title = pr.detail || '';
+    });
+  }
+
+  /**
+   * 探测：相对路径 fetch，失败即「未安装」。
+   * file:// 下必然失败（浏览器把本地加载当跨源），但它不该让页面崩，也不该拖住渲染，
+   * 所以：异步 + 超时 + catch，失败只改徽标，并把"为什么探测不到"写进 detail。
+   */
+  function probeModule(m) {
+    if (m.self || !m.probe) { probeMap[m.id] = { state: 'exists', detail: '' }; return Promise.resolve(); }
+    var isFile = location.protocol === 'file:';
+    return new Promise(function (resolve) {
+      var done = false;
+      var timer = setTimeout(function () {
+        if (done) return;
+        done = true;
+        probeMap[m.id] = { state: 'missing', detail: '探测超时（' + cfg.probeTimeout + 'ms），按未安装处理' };
+        resolve();
+      }, cfg.probeTimeout);
+
+      try {
+        fetch(m.probe, { cache: 'no-store' }).then(function (res) {
+          if (done) return;
+          done = true; clearTimeout(timer);
+          if (res && res.ok) probeMap[m.id] = { state: 'exists', detail: '入口可访问（HTTP ' + res.status + '）' };
+          else probeMap[m.id] = { state: 'missing', detail: '入口返回 HTTP ' + (res && res.status) + '，按未安装处理' };
+          resolve();
+        }).catch(function (err) {
+          if (done) return;
+          done = true; clearTimeout(timer);
+          probeMap[m.id] = {
+            state: 'missing',
+            fileProto: isFile,
+            detail: isFile ? 'file:// 禁止 fetch 本地文件，存在性无法判定（≠ 缺件）' : '入口不可达，按未安装处理'
+          };
+          resolve();
+        });
+      } catch (err) {
+        if (done) return;
+        done = true; clearTimeout(timer);
+        probeMap[m.id] = { state: 'missing', fileProto: isFile, detail: '探测抛错，按未安装处理：' + ((err && err.message) || err) };
+        resolve();
+      }
+    });
+  }
+
+  function probeAll() {
+    MODULES.forEach(function (m) { if (!m.self) probeMap[m.id] = { state: 'probing', detail: '' }; });
+    renderModules();
+    return Promise.all(MODULES.map(probeModule)).then(function () { renderModules(); });
+  }
+
+  /* ─────────── 视图切换 ─────────── */
+
+  function buildModuleView(m) {
+    var host = $('view-' + m.id);
+    host.innerHTML =
+      '<div class="viewhead"><div class="vh-row"><div><h1>' + m.name + '</h1>'
+      + '<p>' + m.line + ' 本页只做入口与探测，界面由 <code>' + m.ent + '</code> 自己负责。</p></div>'
+      + '<div class="stamp">' + (m.self ? '本页' : '入口 ' + m.ent) + '</div></div></div>'
+      + '<div class="body"><div class="card" style="max-width:640px">'
+      + '<div class="card-h"><div class="card-ico">' + m.icon + '</div><div class="card-t">' + m.name + '</div></div>'
+      + '<div class="card-line" id="mvState">探测中…</div>'
+      + '<div class="card-f"><span class="spacer"></span>'
+      + '<button class="btn mini" id="mvReprobe">重新探测</button>'
+      + '<button class="btn mini acc" id="mvOpen">打开模块</button></div>'
+      + '<div class="probe-note">约定入口：<code style="font-family:' + MONO + '">' + m.ent + '</code>。'
+      + ' 该文件存在即视为「已安装」，探测方式就是相对路径 fetch；失败按未安装处理。</div>'
+      + '</div>'
+      + '<p style="margin-top:14px"><a class="guide" href="' + DOCS + '">→ 该模块应产出什么、怎么构建（docs/08-shell.md · 模块接入约定）</a></p>'
+      + '</div>';
+
+    var openBtn = $('mvOpen');
+    var stateEl = $('mvState');
+    function paint() {
+      var pr = probeMap[m.id] || { state: 'probing', detail: '' };
+      if (m.self) { stateEl.textContent = '本页就是工作台。'; openBtn.disabled = true; return; }
+      if (pr.state === 'exists') stateEl.textContent = '已安装：入口可访问' + (pr.detail ? '（' + pr.detail + '）' : '');
+      else if (pr.state === 'probing') stateEl.textContent = '探测中…';
+      else if (pr.fileProto) stateEl.textContent = '无法判定：' + pr.detail + '。文件大概率就在那儿，点「打开模块」验证。';
+      else stateEl.textContent = '未安装：' + (pr.detail || '入口不可达');
+      openBtn.disabled = pr.state === 'probing';
+      openBtn.textContent = pr.state === 'exists' ? '打开模块' : '尝试打开';
+      openBtn.onclick = function () { location.href = m.probe; };
+    }
+    paint();
+    $('mvReprobe').addEventListener('click', function () {
+      probeMap[m.id] = { state: 'probing', detail: '' };
+      paint();
+      probeModule(m).then(function () { paint(); renderModules(); });
+    });
+  }
+
+  function switchView(id) {
+    view = id;
+    Array.prototype.forEach.call(document.querySelectorAll('.view'), function (v) { v.classList.remove('on'); });
+    var host = $('view-' + id);
+    if (host) host.classList.add('on');
+    Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function (b) {
+      b.classList.toggle('on', b.getAttribute('data-view') === id);
+    });
+    var m = MODULES.filter(function (x) { return x.id === id; })[0];
+    if (m && id !== 'workbench') buildModuleView(m);
+    $('content').scrollTop = 0;
+  }
+
+  /* ─────────── 持久化 ─────────── */
+
+  function persist(opts) {
+    if (!project || !store) return { ok: false, mode: 'none' };
+    project.updatedAt = new Date().toISOString();
+    var res = store.save(project, opts || {});
+    if (res.mode === 'full') hideDegrade();
+    else if (res.mode === 'slim') showDegrade('存储紧张，已裁剪历史与其它项目参数以保住当前项目；建议导出项目 JSON 后清理旧项目。');
+    else showDegrade(res.hint || res.error || '写入失败，项目只存在于内存，刷新即丢失。');
+    renderProjectBar();
+    return res;
+  }
+
+  function syncSelect() {
+    var sel = $('projectSelect');
+    if (project) sel.value = project.id;
+  }
+
+  /* ─────────── 项目操作：另存为 / 切换 / 导入 / 导出 ─────────── */
+
+  function saveAs() {
+    if (!project) return;
+    var name = prompt('新项目名', project.name + ' · 副本');
+    if (name === null) return;
+    var copy = S.create({
+      name: (name || '未命名项目').trim() || '未命名项目',
+      state: project.state, tier: project.tier, device: project.device, usable_mib: project.usable_mib,
+      values: project.values, summary: project.summary, history: project.history
+    });
+    project = copy;
+    recompute();
+    persist({ activate: true });
+    renderQuickBar(); renderFlow(); renderProjectBar();
+    toast('已另存为「' + copy.name + '」');
+  }
+
+  function switchProject(id) {
+    if (!id) return;
+    var p = store.load(id);
+    if (!p) { toast('项目读取失败，可能已损坏', true); return; }
+    project = p;
+    store.setActive(id);
+    recompute();
+    renderQuickBar(); renderFlow(); renderProjectBar();
+    toast('已切换到「' + p.name + '」');
+  }
+
+  function exportProject() {
+    if (!project) return;
+    try {
+      var text = S.serialize(project);
+      var blob = new Blob([text], { type: 'application/json' });
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = (project.name || 'project').replace(/[\\/:*?"<>|\s]+/g, '_') + '.project.json';
+      document.body.appendChild(a);
+      a.click();
+      setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 0);
+      toast('已导出 ' + a.download);
+    } catch (err) {
+      showError(err, 'exportProject（URL.createObjectURL）', 'file:// 下部分浏览器限制 Blob 下载；可改用「复制详情」后手动保存。');
+    }
+  }
+
+  function importProject(file) {
+    var fr = new FileReader();
+    fr.onload = function () {
+      try {
+        var p = S.deserialize(String(fr.result));
+        p.id = S.create({}).id; // 导入总是新 id，避免覆盖同名项目
+        project = p;
+        recompute();
+        persist({ activate: true });
+        renderQuickBar(); renderFlow(); renderProjectBar();
+        toast('已导入「' + p.name + '」· ' + S.stateName(p.state));
+      } catch (err) {
+        showError(err, 'importProject.deserialize', '项目文件必须是本平台导出的 .project.json（含 schema 字段）。');
+      }
+    };
+    fr.onerror = function () { showError(new Error('文件读取失败'), 'importProject.FileReader'); };
+    fr.readAsText(file);
+  }
+
+  /* ─────────── 向导 ─────────── */
+
+  function detectGpu() {
+    var out = { name: '', detail: '' };
+    try {
+      var c = document.createElement('canvas');
+      var gl = c.getContext('webgl2') || c.getContext('webgl');
+      if (!gl) { out.name = '未获取到'; out.detail = '浏览器没有给 WebGL 上下文（可能被硬件加速设置关闭）'; return out; }
+      var ext = gl.getExtension('WEBGL_debug_renderer_info');
+      if (!ext) { out.name = '浏览器屏蔽'; out.detail = 'GPU 标识被隐私策略屏蔽（常见于隐私模式 / 指纹防护）'; return out; }
+      var vendor = gl.getParameter(ext.UNMASKED_VENDOR_WEBGL) || '';
+      var renderer = gl.getParameter(ext.UNMASKED_RENDERER_WEBGL) || '';
+      out.name = (vendor + ' ' + renderer).replace(/\s+/g, ' ').trim() || '未获取到';
+      out.detail = '仅型号字符串，不含显存信息';
+    } catch (e) {
+      out.name = '读取失败';
+      out.detail = 'WebGL 查询抛错：' + (e && e.message);
+    }
+    return out;
+  }
+
+  function recommendDevice(usable) {
+    var ds = C.devices.slice().sort(function (a, b) { return a.usable_mib - b.usable_mib; });
+    var hit = null;
+    for (var i = 0; i < ds.length; i++) {
+      if (ds[i].usable_mib <= usable) hit = ds[i];
+    }
+    if (!hit) hit = ds[0];
+    return { device: hit, exact: hit.usable_mib === usable, sorted: ds };
+  }
+
+  function wizInit() {
+    var g = detectGpu();
+    wiz.gpu = g.name;
+    wiz.gpuDetail = g.detail || '';
+    // 只有真读到 GPU 型号字符串才算「探到」；读不到 = 后续档位/显存预算全是推断值，推进前必须确认
+    wiz.gpuConfident = !(g.name === '未获取到' || g.name === '浏览器屏蔽' || g.name === '读取失败');
+    $('wizGpu').textContent = g.name + (g.detail ? '  · ' + g.detail : '');
+
+    var sel = $('wizDevice');
+    sel.innerHTML = '';
+    C.devices.forEach(function (d) {
+      var o = document.createElement('option');
+      o.value = d.id;
+      o.textContent = d.id + ' · ' + d.name + ' · ' + d.usable_mib + ' MiB';
+      sel.appendChild(o);
+    });
+    var rec = recommendDevice(wiz.usable);
+    wiz.device = rec.device.id;
+    sel.value = wiz.device;
+    $('wizUsable').value = wiz.usable;
+    paintReco();
+
+    sel.addEventListener('change', function () {
+      var d = C.devices.filter(function (x) { return x.id === sel.value; })[0];
+      if (d) { wiz.device = d.id; wiz.usable = d.usable_mib; $('wizUsable').value = d.usable_mib; }
+      paintReco();
+      renderTierCards();
+    });
+    $('wizUsable').addEventListener('input', function () {
+      var v = parseInt($('wizUsable').value, 10);
+      if (!isFinite(v) || v < 512) return;
+      wiz.usable = v;
+      var r = recommendDevice(v);
+      wiz.device = r.device.id;
+      sel.value = wiz.device;
+      paintReco();
+      renderTierCards();
+    });
+  }
+
+  function paintReco() {
+    var r = recommendDevice(wiz.usable);
+    var d = r.device;
+    var margin = wiz.usable - d.usable_mib;
+    $('wizDeviceNote').textContent = d.name;
+    $('wizReco').innerHTML = '按你填的 <b>' + wiz.usable + ' MiB</b>，注册表里最贴近的档位是 <b>' + d.id + '</b>（可用 ' + d.usable_mib + ' MiB，整机功耗 ' + d.watts + 'W）。'
+      + (r.exact ? ' 与该档完全一致。' : (margin > 0 ? ' 比该档多 ' + margin + ' MiB——估算仍按该档预算跑，偏保守。' : ' 比该档少 ' + (-margin) + ' MiB——已向下取档，别把数字填高。'))
+      + ' 这一档只是估算预算，不会写回你的硬件。';
+    $('wizBudget').textContent = wiz.usable + ' MiB';
+  }
+
+  function renderTierCards() {
+    var host = $('wizTiers');
+    if (!host) return;
+    var tryTiers = ['cinematic'];
+    wiz.tier = 'cinematic';
+    var descs = { cinematic: '质量优先：保留采样质量。生成分辨率与原生/输出帧率在「出片」中明确选择，默认 720p。' };
+    wiz.tiers = [];
+    host.innerHTML = '';
+
+    tryTiers.forEach(function (key) {
+      var card;
+      try {
+        var a = E.applyPreset(R, key);
+        var out = compute(a.values, wiz.device, wiz.usable);
+        wiz.tiers.push({ key: key, values: out.resolved.values, est: out.est, ok: true });
+        var e = out.est;
+        card = '<button class="tier' + (wiz.tier === key ? ' on' : '') + '" data-tier="' + key + '">'
+          + '<div class="pickmark"></div>'
+          + '<div class="tn">' + S.PRESET_NAMES[key] + '</div>'
+          + '<div class="td">' + descs[key] + '</div>'
+          + '<div class="tmetrics">'
+          + '<div class="tmetric"><span>单格</span><b>' + fmtSec(e.time.shot_sec) + '</b></div>'
+          + '<div class="tmetric"><span>单集</span><b>' + e.time.episode_min + 'min</b></div>'
+          + '<div class="tmetric"><span>显存比</span><b class="' + e.vram.state + '">' + (e.vram.ratio * 100).toFixed(0) + '%</b></div>'
+          + '<div class="tmetric"><span>质量分</span><b>' + e.quality.score + '</b></div>'
+          + '</div></button>';
+      } catch (err) {
+        wiz.tiers.push({ key: key, ok: false, err: err });
+        card = '<button class="tier" data-tier="' + key + '" disabled><div class="tn">' + S.PRESET_NAMES[key] + '</div>'
+          + '<div class="td">估算失败：' + String(err && err.message).slice(0, 60) + '</div></button>';
+      }
+      // 注意：card 是 HTML 字符串，必须用 insertAdjacentHTML；
+      // appendChild 只吃 Node，传字符串会抛 TypeError，整块卡片就静默消失。
+      host.insertAdjacentHTML('beforeend', card);
+    });
+
+    Array.prototype.forEach.call(host.querySelectorAll('[data-tier]'), function (btn) {
+      btn.addEventListener('click', function () {
+        var k = btn.getAttribute('data-tier');
+        var t = wiz.tiers.filter(function (x) { return x.key === k && x.ok; })[0];
+        if (!t) { showError(new Error('该档位估算不可用（applyPreset/estimate 抛错）'), '向导.applyPreset("' + k + '")'); return; }
+        wiz.tier = k;
+        Array.prototype.forEach.call(host.querySelectorAll('.tier'), function (b) { b.classList.toggle('on', b === btn); });
+        $('wizTierNote').innerHTML = '已选 <b>' + S.PRESET_NAMES[k] + '</b>：单格 <b>' + fmtSec(t.est.time.shot_sec) + '</b>，单集 <b>'
+          + t.est.time.episode_min + ' 分钟</b>，显存 <b>' + t.est.vram.peak_mib + ' / ' + t.est.vram.usable_mib + ' MiB（'
+          + (t.est.vram.ratio * 100).toFixed(0) + '%）</b>，质量分 <b>' + t.est.quality.score + '</b>。这些数来自 engine 估算，不是实测。';
+        if (wiz.step === 3) renderSummary();
+      });
+    });
+  }
+
+  function renderSummary() {
+    var t = wiz.tiers.filter(function (x) { return x.key === wiz.tier && x.ok; })[0];
+    var host = $('wizSummary');
+    if (!t) { host.innerHTML = '<div class="empty">还没有可用的档位估算。</div>'; return; }
+    var e = t.est;
+    host.innerHTML = ''
+      + '<div class="srow"><span>项目名</span><b>项目 · ' + S.PRESET_NAMES[wiz.tier] + ' · ' + wiz.device + '</b></div>'
+      + '<div class="srow"><span>画质档（applyPreset）</span><b>' + wiz.tier + ' / ' + S.PRESET_NAMES[wiz.tier] + '</b></div>'
+      + '<div class="srow"><span>显存预算（你确认）</span><b>' + wiz.usable + ' MiB（档位 ' + wiz.device + '）</b></div>'
+      + '<div class="srow"><span>峰值显存 / 状态</span><b class="' + e.vram.state + '">' + e.vram.peak_mib + ' MiB · ' + (e.vram.ratio * 100).toFixed(0) + '% · ' + e.vram.state + '</b></div>'
+      + '<div class="srow"><span>单格 / 单集 / 本批</span><b>' + fmtSec(e.time.shot_sec) + ' / ' + e.time.episode_min + ' min / ' + e.time.batch_min + ' min</b></div>'
+      + '<div class="srow"><span>质量分</span><b>' + e.quality.score + ' / 99</b></div>'
+      + '<div class="srow"><span>参数集</span><b>' + Object.keys(t.values).length + ' 项（含规则回写）</b></div>'
+      + '<div class="srow"><span>写入后状态</span><b>已配置（可开渲）</b></div>';
+  }
+
+  function wizGo(n) {
+    wiz.step = Math.max(1, Math.min(3, n));
+    [1, 2, 3].forEach(function (i) {
+      var scr = $('wiz-step-' + i);
+      if (scr) scr.hidden = i !== wiz.step;
+      var st = $('wstep-' + i);
+      if (st) st.className = 'wstep' + (i === wiz.step ? ' cur' : (i < wiz.step ? ' done' : ''));
+    });
+    var titles = [
+      ['① 确认本机条件', '先把「这台机器能跑多重」这件事对齐，再谈画质。'],
+      ['② 选画质档', '质量预设用真实预设 + 真实估算，给的是秒数、分钟数和显存比，不是形容词。'],
+      ['③ 生成工作台', '写进 localStorage，置为已配置，然后进主界面。']
+    ];
+    $('wizTitle').textContent = titles[wiz.step - 1][0];
+    $('wizSub').textContent = titles[wiz.step - 1][1];
+    $('wizHint').textContent = '第 ' + wiz.step + ' / 3 屏';
+    $('wizPrev').disabled = wiz.step === 1;
+    $('wizNext').textContent = wiz.step === 3 ? '生成工作台并进入' : '下一步';
+    if (wiz.step === 2) renderTierCards();
+    if (wiz.step === 3) renderSummary();
+  }
+
+  function openWizard() {
+    $('wizard').hidden = false;
+    wizInit();
+    wizGo(1);
+  }
+
+  function closeWizard() { $('wizard').hidden = true; }
+
+  /* 外壳里唯一「推断 → 推进」的口径：GPU 标识读不到时，档位/显存预算/四向读数全是推的 */
+  var lowConfOkAt = null;   // 本会话已确认过的低置信推进时间，不重复弹
+  function lowConfCtxApp(scope) {
+    var rec = recommendDevice(wiz.usable);
+    var d = rec.device;
+    var t = wiz.tiers.filter(function (x) { return x.key === wiz.tier && x.ok; })[0];
+    var inferred = [
+      { k: '显存档位', v: d.id + ' · ' + d.name + ' · 可用 ' + d.usable_mib + ' MiB（按你填的 ' + wiz.usable + ' MiB 向下取档）' },
+      { k: '画质档（applyPreset）', v: (wiz.tier || '—') + ' / ' + (S.PRESET_NAMES[wiz.tier] || '未选') }
+    ];
+    if (t) inferred.push({ k: '峰值显存 / 单格耗时 / 质量分', v: t.est.vram.peak_mib + ' MiB · ' + fmtSec(t.est.time.shot_sec) + ' · ' + t.est.quality.score + '（engine 估算，provenance: estimate）' });
+    var unknown = [
+      { k: 'GPU 型号与真实显存', v: '未获取到 → 这一档在本机到底能不能跑，没有实测依据' },
+      { k: '显存口径', v: '按你填的 ' + wiz.usable + ' MiB 推档，多出该档的余量不参与估算' },
+      { k: '真实出片耗时', v: '未跑过任何任务 → 等待时间只有估算值' }
+    ];
+    return {
+      title: '本机条件未能确认：接下来按推断档位继续（非实测）',
+      sub: 'GPU 标识读不到：' + (wiz.gpuDetail || wiz.gpu || 'WebGL 不可用'),
+      scope: scope + ' · 来源 gpu-unverified',
+      inferred: inferred, unknown: unknown,
+      source: 'gpu-unverified',
+      reason: 'detectGpu 未取到型号（' + (wiz.gpu || '—') + '）',
+      foot: '「按规则轨继续」会把 confirmedByUser: true 与确认时间写进项目留痕与任务 note；Esc 与 Enter 都走「返回修改描述」，不推进。'
+    };
+  }
+
+  function wizFinish() {
+    var t = wiz.tiers.filter(function (x) { return x.key === wiz.tier && x.ok; })[0];
+    if (!t) { showError(new Error('所选档位估算不可用'), '向导.wizFinish', '回到第 2 屏重新选一档。'); return; }
+    if (!wiz.gpuConfident && !lowConfOkAt) {
+      LOWCONF.show(lowConfCtxApp('外壳向导 · 生成工作台并进入')).then(function (ans) {
+        if (!ans.confirmed) { wizGo(1); toast('已退回第 ① 屏：没有写入任何项目'); return; }
+        lowConfOkAt = ans.at;
+        commitWizard(t, ans.at);
+      });
+      return;
+    }
+    commitWizard(t, lowConfOkAt);
+  }
+
+  function commitWizard(t, at) {
+    try {
+      var p = S.create({
+        name: '项目 · ' + S.PRESET_NAMES[wiz.tier] + ' · ' + wiz.device,
+        tier: wiz.tier, device: wiz.device, usable_mib: wiz.usable,
+        values: t.values, summary: S.summarize(t.est)
+      });
+      // 向导第 2 屏已经让用户确认过画质档，等价于「确认配置」
+      p = S.apply(p, 'configure', { note: '首启向导：' + S.PRESET_NAMES[wiz.tier] + ' + ' + wiz.usable + ' MiB（用户确认）' + (at ? ' · 低置信确认 confirmedByUser: true @ ' + at : '') });
+      project = p;
+      recompute();
+      closeWizard();
+      $('app').hidden = false;
+      var res = persist({ activate: true });
+      renderQuickBar(); renderFlow(); renderProjectBar();
+      switchView('workbench');
+      if (res.ok && res.mode === 'full') toast('工作台已生成：' + project.name + '（已写入 localStorage）');
+      else toast('工作台已在内存里生成，但落盘降级：' + (res.hint || res.error || ''), true);
+    } catch (err) {
+      showError(err, '向导.wizFinish（create/apply/save）', '若 localStorage 完全不可用，项目仍在内存里可用，但刷新会丢；请用「导出」备份。');
+    }
+  }
+
+  /* ─────────── 事件绑定 ─────────── */
+
+  function bind() {
+    Array.prototype.forEach.call(document.querySelectorAll('.nav-item'), function (b) {
+      b.addEventListener('click', function () { switchView(b.getAttribute('data-view')); });
+    });
+
+    $('btnWizard').addEventListener('click', openWizard);
+    $('wizPrev').addEventListener('click', function () { wizGo(wiz.step - 1); });
+    $('wizNext').addEventListener('click', function () {
+      if (wiz.step < 3) { wizGo(wiz.step + 1); return; }
+      wizFinish();
+    });
+    $('wizSkip').addEventListener('click', function () {
+      closeWizard();
+      $('app').hidden = false;
+      if (!project) {
+        // 跳过向导也要有个能干活的项目，否则主界面全是「—」
+        project = S.create({ name: '临时项目（未配置）', tier: 'standard', device: wiz.device, usable_mib: wiz.usable, values: E.defaults(R) });
+        recompute();
+        persist({ activate: true });
+        renderQuickBar(); renderFlow(); renderProjectBar();
+      }
+      toast('已跳过向导；随时点顶栏「向导」补回来');
+    });
+
+    $('projectSelect').addEventListener('change', function () { switchProject(this.value); });
+    $('btnSaveAs').addEventListener('click', saveAs);
+    $('btnExportProj').addEventListener('click', exportProject);
+    $('btnImportProj').addEventListener('click', function () { $('projFile').click(); });
+    $('projFile').addEventListener('change', function () {
+      if (this.files && this.files[0]) importProject(this.files[0]);
+      this.value = '';
+    });
+
+    $('errClose').addEventListener('click', clearError);
+    $('errCopy').addEventListener('click', function () {
+      var text = [$('errTitle').textContent, $('errMsg').textContent, $('errWhere').textContent, $('errHint').textContent].join('\n');
+      try {
+        navigator.clipboard.writeText(text).then(function () { toast('错误详情已复制'); }, function () { toast('复制被拒绝，请手动选择', true); });
+      } catch (e) { toast('剪贴板不可用', true); }
+    });
+    $('errReset').addEventListener('click', function () {
+      try {
+        if (!project) return;
+        // 顺序很重要：先把状态打回草稿（apply 会深拷贝，值要写在新对象上），再灌默认值
+        if (project.state !== 'draft') project = S.apply(project, 'restart', { note: '重置参数为注册表默认' });
+        project.values = E.defaults(R);
+        recompute();
+        persist();
+        renderQuickBar(); renderFlow();
+        toast('参数已重置为注册表默认值');
+      } catch (e) { showError(e, 'errReset'); }
+    });
+    $('degradeClose').addEventListener('click', hideDegrade);
+
+    // 全局兜底：任何漏网的异常都变成卡片，绝不留白屏
+    window.addEventListener('error', function (ev) {
+      showError(ev.error || new Error(ev.message), 'window.onerror', '这是未捕获异常。页面其余部分继续可用，点关闭可继续操作。');
+    });
+    window.addEventListener('unhandledrejection', function (ev) {
+      showError(ev.reason || new Error('未处理的 Promise 拒绝'), 'unhandledrejection', '异步链路某处失败（常见于探测/存储）。可忽略后继续操作。');
+    });
+  }
+
+  /* ─────────── 启动 ─────────── */
+
+  function boot() {
+    store = S.createStore({});
+    bind();
+    renderStatus();
+
+    var activeId = store.active();
+    project = activeId ? store.load(activeId) : null;
+    if (!project) {
+      var list = store.list();
+      if (list.length) project = store.load(list[0].id);
+    }
+
+    $('app').hidden = false;
+    renderModules();
+    renderSanctuary();
+    probeAll();
+    svcBind();
+    probeSvc();
+
+    if (project) {
+      recompute();
+      renderQuickBar(); renderFlow(); renderProjectBar();
+    } else {
+      renderQuickBar(); renderFlow(); renderProjectBar();
+      openWizard(); // 首启：没有项目就进向导
+    }
+
+    if (store.kind === 'memory') {
+      showDegrade('localStorage 不可用（file:// 或隐私模式），项目只存在于内存：刷新即丢失。用「导出」保存项目 JSON。');
+    }
+  }
+
+  try {
+    boot();
+  } catch (err) {
+    showError(err, 'boot()', '启动链路失败。先看控制台堆栈；通常是内联资产损坏，重新跑 node tools/build_app.mjs。');
+    $('app').hidden = false;
+  }
+
+/* ───────── 一键出片（融合 ultimate 能力；modal 动态注入 body，避免被外壳重渲染冲掉） ───────── */
+(function () {
+  var STORE_KEY = 'avp.shell.store.v1';
+  var MODAL_HTML = `<div id="rmBackground" role="status" style="position:fixed;bottom:8px;left:16px;right:16px;z-index:79;padding:8px;background:var(--panel);color:var(--text-dim);font-size:var(--fz-xs);border:1px solid var(--line)"></div>
+  <!-- 一键出片（融合 ultimate：引擎选择 / 作品库 / 进度 / 成片预览） -->
+  <div id="renderModal" style="position:fixed;inset:0;display:none;z-index:80;align-items:center;justify-content:center;padding:24px;background:rgba(8,8,10,.72);-webkit-backdrop-filter:blur(10px);backdrop-filter:blur(10px)">
+    <div style="width:min(760px,100%);max-height:90vh;overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:var(--r3);padding:16px;color:var(--text);box-shadow:var(--shadow-pop)">
+      <div style="display:flex;align-items:center;gap:10px;margin-bottom:12px">
+        <b style="letter-spacing:.08em">一键出片</b>
+        <span id="rmPill" style="font:var(--fz-xs)/1 var(--mono);border:1px solid var(--line);border-radius:var(--r-pill);padding:2px 8px;color:var(--text-dim)">检测中</span>
+        <div style="flex:1"></div>
+        <button class="btn mini" id="rmClose">关闭</button>
+      </div>
+
+      <div style="display:flex;gap:10px;align-items:center;flex-wrap:wrap;margin-bottom:10px">
+        <label style="font-size:var(--fz-xs);color:var(--text-dim)">引擎</label>
+        <select class="input" id="rmEngine" style="height:28px;min-width:180px">
+          <option value="wan22" selected>Wan2.2（5B 本地）</option>
+          <option value="minimax_h3">MiniMax H3（原生 24fps 音画同步）</option>
+        </select>
+        <select class="input" id="rmTier" title="分辨率档位（质量优先：不自动降档，显存不足会拒绝）" style="height:28px;min-width:150px">
+          <option value="720p" selected>1280×720</option>
+          <option value="864p">1536×864</option>
+          <option value="1080p">1920×1080</option>
+          <option value="cinema_2176">2176×912</option>
+          <option value="custom">自定义原生尺寸（手动选择）</option>
+        </select>
+        <label><input type="radio" name="rmQuality" value="quality_first" checked>质量优先（当前默认）</label>
+        <span id="rmConc" style="font:var(--fz-xs)/1 var(--mono);color:var(--text-dim2)"></span>
+      </div>
+
+      <div style="display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <label>原生帧率 <select class="input" id="rmNativeFps"><option value="24">24fps</option><option value="30" selected>30fps</option></select></label>
+        <label>输出帧率 <select class="input" id="rmOutputFps"><option value="24">24fps</option><option value="30">30fps</option><option value="60" selected>60fps（插帧）</option></select></label>
+        <span id="rmFpsNote"></span>
+      </div>
+      <div id="rmCustomSize" hidden>
+        <label>原生宽度（正偶数）<input class="input" id="rmWidth" type="number" min="2" step="2" value="640" aria-describedby="rmCustomNote"></label>
+        <label>原生高度（正偶数）<input class="input" id="rmHeight" type="number" min="2" step="2" value="384" aria-describedby="rmCustomNote"></label>
+        <p id="rmCustomNote">自定义尺寸是用户明确手动选择，不是自动降分辨率，也不是预览快速模式；采样步数、种子与质量约束保持不变。</p>
+      </div>
+      <p>高分辨率和高帧率会显著增加生成时长。显存不足时明确拒绝，不自动降低分辨率或减少步数；所有档位均可选择。</p>
+      <p>现有模型权重可能已量化，实际精度以后端记录为准，不作全精度承诺；不自动量化、不启用加速节点。8GB 显存不保证所有高分辨率档位可运行。</p>
+      <div id="rmRuntime" role="status" style="white-space:pre-wrap">运行环境：runtime 未核验（不代表模型文件缺失）。</div>
+      <label style="display:block;font-size:var(--fz-xs);color:var(--text-dim);margin-bottom:4px">提示词（默认取当前项目的提示词前缀 / 主体）</label>
+      <textarea class="input" id="rmPrompt" rows="3" style="width:100%;height:auto;padding:8px;font-family:var(--mono);font-size:var(--fz-xs);background:var(--panel2);border:1px solid var(--line);border-radius:var(--r3);color:var(--text)"></textarea>
+
+      <div style="display:flex;align-items:center;gap:10px;margin-top:10px">
+        <button class="btn acc" id="rmGo">铸造画面</button>
+        <span id="rmMeta" style="font-size:var(--fz-xs);color:var(--text-dim)"></span>
+      </div>
+      <div id="rmStatus" role="status" style="font-size:var(--fz-s);color:var(--text-dim);margin-top:10px;line-height:1.7"></div>
+      <div id="rmSubmitError" role="alert"></div>
+      <div id="rmVersions"></div>
+      <button class="btn mini" id="rmEnhance" style="display:none">生成 / 重试增强（保留原生版）</button>
+      <div id="rmEnhanceMsg" role="status"></div>
+      <button class="btn mini" id="rmRetry" style="display:none">重试原任务</button>
+      <video id="rmVideo" controls style="width:100%;display:none;margin-top:10px;border:1px solid var(--line);border-radius:var(--r2)"></video>
+
+      <div style="margin-top:14px;border-top:1px solid var(--line);padding-top:10px">
+        <div style="display:flex;align-items:center;gap:8px;font-size:var(--fz-xs);color:var(--text-dim)">
+          <b style="color:var(--text)">后端任务 / 作品库</b><span id="rmWorksCount">—</span><button class="btn mini" id="rmRefresh">刷新</button><div style="flex:1"></div>
+          <a class="btn mini" href="../ultimate/index.html" style="text-decoration:none">科研台（贝叶斯/消融/双版本）</a>
+        </div>
+        <div id="rmWorks" style="margin-top:8px;font-size:var(--fz-xs);color:var(--text-dim)"></div>
+
+        <!-- BYOK 云端生成（纯前端，Key 只存本机） -->
+        <div id="byokPanel" style="margin-top:12px"></div>
+      </div>
+    </div>
+  </div>
+`;
+  // 后端是任务真相源；selected 仅决定查看内容，job 始终代表运行互斥锁。
+  var R = { job: null, selected: null, jobs: [], detail: null, timer: 0, submitting: false, ready: false, loading: false, videoId: null };
+  var API = location.protocol === 'file:' ? 'http://127.0.0.1:8388' : '';
+  var BACKGROUND = '任务在后台继续生成，可稍后回来看（需后端服务保持运行；关机后待重启续接）。';
+  var STATES = { queued: '排队中', running: '生成中', succeeded: '已完成', failed: '失败', canceled: '已取消' };
+  function live(j) { return j && (j.state === 'queued' || j.state === 'running'); }
+  function busy() { return !R.ready || R.loading || R.submitting || !!R.job; }
+  function syncGenerateButton() {
+    el('rmGo').disabled = busy();
+    el('rmGo').textContent = R.submitting ? '提交中…' : !R.ready ? '同步任务中…' : R.job ? '生成中…' : '铸造画面';
+    el('rmRetry').disabled = busy();
+    el('rmEnhance').disabled = enhancing || R.loading || !R.ready || enhancementLive(R.detail);
+    el('rmBackground').textContent = !R.ready ? '正在同步后端任务；查询成功前不重复提交。' : R.job ? BACKGROUND : '任务历史已同步，可从「出片」查看进度与成片。';
+  }
+  function el(id) { return document.getElementById(id); }
+  function esc(v) { return String(v == null ? '' : v).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function say(t) { var n = el('rmStatus'); if (n) n.innerHTML = t; }
+  function request(path, options) {
+    var opt = Object.assign({}, options || {});
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) opt.signal = AbortSignal.timeout(15000);
+    return fetch(API + path, opt).then(function (r) { return r.json().then(function (d) {
+      if (!r.ok) throw new Error((d.error && (d.error.code + ' ' + d.error.message)) || ('HTTP ' + r.status));
+      return d;
+    }); });
+  }
+  var runtimeLoading = false;
+  function refreshQualityRuntime() {
+    if (runtimeLoading) return;
+    runtimeLoading = true;
+    request('/api/quality').then(function (data) {
+      var runtime = data && data.runtime;
+      if (!runtime || typeof runtime !== 'object') throw new Error('接口未提供 runtime');
+      var list = function (items) { return Array.isArray(items) ? items.filter(Boolean) : []; };
+      var state = function (ready) { return ready === true ? '依赖就绪' : ready === false ? '未就绪（见详情）' : 'runtime 未核验'; };
+      var message = function (item) { return typeof item === 'string' ? item : [item.code, item.message, item.hint].filter(Boolean).join(' '); };
+      var lines = ['运行环境（后端核验；依赖就绪不保证显存足够）', 'ComfyUI：' + (runtime.comfy_reachable === true ? '可达' : runtime.comfy_reachable === false ? '不可达' : 'runtime 未核验')];
+      var models = list(runtime.models);
+      if (!models.length) lines.push('模型：runtime 未核验');
+      models.forEach(function (model) {
+        lines.push(String(model.engine || '模型') + '：' + state(model.ready));
+        list(model.requirements).forEach(function (req) {
+          lines.push('  ' + [req.node, req.field, req.name].filter(Boolean).join(' / ') + '：' + (req.state === 'installed' ? '已安装' : req.state === 'missing' ? '缺失（后端核验）' : '未核验'));
+        });
+        list(model.warnings).forEach(function (warning) { lines.push('  警告：' + message(warning)); });
+        list(model.errors).forEach(function (error) { lines.push('  错误：' + message(error)); });
+      });
+      var postprocess = list(runtime.postprocess);
+      if (!postprocess.length) lines.push('后处理：runtime 未核验');
+      postprocess.forEach(function (item) { lines.push('后处理 ' + (item.id || '') + '：' + state(item.ready) + ' ' + (item.message || '')); });
+      el('rmRuntime').textContent = lines.join('\n');
+    }).catch(function (e) {
+      el('rmRuntime').textContent = '运行环境：runtime 未核验（不代表模型文件缺失）。' + e.message;
+    }).finally(function () { runtimeLoading = false; });
+  }
+  function ensureModal() {
+    if (!el('renderModal')) document.body.insertAdjacentHTML('beforeend', MODAL_HTML);
+    return el('renderModal');
+  }
+  var wanNativeFps = 30;
+  function syncQualityControls() {
+    var h3 = el('rmEngine').value === 'minimax_h3';
+    el('rmNativeFps').disabled = h3;
+    el('rmNativeFps').value = String(h3 ? 24 : wanNativeFps);
+    el('rmFpsNote').textContent = h3 ? 'H3 原生 24fps（模型约束）；输出 60fps 为插帧，不修改原生容器帧率。' : 'Wan 默认原生 30fps；可主动选择 24fps。输出 60fps 为插帧。';
+  }
+  function syncCustomSize() { el('rmCustomSize').hidden = el('rmTier').value !== 'custom'; }
+  function qualitySelection() {
+    var selection = { engine: el('rmEngine').value, native_fps: el('rmEngine').value === 'minimax_h3' ? 24 : Number(el('rmNativeFps').value), output_fps: Number(el('rmOutputFps').value), mode: 'quality_first' };
+    if (el('rmTier').value === 'custom') {
+      var width = Number(el('rmWidth').value), height = Number(el('rmHeight').value);
+      if (![width, height].every(function (n) { return Number.isSafeInteger(n) && n > 0 && n % 2 === 0; })) throw new Error('自定义原生宽高必须为正偶数；请手动修正，不自动调整尺寸。');
+      selection.width = width; selection.height = height;
+    } else selection.tier = el('rmTier').value || '720p';
+    return selection;
+  }
+  function projectValues() {
+    try {
+      var s = JSON.parse(localStorage.getItem(STORE_KEY) || 'null');
+      if (!s || s.schema !== 'ai-video-platform/shell.store' || !s.active) return null;
+      var p = s.projects && s.projects[s.active];
+      return p && p.values ? p.values : null;
+    } catch (e) { return null; }
+  }
+  function remember(id) { R.selected = id; try { localStorage.setItem('avp.shell.selectedJob', id); } catch (e) {} }
+  var enhancing = false;
+  function enhancementLive(j) { return !!j && ['pending', 'queued', 'running'].indexOf((j.enhancement || {}).state) >= 0; }
+  function versions(j) {
+    var native = ((j.quality || {}).fps || {}).native_fps, en = j.enhanced || {}, err = j.enhancedError;
+    var state = (j.enhancement || {}).state || (err ? 'failed' : en.file ? 'succeeded' : '未生成');
+    var text = j.state === 'succeeded' && j.output && !j.mock ? '<a target="_blank" rel="noopener" href="' + API + '/api/jobs/' + encodeURIComponent(j.id) + '/output">原生版</a> · 原生 ' + esc(native == null ? '未知' : native + 'fps') : '';
+    if (en.file) text += ' · <a target="_blank" rel="noopener" href="' + API + '/api/works/preview?file=' + encodeURIComponent(String(en.file).split(/[\\/]/).pop()) + '">增强版</a> · 原生 ' + esc(en.native_fps == null ? '未知' : en.native_fps + 'fps') + ' → 输出 ' + esc(en.output_fps == null ? '未生成' : en.output_fps + 'fps');
+    return text + ' · 增强状态：' + esc(state) + (err ? ' · 增强失败：' + esc((err.code || '') + ' ' + (err.message || '') + ' ' + (err.hint || '')) : '');
+  }
+  function retryEnhance() {
+    var j = R.detail;
+    if (enhancing || R.loading || !R.ready || !j || j.state !== 'succeeded' || !j.output || j.mock || enhancementLive(j) || !(!j.enhanced || !j.enhanced.file)) return;
+    enhancing = true; el('rmEnhance').disabled = true; el('rmEnhanceMsg').textContent = '提交增强重试中…';
+    request('/api/jobs/' + encodeURIComponent(j.id) + '/enhance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function () { el('rmEnhanceMsg').textContent = '增强重试已受理，原生版保留。'; })
+      .catch(function (e) { el('rmEnhanceMsg').textContent = '增强重试失败或受理结果未知：' + e.message + '；请刷新确认，不自动重发。'; })
+      .finally(function () { enhancing = false; el('rmEnhance').disabled = false; loadWorks(); });
+  }
+  function renderTask(j) {
+    if (!j) return;
+    var p = j.progress || {}, e = j.error || {};
+    say(esc((STATES[j.state] || j.state) + ' · ' + j.id + ' · ' + (j.engine || j.model || '') + ' · ' + (j.createdAt || ''))
+      + '<br>' + esc((p.percent == null ? '—' : p.percent) + '% · ' + (p.stage || '') + ' ' + (p.text || ''))
+      + (j.error ? '<br>' + esc((e.code || '') + ' ' + (e.message || '') + ' ' + (e.hint || '')) : ''));
+    el('rmVersions').innerHTML = versions(j);
+    el('rmEnhance').style.display = j.state === 'succeeded' && j.output && !j.mock && (!j.enhanced || !j.enhanced.file) ? '' : 'none';
+    el('rmEnhance').disabled = enhancing || enhancementLive(j);
+    el('rmRetry').style.display = j.state === 'failed' && j.canRetry ? '' : 'none';
+    var playable = j.state === 'succeeded' && j.output && j.mock !== true;
+    if (playable && R.videoId !== j.id) { el('rmVideo').src = API + '/api/jobs/' + encodeURIComponent(j.id) + '/output'; R.videoId = j.id; }
+    el('rmVideo').style.display = playable ? 'block' : 'none';
+    if (!playable) R.videoId = null;
+  }
+  function paintHistory() {
+    R.job = (R.jobs.find(live) || {}).id || null;
+    syncGenerateButton();
+    el('rmWorksCount').textContent = R.jobs.length + ' 条';
+    el('rmWorks').innerHTML = R.jobs.map(function (j) {
+      var p = j.progress || {};
+      var enh = '<div>' + versions(j) + '</div>';
+      return '<div style="padding:5px 0"><button class="btn mini" data-rm-job="' + esc(j.id) + '">'
+        + (j.state === 'succeeded' ? '播放 / 查看' : '查看') + '</button> ' + esc((STATES[j.state] || j.state) + ' · ' + (p.percent == null ? '—' : p.percent) + '% · ' + (j.engine || j.model || '') + ' · ' + (j.createdAt || '') + ' · ' + (j.prompt || j.id)) + enh + '</div>';
+    }).join('') || '后端暂无任务。提交后进度和成片会保留在这里。';
+    // 旧状态机桥也恢复后端记录，不把正在查看的历史当成运行任务。
+    if (typeof svc !== 'undefined' && typeof project !== 'undefined' && project) {
+      var j = R.jobs.find(function (x) { return x.experiment_id === project.id && live(x); })
+        || R.jobs.find(function (x) { return x.experiment_id === project.id; });
+      if (j) {
+        svc.jobId = j.id; svc.state = j.state; svc.percent = (j.progress || {}).percent || 0;
+        svc.stage = (j.progress || {}).text || (j.progress || {}).stage || j.state;
+        svc.error = j.error ? (j.error.message || j.error.code) : null; svc.canRetry = j.canRetry;
+        svcPaint();
+        if (j.state === 'succeeded' && project.state === 'rendering') onJobFinished(j);
+      }
+    }
+  }
+  function loadWorks() {
+    if (R.loading || R.submitting) return;
+    refreshQualityRuntime();
+    clearTimeout(R.timer); R.loading = true; syncGenerateButton();
+    return request('/api/jobs?limit=500').then(function (d) {
+      if (!Array.isArray(d.jobs)) throw new Error('任务列表响应不完整');
+      R.jobs = d.jobs; R.ready = true;
+      if (!R.selected || !R.jobs.some(function (j) { return j.id === R.selected; })) {
+        var saved; try { saved = localStorage.getItem('avp.shell.selectedJob'); } catch (e) {}
+        var selected = R.jobs.find(live) || R.jobs.find(function (j) { return j.id === saved; }) || R.jobs[0];
+        if (selected) remember(selected.id);
+      }
+      paintHistory();
+      if (!R.selected) return;
+      var id = R.selected;
+      return request('/api/jobs/' + encodeURIComponent(id)).then(function (j) {
+        if (R.selected === id) {
+          R.detail = j; R.jobs = R.jobs.map(function (x) { return x.id === id ? j : x; }); paintHistory(); renderTask(j);
+        } else R.again = true;
+      });
+    }).catch(function (e) {
+      R.ready = false;
+      el('rmWorksCount').textContent = '同步失败';
+      say('任务状态查询失败，将自动重试；请勿重复提交。' + esc(e.message));
+    }).finally(function () {
+      R.loading = false; syncGenerateButton();
+      if (R.again) { R.again = false; loadWorks(); return; }
+      if (!R.ready || R.job || R.jobs.some(enhancementLive)) R.timer = setTimeout(loadWorks, R.ready ? 4000 : 6000);
+    });
+  }
+  function openModal() {
+    ensureModal().style.display = 'flex';
+    var v = projectValues() || {};
+    if (!R.submitting && !R.job && !el('rmPrompt').value) el('rmPrompt').value = v['kf.prompt_prefix'] || v['ch.subject'] || '';
+    el('rmMeta').textContent = v['ch.subject'] ? ('项目主体：' + String(v['ch.subject']).slice(0, 40)) : '未读到项目参数（可直接输入提示词）';
+    request('/api/h3/status').then(function (d) {
+      el('rmPill').textContent = d.comfy && d.comfy.reachable ? 'ComfyUI 在线' : 'ComfyUI 离线（任务可排队）';
+      if (d.concurrency) el('rmConc').textContent = '并发 ' + d.concurrency.current + '（建议 ' + d.concurrency.recommend + '）';
+    }).catch(function () { el('rmPill').textContent = '接口不可达'; });
+    loadWorks(); syncGenerateButton();
+  }
+  function leaveNotice() {
+    if (R.job || R.submitting) {
+      el('rmBackground').textContent = BACKGROUND;
+      if (typeof toast === 'function') toast(BACKGROUND);
+    }
+  }
+  function closeModal() { leaveNotice(); var m = el('renderModal'); if (m) m.style.display = 'none'; }
+  function submit(body, retryId) {
+    if (busy()) return Promise.resolve(null);
+    var payload = {};
+    if (!retryId) {
+      try {
+        payload = Object.assign({}, body, qualitySelection());
+        if (el('rmTier').value === 'custom') delete payload.tier;
+      } catch (e) {
+        el('rmSubmitError').textContent = e.message; say(esc(e.message)); return Promise.resolve(null);
+      }
+    }
+    el('rmSubmitError').textContent = '';
+    R.submitting = true; clearTimeout(R.timer); syncGenerateButton();
+    el('rmVideo').style.display = 'none'; R.videoId = null; say('提交中…');
+    return request(retryId ? '/api/jobs/' + encodeURIComponent(retryId) + '/retry' : '/api/jobs', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload)
+    }).then(function (j) {
+      if (typeof j.id !== 'string' || !j.id) throw new Error('接口未返回任务编号');
+      R.jobs = [j].concat(R.jobs.filter(function (x) { return x.id !== j.id; }));
+      remember(j.id); R.detail = j; R.job = j.id; renderTask(j);
+      return j;
+    }).catch(function (e) {
+      // 连接中断不代表未受理：先查后端，不自动重发 POST。
+      el('rmSubmitError').textContent = '提交响应错误，请核对任务历史：' + e.message + '。未降低分辨率或减少步数。';
+      R.ready = false; say('提交失败或受理结果未知：' + esc(e.message) + '；正在核对后端任务，请勿重复提交。');
+      return null;
+    }).finally(function () { R.submitting = false; syncGenerateButton(); loadWorks(); });
+  }
+  function generate() {
+    if (busy()) return;
+    var prompt = el('rmPrompt').value.trim();
+    if (!prompt) { say('先写提示词'); return; }
+    var engine = el('rmEngine').value;
+    var body = { engine: engine, values: Object.assign({}, projectValues() || {}, { 'ch.prompt_prefix': prompt }), device: 'T0', note: '外壳一键出片 · ' + engine };
+    if (typeof project !== 'undefined' && project) { body.experiment_id = project.id; body.canvasSnapshot = project.canvasSnapshot; }
+    submit(body);
+  }
+  document.addEventListener('click', function (ev) {
+    var t = ev.target;
+    if (!t) return;
+    if (t.id === 'btnRender') { ev.preventDefault(); openModal(); }
+    else if (t.id === 'rmClose') closeModal();
+    else if (t.id === 'rmGo') generate();
+    else if (t.id === 'rmRefresh') loadWorks();
+    else if (t.id === 'rmEnhance') retryEnhance();
+    else if (t.id === 'rmRetry' && R.detail && R.detail.state === 'failed' && R.detail.canRetry) submit(null, R.detail.id);
+    else if (t.getAttribute && t.getAttribute('data-rm-job')) {
+      remember(t.getAttribute('data-rm-job')); R.detail = null; el('rmVideo').style.display = 'none';
+      renderTask(R.jobs.find(function (j) { return j.id === R.selected; })); loadWorks();
+    }
+    if (t.closest && t.closest('a[href]')) leaveNotice();
+  });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) loadWorks(); else leaveNotice(); });
+  window.addEventListener('pageshow', loadWorks);
+  window.addEventListener('pagehide', leaveNotice);
+  window.shellTasks = { busy: busy, refresh: loadWorks, submit: submit };
+  ensureModal();
+  el('rmTier').addEventListener('change', syncCustomSize);
+  syncCustomSize();
+  el('rmEngine').addEventListener('change', syncQualityControls);
+  el('rmNativeFps').addEventListener('change', function () { if (el('rmEngine').value !== 'minimax_h3') wanNativeFps = Number(el('rmNativeFps').value); });
+  el('rmOutputFps').addEventListener('change', syncQualityControls);
+  syncQualityControls(); loadWorks();
+})();
+
+
+  /* BYOK 面板挂载（外壳）：提示词取出片框，首帧暂不支持（外壳不做关键帧选优） */
+  (function () {
+    if (!window.AVPByok) return;
+    var host = document.getElementById('byokPanel');
+    if (!host) return;
+    window.__byok = window.AVPByok.mount(host, {
+      getPrompt: function () { var n = document.getElementById('rmPrompt'); return n ? n.value : ''; },
+      getFirstFrameDataUrl: function () { return null; },
+    });
+  })();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,15 @@
+{
+  "schema": "ai-video-platform/validation-hardening",
+  "at": "2026-11-18T11:43:22Z",
+  "root_cause": "旧 ds.js SIZE_720/SIZE_1080 表含 wan2.2 白名单外尺寸(1280*720/720*1280/960*960/1104*832/832*1104/1648*1248/1248*1648)，直接提交云端 → DS_TASK_FAILED 'size must be in ...'（用户截图 job_mwm19m9j）",
+  "fix": ["VIDEO_SIZE_WHITELIST 8档 + LOCAL_IMAGE_SIZES 解耦", "mapVideoSize 画幅×档位直配/就近映射/低清降档 + DS_SIZE_MAPPED 留痕", "validateDsRequest dry-run + POST /api/jobs 入队前预检 + raw ex.resolution 区间 → 400 DS_PRECHECK_FAILED 不打云端", "provider run 二次预检兜底", "size非法云端失败→hint映射档位+手动重试(不自动重投防计费)", "quota→hint切comfy/无通道明确报错", "前端红banner列非法项+合法范围阻止提交 + 中文CN码表+hint"],
+  "acceptance": {
+    "case1_river_walk": { "id": "job_mwm1wr7t_9e66f6", "state": "succeeded", "ms": 95182, "cloud_usage_ratio": "1920*1080", "ffprobe_measured": "h264 1920x1080@30 5.0s", "output": "D:\\云盘\\02-视频\\成片\\case1-river-walk-2026-11-18T11-43-22.mp4", "verdict": "PASS 自动映射合法档位真出片" },
+    "case2_illegal_block": { "status": 400, "code": "DS_PRECHECK_FAILED", "fields": [{ "key": "ex.resolution", "got": "4k", "legal": "720p/1080p（更高分辨率走后期超分）" }], "verdict": "PASS 提交前拦截未打云端" },
+    "case3_quota_fallback": { "verdict": "代码路径+hint 验证（quota/限流→切comfy hint；不可达→无可用通道不出假视频）；未真实耗尽额度", "provenance": "code-path" },
+    "case4_aspect_align": { "verdict": "PASS post aspectCrop 中心裁画幅 + mapVideoSize 全比例×档位落白名单（selftest 断言）", "provenance": "measured(selftest)+code" },
+    "case5_override_restore": { "verdict": "既有黄色覆盖条+「恢复推荐值」保留；预检红banner阻止非法提交", "provenance": "existing-ui+code" }
+  },
+  "gates": { "build": "7/0", "selftest_all": "PASS 9 FAIL 0 (server 168/0)", "lint_ui": "7 pages green", "e2e": "52/0" },
+  "provenance": { "case1_ffprobe": "measured", "case2_http": "measured", "map_whitelist": "measured(selftest)" }
+}

@@ -1,0 +1,40 @@
+# 零依赖项目：不该进版本库的东西
+# 系统/编辑器
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/
+
+# Node（本项目刻意没有 package.json / node_modules）
+node_modules/
+package-lock.json
+pnpm-lock.yaml
+
+# 构建/重构备份（tools/restyle.mjs 产物）
+*.restyle.bak
+*.bak
+
+# 中间物目录（缓存规范在 %CACHE_ROOT%，万一误落到这里也不入库）
+.tmp/
+temp/
+*.log
+
+# 本地私有（端口、key、路径）
+.env
+.env.*
+*.local.md
+AGENTS.local.md
+
+# AI IDE 本地态（规则本体 .qoder/rules 要入库，索引/缓存不入库）
+.qoder/cache/
+.qoder/index/
+# 部署排除（2026-11-21）
+*.mp4
+*.mov
+*.wav
+data/
+*.sqlite
+*.sqlite-*
+_收件箱/
+assets/covers/*.jpg.tmp

@@ -1,0 +1,53 @@
+# Render 一键部署（免费实例 + 1GB 持久盘放 SQLite 与对象）
+# 用法：New → Blueprint → 选本仓库 → 填环境变量（不要写进仓库）
+services:
+  - type: web
+    name: avp-cloud
+    runtime: node
+    plan: starter            # 免费可改 free（无持久盘，重启丢数据）
+    region: singapore
+    buildCommand: "echo no-build-needed"
+    startCommand: "node cloud/server.mjs"
+    healthCheckPath: /api/health
+    disk:
+      name: avp-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: DATA_DIR
+        value: /data
+      - key: ALLOW_ORIGIN
+        sync: false            # 填你的 Qoder Sites 域名
+      - key: ADMIN_TOKEN
+        generateValue: true
+      - key: DEMO_QUOTA
+        value: "20"
+      # 首选：通义万相（同 key 兼做 Qwen-VL 语义打分）
+      - key: DASHSCOPE_API_KEY
+        sync: false
+      - key: WANX_VIDEO_MODEL
+        value: wan2.2-t2v-plus
+      - key: WANX_I2V_MODEL
+        value: wan2.2-i2v-plus
+      - key: WANX_IMAGE_MODEL
+        value: wan2.2-t2i-flash
+      - key: AVP_VIDEO_PROVIDER
+        value: wanx,seedance
+      - key: AVP_IMAGE_PROVIDER
+        value: wanx,ark
+      # 备选：火山方舟
+      - key: ARK_API_KEY
+        sync: false
+      - key: ARK_VIDEO_MODEL
+        value: doubao-seedance-2-0-mini-260615
+      - key: ARK_IMAGE_MODEL
+        value: doubao-seedream-4-0-250828
+      # 可选：切 S3/R2 对象存储（不填则用本地卷）
+      - key: S3_BUCKET
+        sync: false
+      - key: S3_ENDPOINT
+        sync: false
+      - key: S3_KEY
+        sync: false
+      - key: S3_SECRET
+        sync: false

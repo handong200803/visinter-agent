@@ -1,0 +1,70 @@
+{
+  "schema": "ai-video-platform/cine-acceptance",
+  "at": "2026-11-18T05:46:00Z",
+  "spec": "最终完美增量版【八】验收用例 4 条",
+  "server": "http://127.0.0.1:8390 (new code, provider dashscope real)",
+  "full_record": "D:/缓存/avp/acceptance-2026-11-18.json",
+  "gates": { "build": "7/0", "selftest_all": "PASS 9 FAIL 0 (server 126/0)", "lint_ui": "7 pages green", "e2e": "52/0" },
+  "resume_zero_billing_test": { "run1_imgs": 8, "run1_submits": 1, "run2_resume_imgs": 0, "run2_resume_submits": 0, "reused_groups": 8, "resumedTaskId": "task-A", "result": "PASS" },
+  "cases": [
+    {
+      "name": "case1-ferry-girl", "prompt": "轮渡上年轻女生安静侧脸，傍晚海边阳光", "styleId": "cinema",
+      "id": "job_mwloqlzj_659fb4", "state": "succeeded", "ms": 283802, "status": "success", "retries": 0,
+      "group_totals": [9.3, 9.3, 9.6, 9.3, 9.0, 9.6, 9.6, 9.3], "all_pass_ge9": true, "western_face_any": false,
+      "pick": { "index": 2, "total": 9.6 }, "faceMounted": true, "age": "young",
+      "visual_verdict": "中国年轻女生、黑直发、深棕黑眼、暖黄肤调；毛孔/雀斑真实可见（非塑料）；柔和金色侧逆光；海面+轮渡栏杆；符合验收1",
+      "lut": "cinema-grade.cube", "sampler_requested": "DPM++ 3M SDE Karras", "cfg_requested": 6.0,
+      "output": "D:\\云盘\\02-视频\\成片\\cine-轮渡上年轻女生安静侧脸，傍晚海边阳光-2026-11-18T05-37-50.mp4",
+      "ffprobe_measured": { "codec": "h264", "w": 1080, "h": 1608, "fps": 48, "frames": 237, "bit_rate_bps": 6100941 },
+      "bitrate_requested": "8M", "warnings": ["CINE_FPS_DEVIATION"]
+    },
+    {
+      "name": "case2-guofeng-man", "prompt": "古风男子站在雾气山间", "styleId": "guofeng",
+      "id": "job_mwlowoye_8d203d", "state": "succeeded", "ms": 160886, "status": "success", "retries": 0,
+      "group_totals": [9.6, 9.3, 9.3, 9.5, 9.3, 9.7, 9.3, 9.3], "all_pass_ge9": true, "western_face_any": false,
+      "pick": { "index": 5, "total": 9.7 }, "faceMounted": true, "age": "young",
+      "visual_verdict": "东方男性、黑发、汉服式交领袍；雾气山峦分层、低饱和青灰；皮肤纹理真实；符合验收2",
+      "lut": "guofeng-grade.cube", "sampler_requested": "DPM++ 3M SDE Karras", "cfg_requested": 6.5,
+      "output": "D:\\云盘\\02-视频\\成片\\cine-古风男子站在雾气山间-2026-11-18T05-40-31.mp4",
+      "ffprobe_measured": { "codec": "h264", "w": 1080, "h": 1608, "fps": 48, "frames": 237, "bit_rate_bps": 5730423 },
+      "bitrate_requested": "8M", "warnings": ["CINE_FPS_DEVIATION"]
+    },
+    {
+      "name": "case3-cyber-rain", "prompt": "赛博朋克雨夜霓虹街头", "styleId": "cyber",
+      "id": "job_mwlp053g_763032", "state": "succeeded", "ms": 165294, "status": "success", "retries": 0,
+      "group_totals": [9.3, 9.5, 9.7, 9.3, 9.3, 9.7, 9.3, 9.6], "all_pass_ge9": true, "western_face_any": false,
+      "pick": { "index": 2, "total": 9.7 }, "faceMounted": true, "age": "young",
+      "visual_verdict": "蓝紫/品红霓虹招牌、湿地沥青反光、雨丝、皮革 techwear、高对比纵深；中国面孔；符合验收3",
+      "lut": "cyber-grade.cube", "sampler_requested": "DPM++ 2M SDE Karras", "cfg_requested": 7.0,
+      "output": "D:\\云盘\\02-视频\\成片\\cine-赛博朋克雨夜霓虹街头-2026-11-18T05-43-16.mp4",
+      "ffprobe_measured": { "codec": "h264", "w": 1080, "h": 1608, "fps": 48, "frames": 237, "bit_rate_bps": 5537224 },
+      "bitrate_requested": "8M", "warnings": ["CINE_FPS_DEVIATION"]
+    },
+    {
+      "name": "case4-cabin-snow", "prompt": "夜晚木屋窗内暖光，窗外雪景", "styleId": "cinema",
+      "id": "job_mwlp3omz_be0c60", "state": "succeeded", "ms": 164382, "status": "success", "retries": 0,
+      "group_totals": [9.3, 9.6, 9.3, 9.6, 9.6, 9.6, 9.6, 9.4], "all_pass_ge9": true, "western_face_any": false,
+      "pick": { "index": 1, "total": 9.6 }, "faceMounted": true, "age": "young",
+      "visual_verdict": "木屋窗框、窗内暖黄光打脸 / 窗外冷蓝雪景=冷暖对比；玻璃与空气雪粒可见；中国面孔皮肤真实；符合验收4",
+      "lut": "cinema-grade.cube", "sampler_requested": "DPM++ 3M SDE Karras", "cfg_requested": 6.0,
+      "output": "D:\\云盘\\02-视频\\成片\\cine-夜晚木屋窗内暖光，窗外雪景-2026-11-18T05-46-01.mp4",
+      "ffprobe_measured": { "codec": "h264", "w": 1080, "h": 1608, "fps": 48, "frames": 237, "bit_rate_bps": 5347955 },
+      "bitrate_requested": "8M", "warnings": ["CINE_FPS_DEVIATION"]
+    }
+  ],
+  "acceptance_criteria": {
+    "face_not_deformed_not_plastic_not_western": "PASS（4 例目视 + VL western_face 全 false + 毛孔/纹理可见）",
+    "style_accurate": "PASS（cinema 青橙/guofeng 水墨低饱和/cyber 蓝紫霓虹湿地/cabin 冷暖雪粒）",
+    "skin_texture_preserved": "PASS（无磨皮美白； FACE_TECH mask 保护不可执行已标 applicable:false，靠提示词+低饱和 LUT 近似）",
+    "motion_smooth": "PASS（i2v almost-static + minterpolate 48fps，237 帧；源 30fps≠规格16fps 已告警）",
+    "muse_cinematic": "PASS（目视 Muse 级质感；评审分 model-opinion 非像素实测）"
+  },
+  "honest_degradations": {
+    "lora_faceDetailer_sampler_cfg_steps": "applicable:false（无 ComfyUI、云端 qwen-image 不暴露旋钮）；以人脸提示词+VL 人种意见真实替代",
+    "rife_esrgan": "is_rife:false / is_esrgan:false（ffmpeg minterpolate/lanczos 替代）",
+    "face_mask_protect": "face_mask_applicable:false（低饱和偏移近似）",
+    "fps": "规格16fps，实测源30fps → CINE_FPS_DEVIATION，按实测插帧48",
+    "bitrate": "请求 -b:v 8M；实测平均 5.3~6.1Mbps（ABR 对低复杂度5s片 undershoot），如实记 measured"
+  },
+  "provenance": { "ffprobe": "measured", "group_scores": "model-opinion", "visual_verdict": "human-inspection(this session)", "durations_ms": "measured", "bitrate": "measured" }
+}

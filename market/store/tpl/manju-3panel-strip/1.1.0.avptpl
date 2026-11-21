@@ -1,0 +1,244 @@
+{
+  "schema": "ai-video-platform/template",
+  "format": 1,
+  "id": "manju-3panel-strip",
+  "name": "漫剧 3 格分镜",
+  "version": "1.1.0",
+  "author": "云盘工坊",
+  "license": "revenue_share",
+  "registry_version": "0.1.0",
+  "created": "2026-11-16T09:20:00.000Z",
+  "tags": [
+    "漫剧",
+    "分镜",
+    "韩漫",
+    "校园",
+    "格子"
+  ],
+  "stage_focus": [
+    "storyboard",
+    "keyframe",
+    "look"
+  ],
+  "cover_params": [
+    "ch.style",
+    "kf.cn_weight",
+    "lk.cel_levels",
+    "sb.conflict_intensity"
+  ],
+  "values": {
+    "ch.consistency": 0.9,
+    "ch.expression_count": 8,
+    "ch.line_weight": 52,
+    "ch.lora_style_1": 0.9,
+    "ch.palette": "高饱和",
+    "ch.pose_count": 5,
+    "ch.ref_images": 3,
+    "ch.screen_tone": 42,
+    "ch.style": "韩漫",
+    "ch.subject": "三名高中生在天台对峙：短发女生、戴眼镜男生、扎马尾的转学生，校服外套被风吹起",
+    "ex.bitrate": 14,
+    "ex.codec": "H.265",
+    "ex.episode_duration": 15,
+    "ex.transition": "划像",
+    "ex.transition_duration": 0.2,
+    "kf.cfg": 5.5,
+    "kf.cn2_type": "pose",
+    "kf.cn2_weight": 0.35,
+    "kf.cn_end": 0.62,
+    "kf.cn_weight": 0.95,
+    "kf.color_temp": 5800,
+    "kf.negative_space": 14,
+    "kf.refine_scale": 1.4,
+    "kf.steps": 26,
+    "lk.cel_levels": 4,
+    "lk.chroma": 12,
+    "lk.contrast": 116,
+    "lk.grain": 8,
+    "lk.lut": "胶片",
+    "lk.outline": 38,
+    "lk.saturation": 118,
+    "lk.screen_tone": 30,
+    "mo.camera_speed": 0.55,
+    "mo.fx_bloom_light": 14,
+    "mo.fx_dust": 22,
+    "mo.mode": "粒子",
+    "mo.particle_count": 90,
+    "mo.particle_type": "纸屑",
+    "mo.strength": 0.35,
+    "sb.beat_per_grid": 1,
+    "sb.camera_language": "今敏式",
+    "sb.character_count": 3,
+    "sb.closeup_ratio": 45,
+    "sb.conflict_intensity": 78,
+    "sb.duration": 15,
+    "sb.emotion_curve": 82,
+    "sb.genre": "校园",
+    "sb.grid_count": 12,
+    "sb.line_density": 5.6,
+    "sb.medium_ratio": 40,
+    "sb.narration_ratio": 22,
+    "sb.retry": 2,
+    "sb.rhythm": "变速",
+    "sb.transition_count": 4,
+    "sb.wide_ratio": 15,
+    "vo.bgm_genre": "电子",
+    "vo.bgm_strength": 38,
+    "vo.emotion": "俏皮",
+    "vo.sfx_tracks": 3,
+    "vo.speed": 1.08,
+    "vo.voice_id": "冰糖"
+  },
+  "checksum": "djb2:25dd25fe",
+  "lineage": {
+    "derived_from": [],
+    "parent_checksum": null,
+    "origin": "manual"
+  },
+  "compat": {
+    "min_platform": "0.1.0",
+    "max_tested": "0.1.0",
+    "platform": "ai-video-platform"
+  },
+  "pricing": {
+    "mode": "revenue_share",
+    "price_cny": 22,
+    "share": {
+      "creator_pct": 60,
+      "platform_pct": 40
+    },
+    "basis": "净流水（扣除支付通道费与税费后的实收）"
+  },
+  "signature": {
+    "algo": "HMAC-SHA256",
+    "key_id": "bcbe68321eca99c8",
+    "value": "93ff5b2dbe05e054c60c92633352fe584dbe8218154ab095b8e40ad96aefbdc7",
+    "signed_at": "2026-11-16T09:20:00.000Z",
+    "issuer": "market/build_samples.js",
+    "scope": "payload = 模板对象去掉 signature 字段后按 key 递归排序的 JSON"
+  },
+  "estimate_meta": {
+    "device": "T0",
+    "peak_mib": 6114,
+    "usable_mib": 6900,
+    "ratio": 0.886,
+    "state": "ok",
+    "dominant": "keyframe",
+    "shot_sec": 89,
+    "episode_sec": 1127,
+    "quality": 80,
+    "cost_episode_yuan": 0.0263
+  },
+  "workflow_ref": {
+    "kind": "inline",
+    "format": "comfyui-api",
+    "path": "workflow",
+    "synthetic": true,
+    "registry_version": "0.1.0",
+    "nodes": 4,
+    "params": 6,
+    "targets": [
+      "CLIP Text Encode",
+      "Character Builder",
+      "EmptyLatentImage",
+      "KSampler"
+    ],
+    "bindings": [
+      {
+        "key": "ch.subject",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.face_detail",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.age",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "age"
+      },
+      {
+        "key": "ch.face_shape",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "face_shape"
+      },
+      {
+        "key": "kf.resolution",
+        "stage": "keyframe",
+        "node": "3",
+        "target": "EmptyLatentImage",
+        "widget": "width"
+      },
+      {
+        "key": "kf.steps",
+        "stage": "keyframe",
+        "node": "4",
+        "target": "KSampler",
+        "widget": "steps"
+      }
+    ]
+  },
+  "workflow": {
+    "1": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "三名高中生在天台对峙：短发女生、戴眼镜男生、扎马尾的转学生，校服外套被风吹起"
+      },
+      "_meta": {
+        "title": "CLIP Text Encode",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "2": {
+      "class_type": "CharacterBuilder",
+      "inputs": {
+        "age": 24,
+        "face_shape": "鹅蛋"
+      },
+      "_meta": {
+        "title": "Character Builder",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "3": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 1536
+      },
+      "_meta": {
+        "title": "EmptyLatentImage",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "4": {
+      "class_type": "KSampler",
+      "inputs": {
+        "steps": 26
+      },
+      "_meta": {
+        "title": "KSampler",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    }
+  },
+  "build": {
+    "engine": "core/engine.js",
+    "preset_schema": "ai-video-platform/preset",
+    "preset_format": 1,
+    "packer": "market/pack.js@1"
+  }
+}

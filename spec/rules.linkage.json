@@ -1,0 +1,101 @@
+{
+  "schema": "ai-video-platform/rules.linkage",
+  "version": "0.1.0",
+  "updated": "2026-11-16",
+  "note": "声明式联动规则。if 为真的规则按顺序执行 then（赋值）或记 warn（提示）。表达式可读参数（嵌套对象，键名与注册表一致去掉前两字母前缀：kf/mo/vo/ch/sb/lk/ex），提供别名 keyframe/motion/voice/character/storyboard/look/export，以及只读上下文 ctx（usable_mib、safety_ratio、device）。可用函数：max/min/round/clamp/abs。",
+  "rules": [
+    { "id": "quality-steps", "if": "kf.steps < 16 || kf.steps > 25", "then": "kf.steps = clamp(kf.steps, 16, 25)", "why": "质量优先采样硬约束" },
+    { "id": "quality-cfg", "if": "kf.cfg < 7 || kf.cfg > 10", "then": "kf.cfg = clamp(kf.cfg, 7, 10)", "why": "质量优先CFG硬约束" },
+    { "id": "quality-denoise", "if": "kf.refine_denoise < 0.55 || kf.refine_denoise > 0.75", "then": "kf.refine_denoise = clamp(kf.refine_denoise, 0.55, 0.75)", "why": "质量优先去噪硬约束" },
+    { "id": "quality-teacache", "if": "kf.teacache == true", "then": "kf.teacache = false", "why": "禁止跳步加速" },
+    { "id": "quality-sage", "if": "kf.sage_attn == true", "then": "kf.sage_attn = false", "why": "禁止质量模式加速" },
+    { "id": "quality-nunchaku", "if": "kf.nunchaku == true", "then": "kf.nunchaku = false", "why": "禁止量化加速" },
+    { "id": "quality-dtype", "if": "kf.dtype != 'fp16'", "then": "kf.dtype = 'fp16'", "why": "禁止自动量化" },
+    { "id": "quality-native-fps", "if": "mo.fps != 24 && mo.fps != 30", "then": "mo.fps = 30", "why": "原生帧率只能24或30，60fps属于后处理" },
+    {
+      "id": "identity-under-motion",
+      "if": "mo.strength > 0.6",
+      "then": "kf.identity_weight = max(1.0, 0.6 + mo.strength * 0.6)",
+      "why": "运动越强，主体越容易漂；一致性权重必须同比抬高（文档 §30 原式）"
+    },
+    {
+      "id": "frames-vs-resolution",
+      "if": "kf.resolution > 1024",
+      "warn": "高分辨率会增加显存与生成时长；保持原帧数，不自动降质",
+      "level": "gray"
+    },
+    {
+      "id": "steps-plateau",
+      "if": "kf.steps > 32",
+      "warn": "采样步数进入收益平缓区：每分钟只多 <5% 质量，建议改调 CFG 或精修去噪",
+      "level": "gray"
+    },
+    {
+      "id": "lipsync-only-closeup",
+      "if": "vo.lipsync == true && sb.shot_scale != '特写' && vo.closeup_only == true",
+      "then": "vo.lipsync = false",
+      "why": "中景/全景做口型白烧 30% 时间且看不出（文档 §30 第 4 条）",
+      "note": "被自动关掉时 UI 会标「联动已关闭」，可在专家模式手动开回"
+    },
+    {
+      "id": "i2v-720-on-8g",
+      "if": "mo.i2v_res == '720p' && ctx.usable_mib < 9000",
+      "warn": "720p i2v可能超出当前显存；请使用足够显存的设备，不自动降低分辨率",
+      "level": "yellow"
+    },
+    {
+      "id": "refine-denoise-shape",
+      "if": "kf.refine_scale > 1.6 && kf.refine_denoise > 0.55",
+      "warn": "放大 1.6× 同时去噪 >0.55：会重画出新构图，人物跑形风险高",
+      "level": "yellow"
+    },
+    {
+      "id": "second-cn-on-8g",
+      "if": "kf.cn2_type != 'none' && ctx.usable_mib < 9000",
+      "warn": "第二张 ControlNet：显存近乎翻倍，8G 上建议改成分两次生成再合成",
+      "level": "yellow"
+    },
+    {
+      "id": "scale-sum",
+      "if": "abs(sb.closeup_ratio + sb.medium_ratio + sb.wide_ratio - 100) > 5",
+      "warn": "景别占比之和应约等于 100%，当前偏离 >5%，分镜会失衡",
+      "level": "gray"
+    },
+    {
+      "id": "ai-label-lock",
+      "if": "ex.ai_label == false",
+      "then": "ex.ai_label = true",
+      "why": "AI 生成显著标识是合规红线，参数可读不可关（文档 §15/§20）"
+    },
+    {
+      "id": "4k-on-small-gpu",
+      "if": "ex.resolution == '4K' && ctx.usable_mib < 16000",
+      "warn": "4K 交付靠超分链而非原生生成：确认分块超分与磁盘余量（单集成片约 1.5–3GB）",
+      "level": "gray"
+    },
+    {
+      "id": "teacache-low-steps",
+      "if": "kf.teacache == true && kf.steps < 16",
+      "warn": "TeaCache + 低步数：缓存跳过会放大细节缺失，建议步数 ≥16",
+      "level": "gray"
+    },
+    {
+      "id": "duration-vs-grid",
+      "if": "sb.grid_count * mo.duration > sb.duration + 3",
+      "warn": "格数×单格时长已超过目标时长：要么减格，要么压时长（成片会被迫加速）",
+      "level": "yellow"
+    },
+    {
+      "id": "no-motion-still",
+      "if": "mo.mode == '静帧'",
+      "warn": "静帧模式没有运动信息：适合封面/表情包，不适合需要完播率的短剧",
+      "level": "gray"
+    },
+    {
+      "id": "identity-over-consistency",
+      "if": "kf.identity_weight > 1.3",
+      "warn": "一致性权重 >1.3：构图自由度明显下降，画面会「贴脸」，建议 ≤1.15",
+      "level": "gray"
+    }
+  ]
+}

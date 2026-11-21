@@ -1,0 +1,40 @@
+{
+  "schema": "ai-video-platform/plugin",
+  "id": "sample-preset-pack",
+  "name": "示例 · 参数预设包",
+  "version": "1.0.0",
+  "type": "preset",
+  "description": "演示 preset 类插件：values 由 core/engine.js exportPreset 生成并带 djb2 校验和；registry_version 锁 0.1.0，跨版本导入会被拒。",
+  "author": "ai-video-platform 示例",
+  "engines": {
+    "platform": ">=0.1.0",
+    "registry": ">=0.1.0 <0.2.0"
+  },
+  "permissions": [],
+  "contributes": {
+    "preset": {
+      "schema": "ai-video-platform/preset",
+      "format": 1,
+      "registry_version": "0.1.0",
+      "name": "示例 · 高画质 30fps 出片",
+      "author": "ai-video-platform 示例",
+      "device": "T0（8G 笔记本）",
+      "created": "2026-11-16T09:31:39.694Z",
+      "checksum": "djb2:6d77f641",
+      "values": {
+        "ex.codec": "H.265",
+        "kf.cfg": 5.5,
+        "kf.sampler": "dpmpp_3m_sde",
+        "kf.steps": 32,
+        "lk.grain": 18,
+        "lk.lut": "青橙",
+        "mo.fps": 30
+      }
+    }
+  },
+  "signature": {
+    "key_id": "avp-dev-local",
+    "alg": "ed25519",
+    "sig": "7B8y+m3rOSsZ8RV9JOEafIbDkA2wAommPT4sbcQENs/5gKj+z84Yh/Ph+5xKt33lygKzxp1/9O1GDG2Bmeg6DQ=="
+  }
+}

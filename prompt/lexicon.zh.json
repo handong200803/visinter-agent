@@ -1,0 +1,548 @@
+{
+  "schema": "ai-video-platform/lexicon.zh",
+  "version": "0.1.0",
+  "updated": "2026-11-16",
+  "note": "中文审美→模型可用英文短语的映射表。这是数据层：compose.js 只做装配，不在代码里藏词。为什么要独立成文件——词库要能被不认识代码的人改（编辑/美术），且同一个中文词在 character/keyframe/motion 三个 stage 的权重建议可能不同。",
+  "provenance_policy": {
+    "measured": "有可复现实验记录（本项目暂无，禁止出现）",
+    "inferred": "由已知模型行为/社区共识推断，未做对照实验",
+    "estimate": "工程经验取值，用作默认建议值",
+    "rule": "本文件不提供任何『实测』数据。凡涉及权重、代价、阈值，一律标 inferred/estimate，禁止伪造数字。"
+  },
+  "groups": {
+    "face_shape": {
+      "label": "脸型骨相",
+      "slot": "appearance",
+      "note": "脸型是跨帧一致性最强的锚点，也是最容易翻车的一项：中文词必须翻译成几何描述（oval/square/V-shaped），模型不认识拼音也不认识『鹅蛋脸』这三个字。",
+      "entries": {
+        "鹅蛋": { "en": "oval face, soft jawline, balanced facial proportions", "w": 1.0, "why": "容错最高的脸型，任何画风都不崩", "pitfall": "别写成 melon-seed face；模型会画出瓜子/豆形", "provenance": "inferred" },
+        "圆": { "en": "round face, full cheeks, soft chin", "w": 1.0, "why": "幼态感来源", "pitfall": "权重拉到 1.2 以上会变成娃娃脸，写实风格慎用", "provenance": "inferred" },
+        "方": { "en": "square face, defined jawline, wide cheekbones", "w": 1.05, "why": "硬朗、成熟感", "pitfall": "和『柔和侧逆光』同用时下颌阴影会脏，需降光比", "provenance": "inferred" },
+        "瓜子": { "en": "V-shaped face, pointed chin, narrow jaw", "w": 1.0, "why": "古风/古装最常用", "pitfall": "直译 melon seed face 无效；写尖下巴容易过火变锥子脸", "provenance": "inferred" },
+        "长": { "en": "long face, high forehead, elongated proportions", "w": 1.0, "why": "清冷感", "pitfall": "16:9 横构图 + 长脸会显脸更宽，改用 9:16 更稳", "provenance": "estimate" },
+        "心形": { "en": "heart-shaped face, wide forehead, tapered chin", "w": 1.0, "why": "甜系/偶像感", "pitfall": "额头过宽会被误判成发际线后移，建议同写刘海", "provenance": "inferred" }
+      }
+    },
+    "eye_shape": {
+      "label": "眼型",
+      "slot": "appearance",
+      "note": "眼型不在注册表的 enum 里，但它决定『东方感』是否成立。进槽位的方式是扫 ch.subject / ch.face_detail 的自由文本，命中则补英文。",
+      "entries": {
+        "丹凤眼": { "en": "phoenix eyes, upward outer corners, narrow eyelids", "w": 1.05, "why": "古典东方标志性眼型", "pitfall": "写成 phoenix bird eyes 会真的长羽毛", "provenance": "inferred" },
+        "杏眼": { "en": "almond eyes, round iris, soft gaze", "w": 1.0, "why": "通用、亲和", "pitfall": "和『狐狸眼』混写会互相抵消", "provenance": "inferred" },
+        "桃花眼": { "en": "peach-blossom eyes, smiling lower lid, watery gaze", "w": 1.0, "why": "媚态来源", "pitfall": "权重过高会变成夸张眼妆，写实风格降到 0.9", "provenance": "inferred" },
+        "单眼皮": { "en": "monolid, minimal eyelid crease", "w": 1.0, "why": "东亚写实必须显式声明，否则默认画成双眼皮", "pitfall": "只写单眼皮不够，务必带 monolid 英文，否则模型按默认眼皮画", "provenance": "inferred" },
+        "深眼窝": { "en": "deep-set eyes, strong brow ridge", "w": 0.95, "why": "欧美骨相", "pitfall": "与『东方暖调 + 扁平柔光』相冲，会得到混血但不像的脸", "provenance": "inferred" }
+      }
+    },
+    "skin": {
+      "label": "肤质",
+      "slot": "appearance",
+      "note": "肤质是画风分水岭：写实纹理与磨皮是互斥的两种底子，同时出现只会得到塑料脸。",
+      "entries": {
+        "哑光": { "en": "matte skin, soft even texture, no specular hotspot", "w": 1.0, "why": "古风/工笔最稳，反光点不抢戏", "pitfall": "哑光 + 强侧逆光会显脏，光比压到 2.0 以内", "provenance": "inferred" },
+        "水光": { "en": "dewy skin, subtle specular highlights on cheekbones", "w": 1.0, "why": "商业广告/美妆常用", "pitfall": "水光 + 高 bloom 会糊成油脸", "provenance": "inferred" },
+        "磨皮": { "en": "smooth airbrushed skin, minimal pores", "w": 0.9, "why": "二次元/漫剧必需", "pitfall": "写实风格用磨皮=塑料感，是黑名单『无瑕疵』的变体错误", "provenance": "inferred" },
+        "写实纹理": { "en": "realistic skin texture, visible pores, fine vellus hair, subtle imperfections", "w": 1.1, "why": "写实电影感的地基", "pitfall": "必须给到 1.1 左右；低于 1.0 会被磨平，高于 1.4 出现皮肤病变般的斑点", "provenance": "inferred" }
+      }
+    },
+    "body": {
+      "label": "体态",
+      "slot": "appearance",
+      "note": "中文『标准』是没有信息量的词，必须落到英文的姿态/比例描述，否则模型按训练集平均体型自由发挥。",
+      "entries": {
+        "纤细": { "en": "slender build, narrow shoulders, long limbs", "w": 1.0, "why": "与古风/旗袍最搭", "pitfall": "过高权重会得到病态瘦，写实约束下不超过 1.05", "provenance": "inferred" },
+        "标准": { "en": "average build, natural proportions", "w": 0.9, "why": "信息量低，权重压低避免抢特征", "pitfall": "只写『标准』等于没写", "provenance": "estimate" },
+        "丰润": { "en": "fuller figure, soft curves", "w": 1.0, "why": "唐风/生活感", "pitfall": "英文 curvy 在部分底模上会走形，用 fuller figure 更稳", "provenance": "inferred" },
+        "高挑": { "en": "tall stature, long legs, upright posture", "w": 1.0, "why": "全身图/三视图需要", "pitfall": "9:16 竖构图 + 高挑容易切脚，留白给到 15% 以上", "provenance": "inferred" }
+      }
+    },
+    "hair": {
+      "label": "发型与发质",
+      "slot": "appearance",
+      "note": "发型的英文必须同时给形状与走向（straight / updo / ponytail），只写颜色模型会自行决定长度。",
+      "entries": {
+        "黑色长直发": { "en": "long straight black hair, center part, hair falling past shoulders", "w": 1.05, "why": "一致性高，飘动动效也好做", "pitfall": "不写 past shoulders，模型常常给到胸上", "provenance": "inferred" },
+        "短发齐耳": { "en": "chin-length bob, blunt ends, tucked behind ear", "w": 1.0, "why": "现代都市感", "pitfall": "bob 与 pixie 混写会得到半长不短的尴尬形态", "provenance": "inferred" },
+        "高马尾": { "en": "high ponytail, slicked back, visible hair tie", "w": 1.0, "why": "运动/校园", "pitfall": "侧面机位时马尾根部露出头皮，需写 hair tie", "provenance": "inferred" },
+        "古风发髻": { "en": "traditional Chinese updo, bun with hairpins, loose strands framing face", "w": 1.1, "why": "古风的发饰是识别度来源", "pitfall": "只写 updo 会出西式丸子头，必须带 hairpins", "provenance": "inferred" },
+        "微卷中长": { "en": "mid-length wavy hair, loose curls, soft volume", "w": 1.0, "why": "日常/温柔", "pitfall": "卷度写死（tight curls）在低步数下会变糊", "provenance": "inferred" },
+        "空气刘海": { "en": "see-through bangs, wispy fringe", "w": 1.0, "why": "现代审美", "pitfall": "bangs 单写在古风里会变现代，需与发髻搭配校验", "provenance": "inferred" }
+      }
+    },
+    "hair_color": {
+      "label": "发色",
+      "slot": "appearance",
+      "note": "发色与 LUT 会打架：冷灰发 + 东方暖调 LUT 会得到脏绿，冲突检测里单独一条。",
+      "entries": {
+        "自然黑": { "en": "natural black hair, subtle cool sheen", "w": 1.0, "why": "最稳", "pitfall": "纯黑会丢发丝细节，必须带 sheen/highlight", "provenance": "inferred" },
+        "栗棕": { "en": "chestnut brown hair, warm undertone", "w": 1.0, "why": "生活感", "pitfall": "在冷光下会发绿", "provenance": "inferred" },
+        "亚麻": { "en": "flaxen ash-blonde hair, desaturated tone", "w": 1.0, "why": "清爽", "pitfall": "亚麻色与东方五官同用容易『染发失败』，建议配合 live palette", "provenance": "inferred" },
+        "冷灰": { "en": "cool grey hair, silver highlights", "w": 1.0, "why": "科幻/冷调", "pitfall": "与 东方暖调 LUT 同用会出脏绿，冲突检测会报警", "provenance": "inferred" },
+        "挑染": { "en": "streaked highlights, two-tone hair", "w": 1.0, "why": "个性", "pitfall": "低步数下挑染会碎成噪点", "provenance": "estimate" }
+      }
+    },
+    "outfit": {
+      "label": "服饰",
+      "slot": "outfit",
+      "note": "服饰词最容易『直译失效』：汉服/旗袍/道袍必须给形制描述（交领/盘扣/层叠），否则模型只画出一件『古装感的布』。",
+      "entries": {
+        "汉服": { "en": "Chinese hanfu robe, crossed collar, wide sleeves, layered skirt", "w": 1.1, "why": "形制词才有效", "pitfall": "单写 hanfu 很多底模不认识，只会给和服近似物", "provenance": "inferred" },
+        "襦裙": { "en": "ruqun two-piece dress, short top over long pleated skirt, sash at waist", "w": 1.1, "why": "唐制识别度高", "pitfall": "不写 sash 会丢腰线，人物显臃肿", "provenance": "inferred" },
+        "旗袍": { "en": "qipao, mandarin collar, frog buttons, side slit", "w": 1.0, "why": "民国/东方", "pitfall": "只写 cheongsam 会出夜店风闪光缎面，需补 matte silk", "provenance": "inferred" },
+        "针织衫": { "en": "knit sweater, ribbed cuffs, soft wool texture", "w": 1.0, "why": "现代日常", "pitfall": "不写 ribbed/wool 会变成塑料感光面", "provenance": "inferred" },
+        "西装": { "en": "tailored suit jacket, structured shoulders, lapel detail", "w": 1.0, "why": "职场/悬疑", "pitfall": "西装 + 柔性光会失去版型，用侧光", "provenance": "inferred" },
+        "道袍": { "en": "Taoist priest robe, wide sleeves, dark indigo fabric, sash belt", "w": 1.1, "why": "玄幻", "pitfall": "不写 indigo 会出成僧袍的土黄", "provenance": "inferred" },
+        "纱裙": { "en": "layered tulle dress, translucent fabric, gauze overlay", "w": 1.05, "why": "仙侠", "pitfall": "translucent 与深景深同用会糊掉裙摆边缘", "provenance": "inferred" },
+        "甲胄": { "en": "lamellar armor, metal plates, leather straps", "w": 1.1, "why": "武将", "pitfall": "armor 单写会出西欧板甲，必须 lamellar", "provenance": "inferred" },
+        "通勤装": { "en": "smart casual outfit, fitted blouse, straight trousers", "w": 0.95, "why": "都市", "pitfall": "过于通用的英文会稀释人物特征", "provenance": "estimate" }
+      }
+    },
+    "object": {
+      "label": "器物与道具",
+      "slot": "scene",
+      "note": "器物是东方审美的『证据』：一柄团扇比十个形容词更能说明这是中式画面。但器物数量超过 3 件会互相抢注意力。",
+      "entries": {
+        "团扇": { "en": "round silk fan with bamboo handle", "w": 1.0, "why": "古风标配", "pitfall": "不写 silk 会出蒲扇", "provenance": "inferred" },
+        "油纸伞": { "en": "oil-paper umbrella, bamboo ribs, translucent warm paper", "w": 1.0, "why": "雨景/民国", "pitfall": "umbrella 单写会出黑伞；必须 oil-paper", "provenance": "inferred" },
+        "灯笼": { "en": "red paper lantern, warm glow, tassel", "w": 1.0, "why": "夜景光源兼道具", "pitfall": "灯笼进画面就要接受它成为主光源，色温会被拉暖", "provenance": "inferred" },
+        "青瓷": { "en": "celadon porcelain vase, crackle glaze", "w": 1.0, "why": "质感细节", "pitfall": "crackle glaze 在低分辨率下会变成脏点", "provenance": "inferred" },
+        "铜镜": { "en": "bronze mirror, aged patina, ornate back", "w": 1.0, "why": "古风特写", "pitfall": "镜面反射内容模型控制不了，别指望它映出正确的脸", "provenance": "inferred" },
+        "折扇": { "en": "folding paper fan, ink calligraphy on leaves", "w": 1.0, "why": "文人气质", "pitfall": "扇面文字必然乱码，接受它或后处理", "provenance": "inferred" },
+        "茶盏": { "en": "small tea cup, celadon glaze, steam rising", "w": 1.0, "why": "生活质感", "pitfall": "steam 与 deflicker 冲突，动效阶段会闪", "provenance": "inferred" },
+        "玉镯": { "en": "jade bangle, translucent green stone", "w": 1.0, "why": "手部特写", "pitfall": "手部特写默认是翻车高发区，必须开 hand_fix", "provenance": "inferred" }
+      }
+    },
+    "light": {
+      "label": "光线语汇",
+      "slot": "light",
+      "note": "光线是『东方审美特征组』里最容易被忽略、但对画面影响最大的一项。中文剧组用词（侧逆光/轮廓光）必须翻成摄影术语，模型才认。",
+      "entries": {
+        "顺光": { "en": "frontal lighting, flat shadows, even illumination", "w": 0.95, "why": "信息清楚、适合商业", "pitfall": "顺光最没风格，写实电影感里用它等于放弃立体感", "provenance": "inferred" },
+        "侧光": { "en": "side lighting, strong facial modeling, half-face shadow", "w": 1.05, "why": "立体感来源", "pitfall": "光比超过 1:6 会变成阴阳脸", "provenance": "inferred" },
+        "侧逆光": { "en": "side-backlight, rim light on hair and shoulder, glowing edge", "w": 1.1, "why": "东方古风最出效果的一项", "pitfall": "需要补暗部，否则脸全黑；与雾效同用会发灰", "provenance": "inferred" },
+        "顶光": { "en": "top lighting, downward shadows, eye sockets darkened", "w": 1.0, "why": "压迫/悬疑", "pitfall": "顶光会消灭眼神光，人像慎用", "provenance": "inferred" },
+        "底光": { "en": "underlighting, upward shadows, eerie mood", "w": 1.0, "why": "恐怖/反派", "pitfall": "底光必然难看，只适合明确的反派戏", "provenance": "inferred" },
+        "窗光": { "en": "soft window light, directional falloff, dust motes in beam", "w": 1.05, "why": "室内写实的地基", "pitfall": "dust motes 在动效阶段会闪烁", "provenance": "inferred" },
+        "烛光": { "en": "candlelight, warm flicker, deep falloff", "w": 1.05, "why": "夜景古风", "pitfall": "flicker 与 flicker_guard 天然冲突，动效阶段必须开闸门", "provenance": "inferred" },
+        "阴天柔光": { "en": "overcast soft light, low contrast, cool cast", "w": 1.0, "why": "纪实/文艺", "pitfall": "低对比容易显灰，必须靠调色补反差", "provenance": "inferred" }
+      }
+    },
+    "camera_scale": {
+      "label": "景别",
+      "slot": "camera",
+      "note": "景别决定后面所有技术参数：特写能吃浅景深，全景吃不下；全景做口型是纯浪费。",
+      "entries": {
+        "特写": { "en": "close-up shot, face fills the frame, shallow depth of field", "w": 1.1, "why": "情绪最强", "pitfall": "特写里手部/牙齿/瞳孔是翻车三连，必须配合修复开关", "provenance": "inferred" },
+        "中景": { "en": "medium shot, waist-up framing, balanced negative space", "w": 1.0, "why": "叙事主力", "pitfall": "中景最难出彩，靠光线与道具补信息", "provenance": "inferred" },
+        "全景": { "en": "wide shot, full body in environment, deep background", "w": 1.0, "why": "交代空间", "pitfall": "全景写细节等于白写，模型在 1536 下画不出五官", "provenance": "inferred" },
+        "近景": { "en": "medium close-up, chest-up framing", "w": 1.0, "why": "介于特写与中景，口型可用", "pitfall": "近景做口型有效但要注意牙齿", "provenance": "inferred" },
+        "远景": { "en": "extreme wide shot, figure small in vast landscape", "w": 1.0, "why": "氛围/开场", "pitfall": "远景里写脸型/肤质是无效参数，冲突检测会提示", "provenance": "inferred" }
+      }
+    },
+    "camera_angle": {
+      "label": "机位与角度",
+      "slot": "camera",
+      "note": "机位是叙事态度的载体。中文写『仰拍』要落成 low angle，而不是 shoot from below。",
+      "entries": {
+        "平视": { "en": "eye-level camera, neutral perspective", "w": 1.0, "why": "客观", "pitfall": "平视最安全也最平", "provenance": "inferred" },
+        "仰拍": { "en": "low angle shot, looking up at subject, imposing presence", "w": 1.05, "why": "威严/压迫", "pitfall": "仰拍会拉长下颌与鼻孔，人像需谨慎", "provenance": "inferred" },
+        "俯拍": { "en": "high angle shot, looking down, vulnerable framing", "w": 1.05, "why": "弱势/孤独", "pitfall": "俯拍会缩短身高，与『高挑』体态相冲", "provenance": "inferred" },
+        "过肩": { "en": "over-the-shoulder shot, foreground blur, dialogue framing", "w": 1.0, "why": "对话戏", "pitfall": "前景肩部会遮住主体脸，需要构图锁定", "provenance": "inferred" },
+        "主观视角": { "en": "first-person POV, hands in frame, immersive perspective", "w": 1.0, "why": "代入感", "pitfall": "POV 必然出画面里的手，手部翻车率最高", "provenance": "inferred" },
+        "荷兰角": { "en": "Dutch angle, tilted horizon, unsettled composition", "w": 1.0, "why": "不安/悬疑", "pitfall": "连续多格用会晕，节奏快的模板里禁用", "provenance": "inferred" }
+      }
+    },
+    "lens": {
+      "label": "焦段",
+      "slot": "camera",
+      "note": "焦段是『电影感』最便宜的开关，但中文写『大光圈』没有信息量，要写 50mm f/1.8 这类具体值。",
+      "entries": {
+        "24mm": { "en": "24mm wide lens, exaggerated perspective, environment dominant", "w": 1.0, "why": "空间感", "pitfall": "广角拍人像会放大鼻子，脸型会失真", "provenance": "inferred" },
+        "35mm": { "en": "35mm lens, documentary framing, natural perspective", "w": 1.0, "why": "纪实/街拍", "pitfall": "35mm 最容易『不像电影』，需要靠光比补", "provenance": "inferred" },
+        "50mm": { "en": "50mm lens, natural human perspective, mild compression", "w": 1.0, "why": "默认最稳", "pitfall": "无风格，作为基线", "provenance": "inferred" },
+        "85mm": { "en": "85mm portrait lens, compressed background, creamy bokeh", "w": 1.05, "why": "人像标准答案", "pitfall": "85mm + 全景会显得人在远处，需配 长焦 特写", "provenance": "inferred" },
+        "135mm": { "en": "135mm telephoto, heavy compression, isolated subject", "w": 1.05, "why": "电影长焦感", "pitfall": "长焦压缩会让多层视差失效（层间位移看不出）", "provenance": "inferred" }
+      }
+    },
+    "move": {
+      "label": "运镜",
+      "slot": "motion",
+      "note": "运镜词直接决定 i2v 是否崩：平移类最稳，环绕/手持最容易糊，选之前先看 mo.mode 与 i2v_res。",
+      "entries": {
+        "推": { "en": "slow push-in, dolly forward, subject grows in frame", "w": 1.05, "why": "最稳的运镜，视差与 i2v 都能做", "pitfall": "推送速度与景深要匹配，浅景深推近会持续跑焦", "provenance": "inferred" },
+        "拉": { "en": "slow pull-out, dolly back, environment revealed", "w": 1.05, "why": "收尾/揭示", "pitfall": "拉远后细节预算下降，远景不要写五官细节", "provenance": "inferred" },
+        "摇": { "en": "pan, horizontal camera rotation", "w": 1.0, "why": "扫视", "pitfall": "摇镜在 i2v 里最容易产生『贴图滑动』的假感", "provenance": "inferred" },
+        "移": { "en": "trucking shot, lateral camera movement", "w": 1.0, "why": "跟随", "pitfall": "横移需要足够宽的背景，否则露出边缘", "provenance": "inferred" },
+        "环绕": { "en": "orbit shot, camera arcs around subject", "w": 1.0, "why": "展示立体", "pitfall": "环绕是 i2v 崩坏率最高的运镜，必须有参考帧+低强度", "provenance": "inferred" },
+        "手持": { "en": "handheld camera, subtle shake, documentary energy", "w": 1.0, "why": "真实感", "pitfall": "手持与『稳定/工整』的负向词天然冲突，别同时要求", "provenance": "inferred" },
+        "固定": { "en": "static camera, locked-off tripod shot", "w": 1.0, "why": "零风险", "pitfall": "固定机位在动效阶段等于只做粒子/呼吸，别指望有运镜", "provenance": "inferred" }
+      }
+    },
+    "composition": {
+      "label": "构图",
+      "slot": "camera",
+      "note": "构图锁定的作用不是审美，是让多格画面在剪辑时能对齐；居中适合单主体，大留白适合字幕。",
+      "entries": {
+        "九宫格": { "en": "rule of thirds composition, subject on intersection points", "w": 1.0, "why": "通用", "pitfall": "三分法 + 特写会切掉额头，注意构图上留", "provenance": "inferred" },
+        "黄金分割": { "en": "golden ratio composition, harmonious placement", "w": 1.0, "why": "古典美", "pitfall": "模型对黄金分割的执行非常松散，别当硬约束", "provenance": "inferred" },
+        "居中": { "en": "centered composition, symmetrical framing", "w": 1.05, "why": "单主体最稳，三视图必需", "pitfall": "居中 + 大留白会显得空", "provenance": "inferred" },
+        "大留白": { "en": "minimal composition, large negative space, subject off to one side", "w": 1.0, "why": "字幕位/呼吸感", "pitfall": "留白过多在短视频里等于浪费屏占比", "provenance": "inferred" }
+      }
+    },
+    "palette": {
+      "label": "配色方案",
+      "slot": "style",
+      "note": "配色是跨镜一致性的隐性地基；改配色比改画风更伤一致性，但比改脸型便宜。",
+      "entries": {
+        "东方暖调": { "en": "warm oriental palette, amber and terracotta, muted gold accents", "w": 1.0, "why": "古风/生活感", "pitfall": "暖调 + 冷光色温 = 脏；冲突检测里单独一条", "provenance": "inferred" },
+        "莫兰迪": { "en": "Morandi palette, desaturated dusty tones, low chroma", "w": 1.0, "why": "高级感/文艺", "pitfall": "低饱和在手机小屏上近乎灰，成片需补对比", "provenance": "inferred" },
+        "高饱和": { "en": "high saturation palette, vivid primary colors", "w": 1.0, "why": "商业/短视频抓眼", "pitfall": "高饱和 + bloom 会溢出成色块", "provenance": "inferred" },
+        "冷青电影": { "en": "teal and orange cinematic grade, cool shadows warm skin", "w": 1.0, "why": "类型片感", "pitfall": "冷青 + 东方暖调 LUT 双写会互相抵消", "provenance": "inferred" },
+        "黑白灰": { "en": "monochrome palette, grayscale, tonal contrast", "w": 1.0, "why": "文艺/回忆", "pitfall": "黑白写发色/肤色是无效参数，白烧 tokens", "provenance": "inferred" }
+      }
+    },
+    "style_words": {
+      "label": "画风",
+      "slot": "style",
+      "note": "画风是最大的质量杠杆（注册表 impact.quality 0.18，全表最高）。它同时决定负向集：二次元必须排除写实皮肤，写实必须排除线条感。",
+      "entries": {
+        "赛璐璐": { "en": "cel-shaded animation style, flat color blocks, clean outlines", "w": 1.1, "why": "容错最高，脸不容易崩", "pitfall": "赛璐璐 + 写实皮肤纹理必然打架", "provenance": "inferred" },
+        "厚涂": { "en": "painterly digital illustration, thick brush strokes, blended rendering", "w": 1.1, "why": "上限高，质感强", "pitfall": "厚涂容错低，低步数会出现笔触结块", "provenance": "inferred" },
+        "工笔": { "en": "Chinese gongbi painting, fine ink outlines, meticulous detail, mineral pigments", "w": 1.1, "why": "东方古典最高识别度", "pitfall": "工笔要求线条，与『无描边』负向冲突", "provenance": "inferred" },
+        "水墨": { "en": "Chinese ink wash painting, fluid ink diffusion, rice paper texture, sparse composition", "w": 1.1, "why": "写意", "pitfall": "水墨 + 锐化/颗粒 = 破功，纸感会被碾成噪点", "provenance": "inferred" },
+        "韩漫": { "en": "Korean webtoon style, soft rendering, tall proportions, glossy highlights", "w": 1.05, "why": "竖屏友好", "pitfall": "韩漫男女人物同质化严重，需要额外的脸型锚点", "provenance": "inferred" },
+        "日漫": { "en": "Japanese anime style, large eyes, simplified noses, screentone shading", "w": 1.05, "why": "情绪表达强", "pitfall": "日漫的大眼会吃掉『东方写实』的脸型设定", "provenance": "inferred" },
+        "国潮": { "en": "modern Chinese graphic style, bold flat shapes, red-gold accents, poster composition", "w": 1.05, "why": "商业/海报", "pitfall": "国潮是平面语言，做叙事镜头会显平", "provenance": "inferred" }
+      }
+    },
+    "tonemap": {
+      "label": "色调映射",
+      "slot": "quality",
+      "note": "tonemap 是出图后的色彩压缩策略，写进提示词只有间接作用（高光滚降的外形），所以只取『高光/暗部形态』词。",
+      "entries": {
+        "none": { "zh": "无映射的线性高光", "en": "linear tonemapping, unclipped highlights", "w": 0.9, "why": "保留全部亮度信息，后期空间大", "pitfall": "易过曝，黑名单里的『超亮 HDR』冲动就来自这里", "provenance": "inferred" },
+        "filmic": { "zh": "电影感色调映射", "en": "filmic tonemapping, soft highlight rolloff, gentle shoulder", "w": 1.0, "why": "默认最像电影", "pitfall": "暗部会被压灰，需 shadow_lift 补", "provenance": "inferred" },
+        "aces": { "zh": "ACES 色准映射", "en": "ACES tonemapping, neutral contrast, accurate color", "w": 1.0, "why": "色准", "pitfall": "ACES 偏灰平，古风会失去暖意", "provenance": "inferred" },
+        "reinhard": { "zh": "高光压缩映射", "en": "Reinhard tonemapping, compressed highlights, flatter mids", "w": 0.9, "why": "防过曝", "pitfall": "整体发灰，需要后期补对比", "provenance": "inferred" }
+      }
+    },
+    "rhythm": {
+      "label": "节奏模板",
+      "slot": "beat",
+      "note": "节奏不是画面词，是结构词：它决定每格时长与运镜幅度，写进分镜指令而非画面提示词。",
+      "entries": {
+        "快": { "en": "fast cutting rhythm, short beat per shot", "w": 1.0, "why": "短视频留存", "pitfall": "快节奏 + 长单格时长（>4s）自相矛盾", "provenance": "inferred" },
+        "中": { "en": "moderate pacing, even beat spacing", "w": 1.0, "why": "叙事默认", "pitfall": "中速最不容易出错，也最不容易出彩", "provenance": "inferred" },
+        "慢": { "en": "slow pacing, lingering shots", "w": 1.0, "why": "文艺/情绪", "pitfall": "慢节奏在 36 秒里塞不下 24 格", "provenance": "inferred" },
+        "变速": { "en": "variable pacing, accelerating and holding", "w": 1.0, "why": "高潮结构", "pitfall": "变速需要锚点帧控制，锚点不足会跳帧", "provenance": "estimate" }
+      }
+    },
+    "genre": {
+      "label": "题材",
+      "slot": "style",
+      "note": "题材是风格预设的选择器：选古风题材就该走 oriental-ancient 预设，而不是在提示词里堆『古代、传统』等词。",
+      "entries": {
+        "古风": { "en": "historical Chinese setting, classical aesthetic", "w": 1.0, "why": "对应 oriental-ancient 预设", "pitfall": "古风 + 空气刘海会出戏", "provenance": "inferred" },
+        "都市": { "en": "modern urban setting, contemporary aesthetic", "w": 1.0, "why": "对应 commercial 预设", "pitfall": "都市题材写『仙气』会飘", "provenance": "inferred" },
+        "科幻": { "en": "science fiction setting, industrial surfaces, artificial light", "w": 1.0, "why": "cyberpunk 预设", "pitfall": "科幻 + 东方暖调会变成蒸汽朋克", "provenance": "inferred" },
+        "悬疑": { "en": "thriller setting, low key lighting, negative space", "w": 1.0, "why": "film-doc 预设变体", "pitfall": "悬疑的低调光与『明亮通透』负向相反", "provenance": "inferred" },
+        "校园": { "en": "school setting, daylight, youthful tones", "w": 1.0, "why": "anime 预设", "pitfall": "校园 + 古风是硬冲突", "provenance": "inferred" },
+        "玄幻": { "en": "xianxia fantasy setting, ethereal atmosphere, glowing particles", "w": 1.1, "why": "仙侠", "pitfall": "粒子 + i2v 会让每帧粒子位置跳变", "provenance": "inferred" }
+      }
+    },
+    "camera_language": {
+      "label": "镜头语言流派",
+      "slot": "camera",
+      "note": "中文导演讲『镜头语言』往往指流派审美，这里映射成可执行的运镜/构图倾向，而不是直接写导演名字（写导演名字会让模型往海报/同人图上跑）。",
+      "entries": {
+        "今敏式": { "en": "psychological montage, match cuts, distorted perspective", "w": 1.0, "why": "意识流", "pitfall": "写导演名会掉进同人画风，必须写成技法", "provenance": "inferred" },
+        "宫崎式": { "en": "gentle wide shots, detailed nature backgrounds, soft clouds", "w": 1.0, "why": "治愈", "pitfall": "吉卜力风模仿在角色脸部最容易走形", "provenance": "inferred" },
+        "写实剧": { "en": "realistic drama framing, motivated camera, natural coverage", "w": 1.0, "why": "短剧主力", "pitfall": "写实剧的『无风格』需要靠表演与光照撑住", "provenance": "inferred" },
+        "快剪": { "en": "fast cut sequence, punchy transitions, kinetic energy", "w": 1.0, "why": "信息流", "pitfall": "快剪 + 大留白构图互相拖后腿", "provenance": "inferred" }
+      }
+    },
+    "emotion": {
+      "label": "情绪（配音）",
+      "slot": "audio",
+      "note": "配音情绪不是形容词，是 TTS 的音高/语速/气口的组合；这里给出可执行的三元组建议。",
+      "entries": {
+        "平静": { "en": "calm, even pace, minimal pitch movement", "w": 1.0, "why": "旁白基线", "pitfall": "平静读成机械是 TTS 最高频问题，需要气口", "provenance": "inferred" },
+        "温柔": { "en": "gentle, soft onset, slight breathiness", "w": 1.0, "why": "默认音色茉莉的最佳区间", "pitfall": "过温柔会糊字，清晰度要留余量", "provenance": "inferred" },
+        "激动": { "en": "excited, faster pace, wider pitch range", "w": 1.0, "why": "高潮", "pitfall": "激动 + 高语速会吃掉多音字校正", "provenance": "inferred" },
+        "悲怆": { "en": "sorrowful, slow pace, falling intonation", "w": 1.0, "why": "情绪戏", "pitfall": "低音高 + 慢语速容易被听成没感情", "provenance": "inferred" },
+        "俏皮": { "en": "playful, rising intonation, lighter tone", "w": 1.0, "why": "日常", "pitfall": "俏皮在古风语境里会出戏", "provenance": "inferred" }
+      }
+    },
+    "voice_id": {
+      "label": "音色",
+      "slot": "audio",
+      "note": "音色是 TTS 的枚举，这里记录它们的适用场景与常见误用，不进画面提示词。",
+      "entries": {
+        "茉莉": { "en": "female, warm mid-tone, intimate", "w": 1.0, "why": "古风/温柔叙事首选", "pitfall": "茉莉读大段文言会显软", "provenance": "inferred" },
+        "冰糖": { "en": "female, bright youthful, crisp", "w": 1.0, "why": "校园/俏皮", "pitfall": "过亮在手机外放上刺耳，需 EQ 高频收敛", "provenance": "estimate" },
+        "白桦": { "en": "male, low warm baritone", "w": 1.0, "why": "旁白/权威", "pitfall": "低音 + 降噪过重会闷", "provenance": "estimate" },
+        "苏打": { "en": "male, youthful mid-range, casual", "w": 1.0, "why": "都市/生活", "pitfall": "随意感在正剧里不够稳", "provenance": "estimate" },
+        "旁白男": { "en": "male narrator, neutral documentary tone", "w": 1.0, "why": "纪实", "pitfall": "过于中性会缺情绪钩子", "provenance": "estimate" },
+        "旁白女": { "en": "female narrator, neutral documentary tone", "w": 1.0, "why": "纪实/科普", "pitfall": "同上", "provenance": "estimate" }
+      }
+    },
+    "lut": {
+      "label": "调色 LUT",
+      "slot": "quality",
+      "note": "LUT 是 look 阶段的指令，不是扩散模型的词：写『青橙』进出图提示词，模型会真的把画面涂成橙蓝两块。所以 look 的 positive 标 target=post，不参与出图。",
+      "entries": {
+        "东方暖调": { "en": "warm amber grade, lifted skin tones", "w": 1.0, "why": "古风/生活", "pitfall": "强度过 80 会丢肤色层次", "provenance": "inferred" },
+        "青橙": { "en": "teal-orange grade, cool shadows", "w": 1.0, "why": "类型片", "pitfall": "与东方暖调叠用互相抵消", "provenance": "inferred" },
+        "胶片": { "en": "film emulation grade, halation, faded blacks", "w": 1.0, "why": "纪实", "pitfall": "胶片 LUT + 数字锐化 = 脏", "provenance": "inferred" },
+        "黑白": { "en": "black and white grade, strong tonal separation", "w": 1.0, "why": "文艺", "pitfall": "黑白之后所有色彩参数失效", "provenance": "inferred" },
+        "赛博": { "en": "neon cyber grade, magenta-cyan split", "w": 1.0, "why": "科幻", "pitfall": "霓虹 + bloom 会过曝成白块", "provenance": "inferred" },
+        "无": { "en": "no LUT, native color", "w": 0.8, "why": "留白给后期", "pitfall": "『无』不等于没调色，仍需 tonemap", "provenance": "inferred" }
+      }
+    },
+    "motion_mode": {
+      "label": "动效模式",
+      "slot": "motion",
+      "note": "动效模式决定成本量级：静帧最便宜，局部 i2v 最贵。写进提示词的只是它的『运动语义』，不是模式名本身。",
+      "entries": {
+        "静帧": { "en": "still frame, no camera motion", "w": 0.8, "why": "零成本", "pitfall": "静帧 + 要求运镜是自相矛盾", "provenance": "inferred" },
+        "视差": { "en": "2.5D parallax, layered depth simulation", "w": 1.0, "why": "性价比最高的『动起来』", "pitfall": "层数不足时位移会露边", "provenance": "inferred" },
+        "局部i2v": { "en": "localized image-to-video, subject motion only", "w": 1.05, "why": "真实运动", "pitfall": "显存与时间成本最高，8G 卡别上 720p", "provenance": "inferred" },
+        "粒子": { "en": "particle overlay animation, drifting motes and light specks", "w": 1.0, "why": "氛围", "pitfall": "粒子逐帧随机，deflicker 必须开", "provenance": "inferred" }
+      }
+    }
+  },
+  "bands": {
+    "note": "数值参数不靠词表，靠区间落词。区间边界是工程估计（estimate），不是实测阈值。",
+    "color_temp": {
+      "label": "光源色温(K)",
+      "note": "物理语义：K 越低光越暖（烛光 1800K / 钨丝 3200K / 日光 5600K / 阴天 7000K+）。这里按光源本体色温解释，不按调色滑块方向解释。",
+      "cuts": [
+        { "lte": 3200, "zh": "烛火般的暖光", "en": "candle-warm light, deep amber cast", "w": 1.0 },
+        { "lte": 4200, "zh": "暖钨丝灯", "en": "warm tungsten light", "w": 1.0 },
+        { "lte": 5200, "zh": "中性日光", "en": "neutral daylight", "w": 1.0 },
+        { "lte": 6500, "zh": "日光偏冷", "en": "cool daylight, bluish shadows", "w": 1.0 },
+        { "lte": 99999, "zh": "阴天冷蓝", "en": "overcast cold blue light", "w": 1.0 }
+      ]
+    },
+    "light_ratio": {
+      "label": "光比",
+      "note": "光比写成 1:N 的摄影说法，模型仅部分理解，所以只取『柔和/立体/硬光/剪影』这几个它真能画的词。",
+      "cuts": [
+        { "lte": 1.5, "zh": "平光，几乎无阴影", "en": "flat lighting, minimal shadows", "w": 0.95 },
+        { "lte": 3, "zh": "标准立体光比", "en": "balanced key-to-fill ratio, defined facial modeling", "w": 1.0 },
+        { "lte": 6, "zh": "强侧光，戏剧阴影", "en": "high contrast side light, dramatic shadow edge", "w": 1.05 },
+        { "lte": 999, "zh": "硬光，接近剪影", "en": "hard light, near silhouette, blown highlights", "w": 1.0 }
+      ]
+    },
+    "dof": {
+      "label": "景深强度(0-100)",
+      "note": "数值越大＝虚化越狠＝景深越浅。这个方向最容易搞反，所以在这里写死并配反例。",
+      "cuts": [
+        { "lte": 20, "zh": "深景深，前后都清晰", "en": "deep focus, foreground and background sharp", "w": 0.9 },
+        { "lte": 45, "zh": "中等景深", "en": "moderate depth of field", "w": 1.0 },
+        { "lte": 70, "zh": "浅景深，背景奶油化", "en": "shallow depth of field, creamy bokeh", "w": 1.05 },
+        { "lte": 100, "zh": "极浅景深，只有眼睛在焦内", "en": "extremely shallow depth of field, only eyes in focus", "w": 1.05 }
+      ]
+    },
+    "grain": {
+      "label": "底片颗粒(0-100)",
+      "note": "颗粒是最便宜的『胶片感』，但代价是真实的时间与显存：颗粒越大，denoise/deflicker 越难收敛。",
+      "cuts": [
+        { "lte": 8, "zh": "细颗粒", "en": "fine film grain", "w": 0.95 },
+        { "lte": 25, "zh": "可见颗粒", "en": "visible film grain, organic texture", "w": 1.0 },
+        { "lte": 55, "zh": "粗颗粒", "en": "coarse film grain, gritty texture", "w": 1.0 },
+        { "lte": 100, "zh": "高感光噪点感", "en": "high-ISO noise, pushed film look", "w": 1.0 }
+      ]
+    },
+    "negative_space": {
+      "label": "留白比例(%)",
+      "note": "留白是给字幕与呼吸的预算，超过 45% 在竖屏上等于浪费画面。",
+      "cuts": [
+        { "lte": 10, "zh": "满构图", "en": "tight framing, subject fills the frame", "w": 1.0 },
+        { "lte": 25, "zh": "常规留白", "en": "comfortable negative space", "w": 1.0 },
+        { "lte": 45, "zh": "大留白", "en": "generous negative space", "w": 1.0 },
+        { "lte": 100, "zh": "极简留白", "en": "minimal composition, vast empty space", "w": 1.0 }
+      ]
+    },
+    "motion_strength": {
+      "label": "运动强度(0-1)",
+      "note": "强度越高越容易形变，这不是审美参数而是可靠性参数。",
+      "cuts": [
+        { "lte": 0.2, "zh": "几乎静止，仅有呼吸", "en": "barely moving, subtle breathing", "w": 1.0 },
+        { "lte": 0.45, "zh": "轻微运动", "en": "gentle motion, small displacement", "w": 1.0 },
+        { "lte": 0.7, "zh": "中等运动", "en": "moderate motion", "w": 1.0 },
+        { "lte": 1.0, "zh": "明显运动", "en": "pronounced motion, strong displacement", "w": 1.0 }
+      ]
+    }
+  },
+  "quality_costs": {
+    "note": "『画质词的真实代价』。口径与 params.registry.json 的 impact 一致：[vram, time, quality] 都是归一化乘性增量（0.05 = 满量程 +5%），不是 MiB/分钟这类绝对量。为什么强调这点：提示词工具最常见的谎是『写个 8K 就更高清』——真实情况是分辨率改的是采样层成本，文字层收益为 0。",
+    "items": [
+      { "want": "更锐利", "vram": 0, "time": 0.04, "params": ["lk.sharpen", "kf.usm_amount"], "truth": "锐化不增加模型信息，只是放大已有边缘；对扩散模型写『超清晰』无效，只能在后期做", "provenance": "estimate" },
+      { "want": "更胶片", "vram": 0, "time": 0.02, "params": ["lk.grain", "kf.grain", "lk.film_halation"], "truth": "颗粒是后处理叠加，几乎不吃显存，但会让时序降噪与闪烁闸门更难收敛，动效阶段是隐性时间成本", "provenance": "estimate" },
+      { "want": "更虚化", "vram": 0, "time": 0, "params": ["kf.dof"], "truth": "虚化写在提示词里只能影响画法，真正的景深一致性靠构图与焦段；写『大光圈』这类词模型往往给不出对应虚化", "provenance": "inferred" },
+      { "want": "更高分辨率", "vram": 0.12, "time": 0.3, "params": ["kf.resolution", "kf.refine_scale"], "truth": "分辨率在注册表里按物理方程计费（故 vram 位留 0），精修放大是 +0.12 的乘性增量；而写 8K/超高清进提示词，代价为零、收益也为零——模型读不到这个意图", "provenance": "estimate" },
+      { "want": "更多细节", "vram": 0, "time": 0.15, "params": ["kf.steps", "kf.detail_boost"], "truth": "细节来自步数与精修 pass，不是形容词；低步数下堆『极致细节』只会得到噪点（compose 因此在 steps<20 时直接不落这个词）", "provenance": "estimate" }
+    ]
+  },
+  "blacklist": {
+    "note": "黑名单是『看似加分实则无实义/有害』的中文与英文词。判定标准：它对扩散模型的 conditioning 不产生可辨识的视觉变化，或会把采样推向过曝/塑料/噪点。",
+    "entries": [
+      { "word": "8K", "lang": "mixed", "severity": "high", "reason": "扩散模型的 CLIP/T5 编码器没有分辨率概念，8K 只是一个训练语料里的『壁纸站标签』，会把画风往网图墙纸方向拉，同时挤占 token", "replace": "删掉，改用 kf.resolution/refine_scale 在采样层解决" },
+      { "word": "4K", "lang": "mixed", "severity": "high", "reason": "同上；短视频最终交付 1080p，写 4K 纯属噪声", "replace": "删掉" },
+      { "word": "超高清", "lang": "zh", "severity": "high", "reason": "中文语料里多出现在压缩包/资源站标题，与画面无关，还会诱发过度锐化的锐利边缘", "replace": "改用『清晰的对焦』类语义或干脆省略" },
+      { "word": "高清", "lang": "zh", "severity": "medium", "reason": "同上，弱化版；qwen-image 类中文底模对此词几乎无响应，纯占位", "replace": "省略" },
+      { "word": "杰作", "lang": "zh", "severity": "high", "reason": "对应英文 masterpiece，SD1.5 时代的提示词迷信；在 SDXL/FLUX/国产底模上会拉向『插画集封面』审美，破坏写实", "replace": "删掉" },
+      { "word": "best quality", "lang": "en", "severity": "high", "reason": "与杰作同源；实测社区共识是它对 SDXL 之后几乎中性甚至有害，会与负向里的 low quality 形成对冲", "replace": "删掉" },
+      { "word": "masterpiece", "lang": "en", "severity": "high", "reason": "训练标签噪声，会引入画廊/壁纸式的饱和与构图", "replace": "删掉" },
+      { "word": "超写实", "lang": "zh", "severity": "medium", "reason": "中文『超写实』常被模型理解为超现实/梦核（surreal），与写实目标相反", "replace": "改用 photographic realism / 写实质感" },
+      { "word": "极致细节", "lang": "zh", "severity": "high", "reason": "无对应视觉表征，且在低步数下诱发高频噪点；与『克制的留白』审美直接冲突", "replace": "改用具体部位（发丝/织物纹理）" },
+      { "word": "细节拉满", "lang": "zh", "severity": "high", "reason": "同上，且是短视频标题话术", "replace": "删掉" },
+      { "word": "完美", "lang": "zh", "severity": "medium", "reason": "把画面推向无瑕疵的塑料感，破坏皮肤纹理与布料磨损的真实感", "replace": "删掉" },
+      { "word": "无瑕疵", "lang": "zh", "severity": "high", "reason": "直接等于磨皮到没有毛孔，是写实人像的头号杀手", "replace": "改用 realistic skin texture" },
+      { "word": "顶级画质", "lang": "zh", "severity": "high", "reason": "无实义营销词，会挤掉真正有效的构图/光线 token", "replace": "删掉" },
+      { "word": "ultra detailed", "lang": "en", "severity": "medium", "reason": "SDXL 之后边际收益接近零，长提示词里它会与具体描述争夺注意力", "replace": "删掉" },
+      { "word": "HDR", "lang": "mixed", "severity": "medium", "reason": "会让模型把高光推到溢出、暗部压死，与 filmic tonemap 冲突", "replace": "改用 soft highlight rolloff" },
+      { "word": "trending on artstation", "lang": "en", "severity": "high", "reason": "把画面拉向 CG 概念图风格，写实/古风都会被带偏", "replace": "删掉" },
+      { "word": "获奖作品", "lang": "zh", "severity": "medium", "reason": "同上，纯标签噪声", "replace": "删掉" },
+      { "word": "电影级大片", "lang": "zh", "severity": "medium", "reason": "会把饱和度与对比推到预告片质感，反而失去电影感的低对比层次；要电影感应写光线与焦段", "replace": "改用 filmic tonemap + 具体光线词" },
+      { "word": "网红脸", "lang": "zh", "severity": "high", "reason": "直接指定了一套整容审美，破坏脸型锚点与角色一致性", "replace": "改用具体骨相描述" },
+      { "word": "夸张", "lang": "zh", "severity": "low", "reason": "无指向的强度副词，通常会放大表情与透视，破坏克制感", "replace": "删掉，改用具体幅度" },
+      { "word": "虚幻引擎", "lang": "zh", "severity": "medium", "reason": "把材质推向游戏 CG 的塑料高光，写实人像会失去皮肤次表面感", "replace": "删掉" },
+      { "word": "unreal engine", "lang": "en", "severity": "medium", "reason": "同上", "replace": "删掉" },
+      { "word": "超高分辨率", "lang": "zh", "severity": "high", "reason": "与 8K 同源，无实义", "replace": "删掉" },
+      { "word": "大师作品", "lang": "zh", "severity": "medium", "reason": "与杰作同源，会引入油画笔触或画廊审美", "replace": "删掉" },
+      { "word": "dramatic lighting", "lang": "en", "severity": "low", "reason": "过度使用的泛词，会让每张图都变成同一种硬侧光；应写具体方向与光比", "replace": "改用 side-backlight + 1:3 之类的具体描述" },
+      { "word": "big boobs", "lang": "en", "severity": "high", "reason": "低俗标签会压过人物设定，同时显著提高平台审核风险", "replace": "删掉" }
+    ]
+  },
+  "negative_sets": {
+    "note": "负向集按 stage 分开，不能一套通吃：出图负向是结构/画质问题，动效负向是时序问题，人像负向是解剖与一致性，音频负向是声学问题。每个集合都给 base + 条件追加。",
+    "character": {
+      "label": "人像/角色设定图",
+      "kind": "diffusion",
+      "target_note": "直接喂给 CLIP 负向编码器",
+      "base": ["多余的手指", "断肢", "肢体融合", "不对称的眼睛", "五官错位", "双头", "多余的肢体", "水印", "文字", "签名", "边框", "低分辨率糊块"],
+      "by_condition": {
+        "multi_subject": ["重复的脸", "克隆人排列", "同一张脸重复出现"],
+        "style_2d": ["写实皮肤毛孔", "照片质感"],
+        "closeup": ["牙齿糊成一排", "瞳孔无高光", "眼皮粘连"],
+        "hands": ["六指", "手掌结构错乱", "手指粘连"]
+      }
+    },
+    "keyframe": {
+      "label": "关键帧/单帧出图",
+      "kind": "diffusion",
+      "target_note": "直接喂给 CLIP 负向编码器",
+      "base": ["低质量", "模糊", "过曝高光", "死黑暗部", "塑料感", "油画笔触结块", "水印", "文字", "logo", "画面撕裂", "色带断层", "畸变的手"],
+      "by_condition": {
+        "wide": ["背景细节堆砌", "主体过小"],
+        "closeup": ["面部过度磨皮", "皮肤塑料化"],
+        "style_2d": ["照片级皮肤纹理", "景深虚化"],
+        "text": ["字幕烧进画面", "伪文字乱码"],
+        "hands": ["多余手指", "手指穿模"]
+      }
+    },
+    "motion": {
+      "label": "动效/i2v",
+      "kind": "diffusion",
+      "target_note": "i2v 的负向，主要压时序崩坏；静态类词只对首帧有效",
+      "base": ["画面静止", "整帧漂移", "主体形变", "脸部溶解", "边缘抖动", "逐帧闪烁", "纹理爬行", "背景液化", "多余的肢体出现", "镜头穿模"],
+      "by_condition": {
+        "motion_heavy": ["运动模糊糊成一团", "拖影"],
+        "particles": ["粒子结块", "噪点闪烁"],
+        "hands": ["手指数量逐帧变化"],
+        "style_ink": ["墨迹抖动", "纸纹漂移"]
+      }
+    },
+    "voice": {
+      "label": "配音/口型",
+      "kind": "qc-checklist",
+      "target_note": "TTS 引擎普遍不吃负向文本；这份清单用于 QC 与后处理，不喂给引擎",
+      "base": ["机械音", "电流底噪", "喷麦", "齿音过重", "断句错误", "多音字读错", "尾音吞掉", "音量忽大忽小", "混响过湿", "口型与音素不同步"],
+      "by_condition": {
+        "lipsync": ["口型超前", "口型滞后", "嘴唇粘连"],
+        "long_line": ["一口气读完无停顿", "换气声过大"]
+      }
+    },
+    "look": {
+      "label": "质感/后期",
+      "kind": "post-checklist",
+      "target_note": "调色与后期节点的负向，指要压掉的伪影",
+      "base": ["过曝", "死黑", "色带断层", "过饱和", "肤色发绿", "肤色发灰", "颗粒结块", "锐化白边", "LUT 溢色"],
+      "by_condition": {
+        "ink": ["墨韵被锐化成锯齿"],
+        "film": ["halation 溢出成白色光斑"],
+        "mono": ["残留彩色边缘"]
+      }
+    },
+    "storyboard": {
+      "label": "剧本/分镜",
+      "kind": "llm-checklist",
+      "target_note": "给分镜 LLM 的负向约束，指结构问题",
+      "base": ["一格里塞多个动作", "越轴", "没有动机的运镜", "台词写成小说旁白", "提前剧透反转", "场景跳变无过渡", "人物称谓前后不一致", "镜头语言与题材不符"],
+      "by_condition": {
+        "fast": ["单格时长超过节奏预算"],
+        "hook": ["开场无钩子", "前 3 秒只有环境空镜"]
+      }
+    }
+  },
+  "zh_tpl": {
+    "note": "枚举值的落槽写法模板。为什么不直接 值+后缀 拼：中文里『写实纹理肤质』不是人话，『皮肤写实纹理』才是。模板放数据层，编辑能改。",
+    "face_shape": "{v}脸",
+    "skin": "皮肤{v}",
+    "body": "{v}体态",
+    "hair_color": "{v}发色",
+    "palette": "{v}配色",
+    "genre": "{v}题材",
+    "rhythm": "{v}节奏",
+    "emotion": "情绪{v}",
+    "voice_id": "音色{v}",
+    "lut": "{v}LUT",
+    "motion_mode": "{v}运动",
+    "composition": "{v}构图",
+    "camera_language": "{v}镜头"
+  },
+  "render": {
+    "note": "中文整句的装配规则放在数据层：换一种『中文口语风格』只需要改这里，不用动 compose.js。",
+    "stage_lead": {
+      "note": "非画面阶段的指令前缀。storyboard 给 LLM 看、voice 给 TTS 看、look 给调色节点看——它们都需要一个『这是给谁的指令』的显式标记，否则下游会把指令当描述。",
+      "character": "",
+      "storyboard": "分镜指令：",
+      "keyframe": "",
+      "motion": "动效指令：",
+      "voice": "配音指令：",
+      "look": "后期指令：",
+      "export": ""
+    },
+    "slot_order": ["subject", "appearance", "outfit", "scene", "light", "camera", "style", "quality", "motion", "audio", "beat"],
+    "slot_title": {
+      "subject": "主体",
+      "appearance": "外观",
+      "outfit": "服饰",
+      "scene": "场景",
+      "light": "光线",
+      "camera": "镜头",
+      "style": "风格",
+      "quality": "质感",
+      "motion": "运动",
+      "audio": "音频",
+      "beat": "节拍"
+    },
+    "lead": {
+      "appearance": "，",
+      "outfit": "，身穿",
+      "scene": "；场景：",
+      "light": "；光线：",
+      "camera": "；镜头：",
+      "style": "；画风：",
+      "quality": "；质感：",
+      "motion": "；运动：",
+      "audio": "；音频：",
+      "beat": "；节拍："
+    },
+    "inner": "，",
+    "end": "。"
+  }
+}

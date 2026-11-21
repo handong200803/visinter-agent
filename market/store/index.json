@@ -1,0 +1,325 @@
+{
+  "schema": "ai-video-platform/market-index",
+  "version": 1,
+  "updated": "2026-11-18T12:52:31.694Z",
+  "items": [
+    {
+      "id": "product-turntable-pro",
+      "name": "商业产品转台",
+      "version": "1.0.3",
+      "author": "云盘工坊",
+      "license": "paid",
+      "registry_version": "0.1.0",
+      "tags": [
+        "电商",
+        "产品",
+        "转台",
+        "4K",
+        "广告"
+      ],
+      "stage_focus": [
+        "keyframe",
+        "motion",
+        "export"
+      ],
+      "price_cny": 26,
+      "checksum": "djb2:6760587f",
+      "estimate_meta": {
+        "device": "T1",
+        "peak_mib": 6260,
+        "usable_mib": 9600,
+        "ratio": 0.652,
+        "state": "ok",
+        "dominant": "keyframe",
+        "shot_sec": 205,
+        "episode_sec": 2505,
+        "quality": 77,
+        "cost_episode_yuan": 0.0835
+      },
+      "signed": true,
+      "has_workflow": true,
+      "workflow_kind": "inline",
+      "workflow_nodes": 4,
+      "file": "tpl/product-turntable-pro/1.0.3.avptpl",
+      "size_bytes": 5666,
+      "versions": [
+        {
+          "version": "1.0.3",
+          "checksum": "djb2:6760587f",
+          "file": "tpl/product-turntable-pro/1.0.3.avptpl",
+          "size_bytes": 5666,
+          "signed": true,
+          "active": true
+        }
+      ],
+      "installs": 1,
+      "rating": {
+        "count": 1,
+        "sum": 3,
+        "avg": 3
+      },
+      "raters": {
+        "seed-product-turntable-pro": 3
+      },
+      "installed_at": "2026-11-18T12:49:33.616Z",
+      "updated_at": "2026-11-18T12:49:33.622Z",
+      "rank": 7.5
+    },
+    {
+      "id": "manju-3panel-strip",
+      "name": "漫剧 3 格分镜",
+      "version": "1.1.0",
+      "author": "云盘工坊",
+      "license": "revenue_share",
+      "registry_version": "0.1.0",
+      "tags": [
+        "漫剧",
+        "分镜",
+        "韩漫",
+        "校园",
+        "格子"
+      ],
+      "stage_focus": [
+        "storyboard",
+        "keyframe",
+        "look"
+      ],
+      "price_cny": 22,
+      "checksum": "djb2:25dd25fe",
+      "estimate_meta": {
+        "device": "T0",
+        "peak_mib": 6114,
+        "usable_mib": 6900,
+        "ratio": 0.886,
+        "state": "ok",
+        "dominant": "keyframe",
+        "shot_sec": 89,
+        "episode_sec": 1127,
+        "quality": 80,
+        "cost_episode_yuan": 0.0263
+      },
+      "signed": true,
+      "has_workflow": true,
+      "workflow_kind": "inline",
+      "workflow_nodes": 4,
+      "file": "tpl/manju-3panel-strip/1.1.0.avptpl",
+      "size_bytes": 5869,
+      "versions": [
+        {
+          "version": "1.1.0",
+          "checksum": "djb2:25dd25fe",
+          "file": "tpl/manju-3panel-strip/1.1.0.avptpl",
+          "size_bytes": 5869,
+          "signed": true,
+          "active": true
+        }
+      ],
+      "installs": 1,
+      "rating": {
+        "count": 1,
+        "sum": 4,
+        "avg": 4
+      },
+      "raters": {
+        "seed-manju-3panel-strip": 4
+      },
+      "installed_at": "2026-11-18T12:49:33.633Z",
+      "updated_at": "2026-11-18T12:49:33.639Z",
+      "rank": 9.5
+    },
+    {
+      "id": "doc-interview-real",
+      "name": "写实纪录访谈",
+      "version": "2.0.0",
+      "author": "云盘工坊",
+      "license": "paid",
+      "registry_version": "0.1.0",
+      "tags": [
+        "纪录片",
+        "访谈",
+        "写实",
+        "口型",
+        "中景"
+      ],
+      "stage_focus": [
+        "voice",
+        "motion",
+        "look"
+      ],
+      "price_cny": 36,
+      "checksum": "djb2:de8fd408",
+      "estimate_meta": {
+        "device": "T2",
+        "peak_mib": 6114,
+        "usable_mib": 14200,
+        "ratio": 0.431,
+        "state": "ok",
+        "dominant": "keyframe",
+        "shot_sec": 170,
+        "episode_sec": 5144,
+        "quality": 80,
+        "cost_episode_yuan": 0.2229
+      },
+      "signed": true,
+      "has_workflow": true,
+      "workflow_kind": "inline",
+      "workflow_nodes": 4,
+      "file": "tpl/doc-interview-real/2.0.0.avptpl",
+      "size_bytes": 5573,
+      "versions": [
+        {
+          "version": "2.0.0",
+          "checksum": "djb2:de8fd408",
+          "file": "tpl/doc-interview-real/2.0.0.avptpl",
+          "size_bytes": 5573,
+          "signed": true,
+          "active": true
+        }
+      ],
+      "installs": 1,
+      "rating": {
+        "count": 1,
+        "sum": 5,
+        "avg": 5
+      },
+      "raters": {
+        "seed-doc-interview-real": 5
+      },
+      "installed_at": "2026-11-18T12:49:33.650Z",
+      "updated_at": "2026-11-18T12:49:33.657Z",
+      "rank": 11.5
+    },
+    {
+      "id": "cyber-night-dolly",
+      "name": "赛博夜景运镜",
+      "version": "1.3.1",
+      "author": "云盘工坊",
+      "license": "revenue_share",
+      "registry_version": "0.1.0",
+      "tags": [
+        "赛博",
+        "夜景",
+        "运镜",
+        "霓虹",
+        "视差"
+      ],
+      "stage_focus": [
+        "motion",
+        "look",
+        "keyframe"
+      ],
+      "price_cny": 22,
+      "checksum": "djb2:8801f928",
+      "estimate_meta": {
+        "device": "T3",
+        "peak_mib": 6177,
+        "usable_mib": 21800,
+        "ratio": 0.283,
+        "state": "ok",
+        "dominant": "keyframe",
+        "shot_sec": 140,
+        "episode_sec": 2012,
+        "quality": 82,
+        "cost_episode_yuan": 0.1073
+      },
+      "signed": true,
+      "has_workflow": true,
+      "workflow_kind": "inline",
+      "workflow_nodes": 4,
+      "file": "tpl/cyber-night-dolly/1.3.1.avptpl",
+      "size_bytes": 5996,
+      "versions": [
+        {
+          "version": "1.3.1",
+          "checksum": "djb2:8801f928",
+          "file": "tpl/cyber-night-dolly/1.3.1.avptpl",
+          "size_bytes": 5996,
+          "signed": true,
+          "active": true
+        }
+      ],
+      "installs": 1,
+      "rating": {
+        "count": 1,
+        "sum": 4,
+        "avg": 4
+      },
+      "raters": {
+        "seed-cyber-night-dolly": 4
+      },
+      "installed_at": "2026-11-18T12:49:33.670Z",
+      "updated_at": "2026-11-18T12:49:33.677Z",
+      "rank": 9.5
+    },
+    {
+      "id": "oriental-ink-portrait",
+      "name": "东方古风人物特写",
+      "version": "1.2.0",
+      "author": "云盘工坊",
+      "license": "paid",
+      "registry_version": "0.1.0",
+      "tags": [
+        "古风",
+        "人物",
+        "特写",
+        "工笔",
+        "国风"
+      ],
+      "stage_focus": [
+        "character",
+        "keyframe",
+        "look"
+      ],
+      "price_cny": 36,
+      "checksum": "djb2:7c3014b2",
+      "estimate_meta": {
+        "device": "T0",
+        "peak_mib": 6114,
+        "usable_mib": 6900,
+        "ratio": 0.886,
+        "state": "ok",
+        "dominant": "keyframe",
+        "shot_sec": 181,
+        "episode_sec": 3298,
+        "quality": 80,
+        "cost_episode_yuan": 0.0769
+      },
+      "signed": true,
+      "has_workflow": true,
+      "workflow_kind": "inline",
+      "workflow_nodes": 4,
+      "file": "tpl/oriental-ink-portrait/1.2.0.avptpl",
+      "size_bytes": 6077,
+      "versions": [
+        {
+          "version": "1.2.0",
+          "checksum": "djb2:7c3014b2",
+          "file": "tpl/oriental-ink-portrait/1.2.0.avptpl",
+          "size_bytes": 6077,
+          "signed": true,
+          "active": true
+        },
+        {
+          "version": "1.1.0",
+          "checksum": "djb2:08996403",
+          "file": "tpl/oriental-ink-portrait/1.1.0.avptpl",
+          "size_bytes": 6084,
+          "signed": true,
+          "active": false
+        }
+      ],
+      "installs": 2,
+      "rating": {
+        "count": 1,
+        "sum": 5,
+        "avg": 5
+      },
+      "raters": {
+        "seed-oriental-ink-portrait": 5
+      },
+      "installed_at": "2026-11-18T12:49:33.590Z",
+      "updated_at": "2026-11-18T12:52:31.694Z",
+      "rank": 12.5
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "ai-video-platform/cine-audit-ratio",
+  "at": "2026-11-18T09:44:45Z",
+  "plan": "灰境「严苛质量审核机制」(G0~G4+三态) + 默认16:9画幅可选",
+  "job": { "id": "job_mwlxm30b_d32db8", "state": "succeeded", "ms": 196256, "ratio": "16:9", "status": "success" },
+  "output": {
+    "file": "D:\\云盘\\02-视频\\成片\\cine-轮渡上年轻女生安静侧脸，傍晚海边阳光-2026-11-18T09-44-45.mp4",
+    "ffprobe_measured": { "video": "h264 1920x1080@48", "audio": "aac", "duration_s": 4.9375, "bytes": 3701545 },
+    "ratio_guarantee": "默认16:9 → t2i 1280*720 → i2v 横屏 → post 中心裁画幅+缩放 1920×1080（实测确为16:9）"
+  },
+  "audit_trail": {
+    "G1_image": [ { "decision": "PASS", "tier": "精选", "total": 9.07 }, { "decision": "PASS", "tier": "可用", "total": 8.85 }, { "decision": "PASS", "tier": "可用", "total": 8.85 }, { "decision": "PASS", "tier": "可用", "total": 8.85 }, { "decision": "PASS", "tier": "精选", "total": 9.07 }, { "decision": "PASS", "tier": "可用", "total": 8.45 }, { "decision": "PASS", "tier": "精选", "total": 9.07 }, { "decision": "PASS", "tier": "可用", "total": 8.85 } ],
+    "G2_video": { "decision": "REVIEW", "tier": "存疑(VL缺结论)", "reason": "视频结构项需抽帧公网URL/人工，本机无帧托管 → REVIEW 不假装自动判过" },
+    "G3_final": { "decision": "REVIEW", "tier": "存疑(VL缺结论)", "pass_with_review": true, "veto": [], "tags": [] },
+    "G4_compliance": { "pass": true, "problems": [] },
+    "thresholdVersion": "2026-11-18.1",
+    "weights": { "tech": 0.3, "structure": 0.3, "consistency": 0.2, "aesthetic": 0.2 }
+  },
+  "human_review": {
+    "endpoint": "POST /api/jobs/:id/review",
+    "script_review": { "status": 200, "before": "REVIEW", "after": "PASS", "reviewer": "user", "retryHistory": 1 },
+    "ui_review": { "toast": "已改判 PASS", "drawer_retains_audit": true, "reviewer_shown": true, "remaining_review_buttons": 0 },
+    "note": "两条视频 REVIEW 均经人工改判 PASS；改判留痕 reviewer/reason/retryHistory"
+  },
+  "frontend_verified": { "ratio_default_16:9_on": true, "ratio_toggle_9:16": true, "ratio_hidden_in_quick": true, "candidate_badges_8xPASS": true, "audit_drawer": true, "threshold_version_shown": true, "weights_shown": true, "review_buttons": true },
+  "gates": { "build": "7/0", "selftest_all": "PASS 9 FAIL 0 (server 151/0)", "lint_ui": "7 pages green", "e2e": "52/0" },
+  "honest_boundaries": "自动闸只兜技术硬指标(本机信号量零ML)；人脸/手/结构/穿帮/一致性靠VL或人工；视频结构项无抽帧URL→REVIEW；VL缺结论→REVIEW；一票否决不被总分抵扣；阈值版本化+实测标定基线",
+  "provenance": { "ffprobe": "measured", "audit_metrics": "measured(quality/frames)", "vl": "model-opinion", "review": "human", "ratio": "measured" }
+}

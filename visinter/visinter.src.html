@@ -1,0 +1,527 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VisInter · 智能装配</title>
+<style>
+/*__TOKENS__*/
+
+/*__UI__*/
+/*__SKIN__*/
+
+/* VisInter 专属：只补版式（模式条 / 风险行 / 弹窗遮罩），色值与圆角全部走令牌 */
+.vi-modes { display: flex; gap: var(--sp2); }
+.vi-modes .btn { flex: 1; height: 30px; letter-spacing: .14em; }
+.vi-modes .btn[aria-pressed="true"] { border-color: var(--acc-hover); color: var(--acc-hover); background: var(--panel4); box-shadow: var(--glow); }
+
+.vi-banner {
+  display: flex; gap: var(--sp2); align-items: baseline;
+  padding: var(--sp2) var(--sp3); margin-bottom: var(--sp3);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  border-radius: var(--r2); background: var(--panel2);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  font-size: var(--fz-s); color: var(--text-dim);
+}
+.vi-banner b { color: var(--warn); font-weight: 600; letter-spacing: .08em; }
+
+.vi-risk {
+  display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: var(--sp2);
+  align-items: center; padding: var(--sp2) var(--sp3); margin-top: var(--sp2);
+  border: 1px solid var(--line); border-left: 3px solid var(--warn);
+  border-radius: var(--r2); background: var(--panel2);
+}
+.vi-risk[data-level="high"] { border-left-color: var(--bad); }
+.vi-risk .lv { font-size: var(--fz-xs); letter-spacing: .1em; color: var(--warn); }
+.vi-risk[data-level="high"] .lv { color: var(--bad-ink); }
+.vi-risk .tx { font-size: var(--fz-s); color: var(--text); line-height: 1.55; }
+.vi-risk .dt { font-size: var(--fz-xs); color: var(--text-dim2); font-family: var(--mono); margin-top: 2px; }
+
+.vi-mask {
+  position: fixed; inset: 0; z-index: 40; display: none;
+  align-items: center; justify-content: center; padding: var(--sp4);
+  background: rgba(8, 8, 10, .62);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.vi-mask.on { display: flex; }
+.vi-mask .panel { width: min(560px, 100%); }
+.vi-mask .panel-b { max-height: 60vh; overflow: auto; }
+.vi-actions { display: flex; gap: var(--sp2); justify-content: flex-end; margin-top: var(--sp3); }
+
+.vi-pill {
+  display: inline-flex; align-items: center; gap: 4px; height: 18px; padding: 0 7px;
+  border: 1px solid var(--line); border-radius: var(--r-pill);
+  font-size: var(--fz-xs); color: var(--text-dim); letter-spacing: .06em;
+}
+.vi-pill[data-tone="ok"] { border-color: var(--ok); color: var(--ok); }
+.vi-pill[data-tone="warn"] { border-color: var(--warn); color: var(--warn); }
+.vi-pill[data-tone="bad"] { border-color: var(--bad); color: var(--bad-ink); }
+.vi-line { font-size: var(--fz-s); color: var(--text-dim); line-height: 1.7; }
+.vi-line b { color: var(--text); font-weight: 500; }
+.vi-mono { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim); word-break: break-all; }
+.vi-fields { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp2); }
+.vi-fields .input { height: 26px; }
+@media (max-width: 1100px) { .vi-fields { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+.vi-ta { min-height: 74px; line-height: 1.55; }
+.vi-ta.tall { min-height: 128px; }
+.vi-grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp2); }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><b>VisInter</b><span>智能装配 · 开源管线</span></div>
+    <div class="crumbs">wan2.2 <i>/</i> IP-Adapter 定妆 <i>/</i> FaceDetailer</div>
+    <div class="spacer"></div>
+    <span class="vi-pill" id="pill-store">存储：检测中</span>
+    <a class="btn ghost" data-backlink href="../app/index.html">← 工作台</a>
+    <button class="btn mini" id="btn-selfcheck">一键自检</button>
+    <button class="btn mini" id="btn-selfrun">跑 4 张</button>
+    <span class="vi-pill" id="pill-selfcheck" data-tone="warn">inferred</span>
+  </header>
+
+  <div class="body">
+    <aside class="aside">
+      <div class="aside-h"><span>装配条件</span><div class="spacer"></div><span class="vi-pill" id="pill-mode">小白一键</span></div>
+      <div class="aside-b">
+        <div class="panel">
+          <div class="panel-h">模式</div>
+          <div class="panel-b">
+            <div class="vi-modes">
+              <button class="btn" id="m-novice" aria-pressed="true">小白一键</button>
+              <button class="btn" id="m-expert" aria-pressed="false">专家模式</button>
+            </div>
+            <div class="vi-line" style="margin-top:var(--sp2)" id="mode-note"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">一句话描述</div>
+          <div class="panel-b">
+            <textarea class="textarea vi-ta" id="txt" rows="3" placeholder="例：雨夜街头，一个女孩回眸，车灯勾出发丝轮廓"></textarea>
+            <div class="vi-line" style="margin-top:var(--sp2)">识别到人物会自动拼人像词并开人脸模块；风景/静物会摘掉人像词并关模块。开关仍可手动反向。</div>
+            <button class="btn acc" id="btn-plan" style="width:100%;margin-top:var(--sp2);height:30px">生成装配</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">关键参数 <span class="spacer"></span><span class="vi-pill">258 全开放 · 同源</span></div>
+          <div class="panel-b">
+            <div class="vi-fields" id="fields"></div>
+            <div class="vi-line" style="margin-top:var(--sp2)">这 6 个键与 <b>web/params.html</b> 的 258 全量参数共用一份存储（avp.shell.store.v1），两边改动实时互通。</div>
+            <button class="btn mini" id="btn-preset" style="margin-top:var(--sp2)">切换推荐预设</button>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">角色设定 <span class="spacer"></span><span class="vi-pill" id="pill-char">【AI提取】</span></div>
+          <div class="panel-b">
+            <label class="field">脸型（ch.face_shape）<select class="input" id="face"></select></label>
+            <div class="vi-line" id="char-line" style="margin-top:var(--sp2)">—</div>
+            <div class="vi-line" id="char-note" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-h"><h2>装配结果</h2><span class="sub" id="sub-result">尚未装配</span><div class="spacer"></div><button class="btn acc" id="btn-submit">提交生成</button></div>
+      <div class="main-b">
+        <div class="vi-banner"><b>提示</b><span id="banner"></span></div>
+
+        <div class="panel">
+          <div class="panel-h">主体与联动</div>
+          <div class="panel-b">
+            <div class="vi-line" id="subject-line">—</div>
+            <div class="vi-line" id="linkage-line" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">提示词 <span class="spacer"></span><span class="vi-pill" id="pill-prompt">自动</span></div>
+          <div class="panel-b">
+            <label class="field">正向（Muse + 人像）<textarea class="textarea vi-ta tall" id="pos" rows="5"></textarea></label>
+            <label class="field" style="margin-top:var(--sp2)">负面<textarea class="textarea vi-ta" id="neg" rows="3"></textarea></label>
+            <div class="vi-line" style="margin-top:var(--sp2)">手改后自动填充不再覆盖；清空则交给模型。</div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">风险检测 <span class="spacer"></span><span class="vi-pill" id="pill-risk" data-tone="ok">0 条</span></div>
+          <div class="panel-b" id="risks"><div class="vi-line">点「生成装配」后列出触发的风险；不拦截提交。</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">自检 <span class="spacer"></span><span class="vi-pill" id="pill-self2" data-tone="warn">inferred</span></div>
+          <div class="panel-b" id="selfcheck"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="st">就绪</span>
+    <div class="spacer"></div>
+    <span class="num" id="st-num"></span>
+  </footer>
+</div>
+
+<div class="vi-mask" id="mask">
+  <div class="panel">
+    <div class="panel-h">风险提示 <span class="spacer"></span><span class="vi-pill" id="mask-count" data-tone="warn">0</span></div>
+    <div class="panel-b" id="mask-body"></div>
+    <div class="panel-b"><div class="vi-actions">
+      <button class="btn" id="btn-cancel">返回调整</button>
+      <button class="btn" id="btn-preset2">切换推荐预设</button>
+      <button class="btn acc" id="btn-go">继续生成</button>
+    </div></div>
+  </div>
+</div>
+
+<script>
+/*__SNAP__*/
+</script>
+<script>
+(function () {
+  'use strict';
+  var S = window.__SNAP || null;
+  var API = location.protocol.indexOf('http') === 0;
+  var state = { mode: 'novice', plan: null, manual: {}, manualKeys: [], promptEdited: false, negEdited: false, extracted: {}, link: null };
+  var FACE_OPTIONS = ['瓜子', '鹅蛋', '圆', '方', '长', '心形'];
+
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function notice(t) { el('st').textContent = t; }
+
+  if (!S) { notice('缺 window.__SNAP：先跑 node tools/snap_visinter.mjs 与 node tools/build_module.mjs visinter'); return; }
+  el('banner').textContent = S.banner;
+  el('mode-note').textContent = S.modes.novice.note;
+
+  /* ───── 共享存储：与 web/params.html、canvas、外壳同一份 avp.shell.store.v1 ───── */
+  var SHELL_KEY = 'avp.shell.store.v1';
+  var SHELL_SCHEMA = 'ai-video-platform/shell.store';
+
+  function readStore() {
+    try {
+      var s = JSON.parse(localStorage.getItem(SHELL_KEY) || 'null');
+      if (!s || s.schema !== SHELL_SCHEMA || !s.active) return null;
+      var p = s.projects && s.projects[s.active];
+      return p && p.values ? { store: s, project: p } : null;
+    } catch (e) { return null; }
+  }
+
+  function paintStore(linked) {
+    var p = el('pill-store');
+    p.textContent = linked ? '存储：已联动「' + linked.project.name + '」' : '存储：独立模式（未建项目）';
+    p.setAttribute('data-tone', linked ? 'ok' : 'warn');
+    state.link = linked;
+  }
+
+  function writeStore(patch, alsoKeys) {
+    var b = readStore();
+    if (!b) return false;
+    var p = b.project;
+    for (var k in patch) p.values[k] = patch[k];
+    if (alsoKeys && alsoKeys.length) {
+      // 手改清单也持久化：换标签页/刷新后仍然知道哪些键是用户定的
+      p.manualKeys = Array.from(new Set([].concat(p.manualKeys || [], alsoKeys)));
+    }
+    p.updatedAt = new Date().toISOString();
+    try { localStorage.setItem(SHELL_KEY, JSON.stringify(b.store)); return true; } catch (e) { return false; }
+  }
+
+  function storeValues() {
+    var b = readStore();
+    return b ? b.project.values : null;
+  }
+
+  // 6 个关键键：先取共享存储（258 全量里的子集），没有才用快照默认
+  function baseValue(k) {
+    var v = storeValues();
+    if (v && v[k] != null) return v[k];
+    return S.defaults[k] != null ? S.defaults[k] : '';
+  }
+
+  /* ── 关键参数输入 ── */
+  var FIELDS = [
+    { k: 'kf.cfg', label: 'CFG', type: 'number', step: 0.1 },
+    { k: 'kf.steps', label: '采样步数', type: 'number', step: 1 },
+    { k: 'mo.strength', label: '运动幅度', type: 'number', step: 0.05 },
+    { k: 'kf.resolution', label: '长边像素', type: 'number', step: 1 },
+    { k: 'kf.face_denoise', label: '人脸精修强度', type: 'number', step: 0.05 },
+    { k: 'kf.ipadapter_weight', label: '定妆参考权重', type: 'number', step: 0.05 }
+  ];
+  var writeTimer = 0;
+  function renderFields() {
+    var box = el('fields');
+    box.innerHTML = '';
+    FIELDS.forEach(function (f) {
+      var lab = document.createElement('label');
+      lab.className = 'field';
+      lab.textContent = f.label + ' · ' + f.k;
+      var inp = document.createElement('input');
+      inp.className = 'input';
+      inp.type = f.type; inp.step = f.step;
+      inp.dataset.key = f.k;
+      inp.value = baseValue(f.k);
+      inp.addEventListener('input', function () {
+        var v = f.type === 'number' ? Number(inp.value) : inp.value;
+        state.manual[f.k] = v;
+        if (state.manualKeys.indexOf(f.k) < 0) state.manualKeys.push(f.k);
+        clearTimeout(writeTimer);
+        writeTimer = setTimeout(function () {
+          var patch = {}; patch[f.k] = v;
+          var ok = writeStore(patch, [f.k]);
+          notice('已记录手改 ' + f.k + ' = ' + v + (ok ? '（已写回 258 全量存储）' : '（独立模式：仅本次会话）'));
+        }, 200);
+      });
+      lab.appendChild(inp);
+      box.appendChild(lab);
+    });
+  }
+
+  /* ── 脸型（AI 提取 + 可手改） ── */
+  (function initFaceSelect() {
+    var sel = el('face');
+    var cur = baseValue('ch.face_shape');
+    FACE_OPTIONS.forEach(function (f) {
+      var o = document.createElement('option');
+      o.value = f; o.textContent = f === '瓜子' ? '瓜子（V 脸）' : f;
+      if (String(cur) === f) o.selected = true;
+      sel.appendChild(o);
+    });
+    if (!cur) sel.value = '鹅蛋';
+  })();
+  el('face').addEventListener('change', function () {
+    var v = el('face').value;
+    state.manual['ch.face_shape'] = v;
+    if (state.manualKeys.indexOf('ch.face_shape') < 0) state.manualKeys.push('ch.face_shape');
+    writeStore({ 'ch.face_shape': v }, ['ch.face_shape']);
+    el('pill-char').textContent = '【手改】';
+    el('pill-char').setAttribute('data-tone', 'ok');
+    notice('脸型已手改：' + v + '（写回全量参数，AI 不再覆盖）');
+    if (state.plan) plan();
+  });
+
+  /* ── 提示词 ── */
+  el('pos').value = S.prompts.muse_positive;
+  el('neg').value = S.prompts.negative;
+  el('pos').addEventListener('input', function () {
+    state.promptEdited = true;
+    if (state.manualKeys.indexOf('kf.prompt_prefix') < 0) state.manualKeys.push('kf.prompt_prefix');
+    el('pill-prompt').textContent = '手改';
+    writeStore({ 'kf.prompt_prefix': el('pos').value }, ['kf.prompt_prefix']);
+  });
+  el('neg').addEventListener('input', function () {
+    state.negEdited = true;
+    if (state.manualKeys.indexOf('kf.negative') < 0) state.manualKeys.push('kf.negative');
+    writeStore({ 'kf.negative': el('neg').value }, ['kf.negative']);
+  });
+
+  /* ── 模式 ── */
+  function setMode(m) {
+    state.mode = m === 'expert' ? 'expert' : 'novice';
+    el('m-novice').setAttribute('aria-pressed', String(state.mode === 'novice'));
+    el('m-expert').setAttribute('aria-pressed', String(state.mode === 'expert'));
+    el('pill-mode').textContent = S.modes[state.mode].label;
+    el('mode-note').textContent = S.modes[state.mode].note;
+  }
+  el('m-novice').addEventListener('click', function () { setMode('novice'); });
+  el('m-expert').addEventListener('click', function () { setMode('expert'); });
+  setMode('novice');
+
+  /* ── 装配 ── */
+  function currentValues() {
+    var v = {};
+    for (var e in state.extracted) v[e] = state.extracted[e];
+    for (var k in state.manual) v[k] = state.manual[k];
+    if (state.promptEdited) v['kf.prompt_prefix'] = el('pos').value;
+    if (state.negEdited) v['kf.negative'] = el('neg').value;
+    return v;
+  }
+
+  function paintCharacter(ch) {
+    if (!ch) return;
+    if (ch.patch) state.extracted = ch.patch;
+    var face = ch.face_shape || {};
+    var src = face.source === 'keyword' ? '关键词' : face.source === 'scene' ? '场景预设' : '未识别';
+    el('char-line').innerHTML = '脸型：<b>' + esc(face.value || '（保持当前）') + '</b> · <span class="vi-mono">' + esc(src) + '｜' + esc(face.evidence || '') + '</span>';
+    el('char-note').innerHTML = '场景：' + esc((ch.scene && ch.scene.id) || '—') + '｜' + esc((ch.scene && ch.scene.reason) || '') + (ch.preconditions_applied && ch.preconditions_applied.length ? '<br>已应用前置条件：主体句删除「' + esc(ch.preconditions_applied.map(function (x) { return x.find; }).join('、')) + '」' : '');
+    if (!state.manualKeys.length || state.manualKeys.indexOf('ch.face_shape') < 0) {
+      el('pill-char').textContent = '【AI提取】';
+      el('pill-char').setAttribute('data-tone', 'warn');
+      if (face.value) el('face').value = face.value;
+    }
+  }
+
+  function renderPlan(p) {
+    state.plan = p;
+    el('sub-result').textContent = p.mode_label + ' · 主体 ' + p.subject + ' · 填充 ' + p.applied.length + ' 项';
+    el('subject-line').innerHTML = '主体识别：<b>' + esc(p.subject) + '</b>（portrait ' + p.subject_detail.scores.portrait + ' / landscape ' + p.subject_detail.scores.landscape + '）<br><span class="vi-mono">' + esc(p.subject_detail.rule) + '</span>';
+    var link = p.linkage.enabled && Object.keys(p.linkage.enabled).length ? '开启 ' + JSON.stringify(p.linkage.enabled) : (p.linkage.disabled.length ? '关闭 ' + p.linkage.disabled.join(', ') : '无联动');
+    el('linkage-line').innerHTML = esc(link) + '<br><span class="vi-mono">' + esc(p.linkage.note) + '</span>';
+
+    // 装配值回写到输入框（手改过的键不回写）：否则用户看到的还是默认值，以为没填充
+    FIELDS.forEach(function (f) {
+      if (state.manualKeys.indexOf(f.k) >= 0) return;
+      var inp = document.querySelector('.input[data-key="' + f.k + '"]');
+      if (inp && p.values[f.k] != null) inp.value = p.values[f.k];
+    });
+    if (!state.promptEdited && p.values['kf.prompt_prefix']) { el('pos').value = p.values['kf.prompt_prefix']; el('pill-prompt').textContent = p.subject === 'portrait' ? 'Muse+人像' : 'Muse'; }
+    if (!state.negEdited && p.values['kf.negative']) el('neg').value = p.values['kf.negative'];
+    paintCharacter(p.character);
+
+    var box = el('risks');
+    box.innerHTML = '';
+    el('pill-risk').textContent = p.risks.length + ' 条';
+    el('pill-risk').setAttribute('data-tone', p.risks.some(function (r) { return r.level === 'high'; }) ? 'bad' : (p.risks.length ? 'warn' : 'ok'));
+    if (!p.risks.length) { box.innerHTML = '<div class="vi-line">没有触发风险规则。' + (p.mode === 'expert' ? '（专家模式不自动填充，风险照检）' : '') + '</div>'; return; }
+    p.risks.forEach(function (r) {
+      var d = document.createElement('div');
+      d.className = 'vi-risk';
+      d.setAttribute('data-level', r.level);
+      d.innerHTML = '<div class="lv">' + (r.level === 'high' ? '高危' : '提醒') + '</div>'
+        + '<div><div class="tx">' + esc(r.text) + '</div><div class="dt">' + esc(JSON.stringify(r.detail)) + '</div></div>'
+        + '<div><button class="btn mini">继续生成</button></div>';
+      d.querySelector('button').addEventListener('click', function () { openMask(); });
+      box.appendChild(d);
+    });
+  }
+
+  function plan() {
+    if (!API) { notice('file:// 模式只展示内联规格；装配请用 node tools/serve.mjs 打开 http://127.0.0.1:8388/visinter/index.html'); return; }
+    notice('装配中…');
+    fetch('/api/visinter/plan', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ text: el('txt').value, mode: state.mode, values: Object.assign({}, storeValues() || {}, currentValues()), manualKeys: state.manualKeys }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { notice('装配失败：' + d.error.message); return; }
+        renderPlan(d);
+        notice('装配完成 · ' + d.risks.length + ' 条风险（未拦截）');
+      })
+      .catch(function (e) { notice('装配失败：' + e.message); });
+  }
+  el('btn-plan').addEventListener('click', plan);
+
+  /* ── 预设 ── */
+  function applyPreset() {
+    var st = S.presets.stable;
+    var patch = {};
+    for (var k in st) {
+      var inp = document.querySelector('.input[data-key="' + k + '"]');
+      if (inp) { inp.value = st[k]; state.manual[k] = st[k]; if (state.manualKeys.indexOf(k) < 0) state.manualKeys.push(k); }
+      patch[k] = st[k];
+    }
+    writeStore(patch, state.manualKeys);
+    state.promptEdited = false; state.negEdited = false;
+    el('pos').value = S.prompts.muse_positive;
+    el('neg').value = S.prompts.negative;
+    el('pill-prompt').textContent = '自动';
+    closeMask();
+    notice('已切回推荐预设（已写回全量存储，仍可继续手改）');
+    plan();
+  }
+  el('btn-preset').addEventListener('click', applyPreset);
+  el('btn-preset2').addEventListener('click', applyPreset);
+
+  /* ── 弹窗 ── */
+  function openMask() {
+    var p = state.plan;
+    var list = p && p.risks ? p.risks : [];
+    el('mask-count').textContent = list.length;
+    el('mask-body').innerHTML = list.length
+      ? list.map(function (r) { return '<div class="vi-risk" data-level="' + r.level + '"><div class="lv">' + (r.level === 'high' ? '高危' : '提醒') + '</div><div class="tx">' + esc(r.text) + '</div><div></div></div>'; }).join('')
+      : '<div class="vi-line">没有风险项。</div>';
+    el('mask').classList.add('on');
+  }
+  function closeMask() { el('mask').classList.remove('on'); }
+  el('btn-cancel').addEventListener('click', closeMask);
+  el('btn-go').addEventListener('click', function () { closeMask(); submit(); });
+
+  /* ── 提交 ── */
+  function submit() {
+    if (!API) { notice('file:// 模式不能提交；请用 node tools/serve.mjs'); return; }
+    var values = currentValues();
+    notice('提交中…');
+    fetch('/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'local', values: values, note: el('txt').value }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) {
+        if (d.error) { notice('提交失败：' + d.error.code + ' ' + d.error.message + (d.error.detail && d.error.detail.hint ? '｜' + d.error.detail.hint : '')); return; }
+        notice('已提交任务 ' + (d.id || '') + '（' + (d.provider || '') + '）');
+        el('st-num').textContent = d.id || '';
+      })
+      .catch(function (e) { notice('提交失败：' + e.message); });
+  }
+  el('btn-submit').addEventListener('click', function () {
+    if (state.plan && state.plan.risks.length) { openMask(); return; }
+    submit();
+  });
+
+  /* ── 自检 ── */
+  function paintSelf(sc) {
+    var tone = sc.status === 'measured' ? 'ok' : (sc.status === 'fail' ? 'bad' : 'warn');
+    el('pill-selfcheck').textContent = sc.status;
+    el('pill-selfcheck').setAttribute('data-tone', tone);
+    el('pill-self2').textContent = sc.status;
+    el('pill-self2').setAttribute('data-tone', tone);
+    var rows = '<div class="vi-line"><b>' + esc(sc.status) + '</b> · ' + esc(sc.reason) + '</div>';
+    if (sc.layers) {
+      rows += '<div class="vi-grid2" style="margin-top:var(--sp2)">'
+        + '<div class="vi-line">global 层：' + (sc.layers.global.ok ? '<b>OK</b>' : '<b>缺失</b>') + '<br><span class="vi-mono">' + (sc.layers.global.nodes || []).map(function (n) { return n.want + (n.present === false ? '(缺)' : n.present === null ? '(未知)' : ''); }).join(' · ') + '</span></div>'
+        + '<div class="vi-line">face 层：' + (sc.layers.face.ok ? '<b>OK</b>' : '<b>缺失</b>') + '<br><span class="vi-mono">风景可跑：' + (sc.landscape_ok ? '是' : '否') + '</span></div>'
+        + '</div>';
+    }
+    rows += '<div class="kv" style="margin-top:var(--sp2)">';
+    (sc.models || []).forEach(function (m) {
+      rows += '<dt>' + esc(m.slot) + '</dt><dd>' + (m.present ? '在位' : '缺失') + ' <span class="vi-mono">' + esc(m.path_hint) + '</span></dd>';
+    });
+    rows += '</div>';
+    if (sc.report) {
+      var r = sc.report;
+      rows += '<div class="vi-line" style="margin-top:var(--sp2)">报告：模型加载 <b>' + (r.models_loaded && r.models_loaded.ok ? '通过' : '未通过') + '</b>'
+        + ' · 人脸一致性 <b>' + (r.face_consistency && r.face_consistency.value != null ? r.face_consistency.value : '未测') + '</b>'
+        + ' · 质感 <b>' + (r.texture_score && r.texture_score.value != null ? r.texture_score.value : '未测') + '</b>'
+        + '<span class="vi-mono">（后两项为规则代理，不是 VL 评分）</span></div>';
+    }
+    el('selfcheck').innerHTML = rows;
+  }
+
+  function runSelf(run) {
+    if (!API) { notice('file:// 模式不能自检；请用 node tools/serve.mjs'); return; }
+    notice(run ? '跑 4 张测试图…（需要 ComfyUI 与模型）' : '自检中…');
+    fetch('/api/visinter/selfcheck', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ run: !!run }) })
+      .then(function (r) { return r.json(); })
+      .then(function (d) { paintSelf(d); notice('自检：' + d.status + (d.landscape_ok ? '（风景可跑）' : '')); })
+      .catch(function (e) { notice('自检失败：' + e.message); });
+  }
+  el('btn-selfcheck').addEventListener('click', function () { runSelf(false); });
+  el('btn-selfrun').addEventListener('click', function () { runSelf(true); });
+
+  /* ── 跨页同步：另一标签页改了 258 参数 → 这里跟上 ── */
+  window.addEventListener('storage', function (e) {
+    if (!e || e.key !== SHELL_KEY) return;
+    var b = readStore();
+    paintStore(b);
+    FIELDS.forEach(function (f) {
+      if (state.manualKeys.indexOf(f.k) >= 0) return;
+      var inp = document.querySelector('.input[data-key="' + f.k + '"]');
+      if (inp) inp.value = baseValue(f.k);
+    });
+    notice('检测到全量参数页改动，已同步 6 项关键参数');
+    if (state.plan) plan();
+  });
+
+  // 恢复跨页手改清单，并据此决定哪些键不允许自动填充
+  (function restoreManualKeys() {
+    var b = readStore();
+    if (b && Array.isArray(b.project.manualKeys)) state.manualKeys = b.project.manualKeys.slice();
+  })();
+  paintStore(readStore());
+  renderFields();
+  if (el('face').value) el('face').value = baseValue('ch.face_shape') || '鹅蛋';
+  paintSelf({ status: S.selfcheck.status, reason: S.selfcheck.reason, models: S.selfcheck.model_requirements.map(function (m) { return Object.assign({ present: false }, m); }) });
+  notice(API ? '就绪（http 模式：装配 / 自检 / 提交可用）' : 'file:// 模式：仅展示内联规格');
+  el('st-num').textContent = S.registry.total + ' 参数 · ' + S.risk_rules.length + ' 条风险规则 · ' + S.resolutions.length + ' 档分辨率';
+})();
+</script>
+</body>
+</html>

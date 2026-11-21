@@ -1,0 +1,3738 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>本地服务 · VisInter-Agent v0.1</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   tokens.css —— 平台唯一视觉令牌源
+   ───────────────────────────────────────────────────────────────────────
+   定位：「暗黑玻璃拟态 · 冷银基调」。深黑 #08080a 上悬浮两团冷色光晕
+   （左上蓝灰、右下紫灰），所有卡片/面板/输入/弹窗是一层半透明白玻璃：
+   光从玻璃后面透出来，边缘靠 1px 亮线勾勒，hover 上浮并泛一圈冷光。
+
+   为什么要有这个文件：
+     七套界面此前各持一份配色。令牌集中到一处之后，全平台只有一种视觉人格，
+     并且「像不像暗黑玻璃」这件事变成了可被 lint 校验的硬指标（tools/lint_ui.mjs）。
+
+   四条硬规矩（违反即 lint 失败）：
+     1. 玻璃面统一：背景 rgba(255,255,255,.06)、边框 rgba(255,255,255,.12)、
+        圆角 16px、blur(20px) saturate(1.4)、黑阴影 + 顶部 1px 内亮线。
+     2. 冷银唯一强调：--acc #C8CDD4，高亮 #EEF1F5。光晕只许冷色
+        （蓝灰/紫灰/银，通道差 ≤ 64 且蓝≥红），禁止暖色荧光与 AI 紫。
+     3. hover 三件套：背景提亮到 .10、边框提亮到 .25、上浮 3px + 冷光
+        0 0 20px rgba(180,200,230,.15)。循环动画只给铸造粒子/烟雾加载器。
+     4. 碑铭字体保留：平台名与卡片标题走 --serif 宽字距；正文 --sans
+        小字号松行高；数字一律 tabular-nums。颗粒层保留（胶片感）。
+
+   使用方式：
+     单文件产物要求双击 file:// 可用 → 不允许运行时 @import。
+     各 HTML 的 :root 必须**逐字复制**本文件的变量块；lint 会比对变量名与取值。
+     通用玻璃类 .glass-card / .glass-btn / .glass-input 在本文件底部，
+     组件直接挂类，不要各写一份玻璃配方。移动端 blur 自动降到 12px。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 碑铭衬线：Cinzel（SIL OFL，本地 woff2，见 assets/fonts/LICENSE-Cinzel.txt）。
+   中文无 Cinzel 字形，自然落到宋体/思源宋体——碑铭感靠字距与字重，不靠假字体。 */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-700.woff2") format("woff2");
+}
+
+:root {
+  /* ── 玻璃明度阶梯：半透明白膜叠在深黑上，冷光晕从后面透出来 ──────
+     越靠近内容越亮。--panel 是标准玻璃面，--panel2 是膜内凹槽。 */
+  --bg:        #08080a;   /* 应用底（双光晕的落点） */
+  --bg-deep:   #0a0a0d;   /* 画布凹槽（节点图、时间轴）：比玻璃面更暗 */
+  --panel:     rgba(255, 255, 255, 0.06);   /* 标准玻璃面 */
+  --panel2:    rgba(255, 255, 255, 0.04);   /* 输入框 / 膜内凹槽 */
+  --panel3:    rgba(255, 255, 255, 0.10);   /* 悬停态 */
+  --panel4:    rgba(255, 255, 255, 0.14);   /* 按下 / 选中填充 */
+
+  /* ── 分隔线：玻璃边缘的亮线（1px 半透明白）───────────────────── */
+  --line:      rgba(255, 255, 255, 0.12);   /* 常规玻璃边框 */
+  --line2:     rgba(255, 255, 255, 0.18);   /* 强分隔 / 输入框边框 */
+  --line3:     rgba(255, 255, 255, 0.25);   /* hover / 焦点边框 */
+
+  /* ── 文字（三级，绝不用纯白：纯白在暗底上光晕扩散）────────────── */
+  --text:      #d4d8de;   /* 主文本 */
+  --text-dim:  #7a8089;   /* 次要说明 */
+  --text-dim2: #565c66;   /* 占位 / 禁用 */
+
+  /* ── 唯一强调色：冷银。高亮 #eef1f5，像光扫过玻璃边缘 ─────────── */
+  --acc:       #c8cdd4;
+  --acc-hover: #eef1f5;
+  --acc-dim:   #8a9099;
+  --acc-fill:  rgba(200, 205, 212, 0.10);  /* 选中行底色 */
+
+  /* ── 语义状态（降饱和；血红只作错误信号，不铺大面）──────────────
+     --bad 太暗不能作文字色，错误文案用 --bad-ink，边框/填充用 --bad。 */
+  --ok:        #7d9b84;
+  --warn:      #b3985a;
+  --bad:       #6b2020;
+  --bad-ink:   #c98080;
+  --ok-fill:   rgba(125, 155, 132, 0.12);
+  --warn-fill: rgba(179, 152, 90, 0.12);
+  --bad-fill:  rgba(107, 32, 32, 0.16);
+
+  /* ── 端口/类型色（节点图专用，仅连线与 3-4px 圆点；全部压成灰调）── */
+  --t-model:   #8d84a0;   /* 模型 */
+  --t-latent:  #a08489;   /* 潜空间 */
+  --t-image:   #a09678;   /* 图像 */
+  --t-number:  #7f948c;   /* 数值 */
+  --t-text:    #84909f;   /* 文本 */
+
+  /* ── 字号（正文小字号 + 松行高；碑铭标题另走 --serif 放大）────── */
+  --fz-xs: 10.5px;
+  --fz-s:  11.5px;
+  --fz:    12.5px;
+  --fz-l:  13.5px;
+  --fz-xl: 15px;
+  --lh:    1.6;
+
+  /* ── 间距（4 的倍数）─────────────────────────────────────────── */
+  --sp1: 4px;  --sp2: 8px;  --sp3: 12px;  --sp4: 16px;  --sp5: 24px;
+
+  /* ── 圆角（玻璃 16 / 按钮与输入 12 / 小件 8）──────────────────── */
+  --r:   8px;
+  --r2:  12px;
+  --r3:  16px;       /* 卡片 / 面板 / 弹窗 */
+  --r-pill: 999px;   /* 只用于状态点、计数徽标 */
+
+  /* ── 阴影与光：黑阴影托底 + 顶部内亮线；冷光只给 hover/焦点 ────── */
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 20px rgba(180, 200, 230, 0.15);
+  --glow-soft: 0 0 20px rgba(180, 200, 230, 0.08);
+  --glass: rgba(255, 255, 255, 0.06);   /* 导航/顶栏/侧栏的玻璃底 */
+
+  /* ── 玻璃配方（通用类共用；移动端 --glass-blur 自动降档）───────── */
+  --glass-blur: blur(20px) saturate(1.4);
+  --glass-blur-lite: blur(12px) saturate(1.3);
+  --glass-hover: rgba(255, 255, 255, 0.10);
+  --glass-line-hover: rgba(255, 255, 255, 0.25);
+  --glow-cool: rgba(180, 200, 230, 0.15);
+  /* 环境光：玻璃必须「有东西可透」。0.16 的光晕压在 #08080a 上只剩 #1a1d24，
+     肉眼等于平黑——玻璃层再正确也读不出来。这里提到 0.30/0.26，
+     合成后左上≈#262d39（蓝灰）、右下≈#241f2c（紫灰），仍远低于卡片明度。 */
+  --amb-blue: rgba(108, 132, 172, 0.30);   /* 左上蓝灰环境光 */
+  --amb-purple: rgba(132, 112, 168, 0.26); /* 右下紫灰环境光 */
+  --amb-core: rgba(226, 232, 240, 0.05);   /* 中景冷白核心光，给玻璃一层极淡的迎光面 */
+  --vignette: radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  --sheen: linear-gradient(158deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0) 46%);
+
+  /* ── 动效（状态切换 90-140ms；入场与铸造加载走 --t-slow）───────── */
+  --t-fast: 90ms;
+  --t:      140ms;
+  --t-slow: 320ms;
+  --ease:   cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── 过渡别名（迁移垫片，不是设计决策）───────────────────────── */
+  --dim:   #7a8089;
+  --dim2:  #565c66;
+  --acc2:  #eef1f5;
+
+  /* ── 字体 ─────────────────────────────────────────────────────
+     数字一律 tabular-nums：参数面板全是会跳动的数字，等宽数字能避免整行抖动。 */
+  --sans: -apple-system, "Segoe UI", "Microsoft YaHei UI", "PingFang SC",
+          "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --serif: "Cinzel", "Palatino Linotype", "Book Antiqua", Georgia,
+           "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+}
+
+/* ── 基础层：七个界面共用的最小复位与排版基调 ───────────────────── */
+/* 底：深黑 + 两团冷色径向光晕（左上蓝灰 / 右下紫灰）+ 中景冷白核光 + 边缘压暗。
+   fixed 不随滚动漂移。光晕是玻璃的「景」——没有它们，blur 透出来的只是一片死黑。 */
+html {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(78% 62% at 6% -4%, var(--amb-blue) 0%, rgba(108, 132, 172, 0) 68%),
+    radial-gradient(70% 58% at 104% 102%, var(--amb-purple) 0%, rgba(132, 112, 168, 0) 68%),
+    radial-gradient(60% 46% at 50% 34%, var(--amb-core) 0%, rgba(226, 232, 240, 0) 70%),
+    radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+body {
+  background: transparent;
+  color: var(--text);
+  font: var(--fz)/var(--lh) var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* 胶片颗粒：极细噪点铺满视口，不拦截指针；4% 透明度只够"感觉到"不够"看到" */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background: url("../assets/grain.png") repeat;
+  background-size: 160px 160px;
+}
+
+/* ── 通用玻璃类：组件直接挂类，配方只此一份 ─────────────────────── */
+.glass-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 可交互玻璃卡：hover 提亮 + 上浮 3px + 冷光（风格卡/作品卡/模板卡） */
+.glass-card.hoverable {
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.glass-card.hoverable:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.glass-btn {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--glass-line-hover);
+  color: var(--acc-hover);
+  box-shadow: 0 0 20px var(--glow-cool);
+}
+.glass-input {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease),
+              background var(--t) var(--ease);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: var(--glass-line-hover);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: var(--glow);
+}
+.glass-input::placeholder { color: var(--text-dim2); }
+
+/* 移动端：blur 降到 12px，避免大面积毛玻璃拖垮帧率 */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+}
+
+/* 碑铭体：平台名、卡片标题、章节题字共用 */
+.serif {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+/* 数字等宽：所有数值读数都用它 */
+.num, kbd, code, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点环：冷银描边 + 一圈极淡冷光，键盘可达 */
+:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(180, 200, 230, 0.12);
+}
+
+/* 滚动条：细、暗、玻璃亮线 thumb，hover 提亮；不用系统默认蓝条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+*::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* 选区：银的低透明填充，不用系统蓝 */
+::selection { background: var(--acc-fill); color: var(--acc-hover); }
+
+/* ── 玻璃族第二批：弹窗 / 浮条 / 侧栏 / 凹槽 / 胶囊 ──────────────────
+   同一套配方，只是圆角与投影档位不同。组件直接挂类，别再复写 blur。 */
+.glass-modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.glass-toast {
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+/* 悬浮工具条：画布顶部/参数板顶部那种横条，圆角 16 贴在内容之上 */
+.glass-toolbar {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏 / 导航栏：从贴边条改成悬浮玻璃板（margin 16 + 圆角 16） */
+.glass-rail {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 凹槽：画布底、代码块、时间轴这类「玻璃板里的暗面」，不铺毛玻璃 */
+.glass-well {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.glass-chip {
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r2);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+}
+
+/* 玻璃卡顶部迎光：一层极淡的白到透明的斜向渐变，让平面看出弧面 */
+.glass-card, .glass-modal, .glass-rail, .panel {
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+}
+
+/* ── 无 backdrop-filter 的浏览器：把膜加厚一档，至少不塌成纯黑 ──────── */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar { background-color: rgba(255, 255, 255, 0.10); }
+  .glass-toast { background-color: rgba(255, 255, 255, 0.14); }
+}
+
+/* ── 移动端：blur 降到 12px；小控件直接关掉毛玻璃，省一次合成 ────────── */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+  .glass-btn, .glass-chip, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+}
+
+/* ── 尊重系统设置：减少动效 / 减少透明 ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .glass-card.hoverable:hover, .glass-btn:hover { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar, .glass-toast, .glass-chip, .glass-btn, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(24, 26, 30, 0.92);
+  }
+}
+/* ═══════════════════════════════════════════════════════════════════════
+   module-ui.css —— 功能模块入口的共享骨架
+   ───────────────────────────────────────────────────────────────────────
+   定位：market / plugins / quality / server 四个入口共用同一套外壳结构
+   （顶栏 / 左列表 / 右详情 / 底部口径条），差异只在中间的「内容形态」。
+
+   视觉人格：暗黑玻璃拟态 · 冷银基调（ui/tokens.css 为唯一令牌源）。
+     - 顶栏 / 侧栏 / 详情区头 / 底部口径条：四块悬浮玻璃板，统一 margin 16 + 圆角 16 + blur 20
+     - 侧栏：#08080a 上的半透明白膜（.body > .aside，比 skin 的 .aside 高一级）
+     - 选中态：左侧 2px 冷银竖线 + 一圈冷银亮边，不做亮色填充、不引入彩色
+     - 按钮：玻璃底 rgba(255,255,255,.1) + 1px 亮边 + 冷白字，圆角 12；输入框圆角 16
+     - 卡片：.06 白膜 + 0 8px 32px rgba(0,0,0,.3) + inset 0 1px 0 rgba(255,255,255,.08)
+     - 凹槽：标签页与代码/日志块走 .glass-well 口径（bg-deep + 内描边，不铺毛玻璃）
+     - 卡片标题：碑铭衬线（--serif）宽字距；表格行 hover 只提亮、不位移
+
+   规矩（与 docs/09-design-system.md 一致，lint 会拦）：
+     - 只用 ui/tokens.css 的变量，不新增色值
+     - 圆角只走 --r / --r2 / --r3 / --r-pill（卡片上限 16px）
+     - 光晕只给冷色（--glow / --glow-soft / --glow-cool），投影只给中性黑
+   ═══════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: transparent; color: var(--text); font: var(--fz)/var(--lh) var(--sans); }
+a { color: var(--acc); text-decoration: none; }
+a:hover { color: var(--acc-hover); }
+
+/* ── 页面骨架：悬浮玻璃顶栏 + 主体 + 口径条 24 ───────────────────── */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) 24px; height: 100vh; }
+
+.topbar {
+  display: flex; align-items: center; gap: var(--sp3);
+  margin: var(--sp4) var(--sp4) 0; min-height: 38px;
+  padding: 0 var(--sp3);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  position: relative; z-index: 5;
+}
+.topbar .brand { display: flex; align-items: baseline; gap: var(--sp2); }
+.topbar .brand b {
+  font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.18em; color: var(--acc);
+}
+.topbar .brand span { font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: 0.08em; }
+.topbar .spacer { flex: 1; }
+.topbar .crumbs { font-size: var(--fz-s); color: var(--text-dim); }
+.topbar .crumbs i { color: var(--text-dim2); font-style: normal; padding: 0 var(--sp1); }
+
+.body { display: grid; grid-template-columns: var(--col, 320px) minmax(0, 1fr); min-height: 0; }
+.body.no-aside { grid-template-columns: minmax(0, 1fr); }
+
+/* 侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20 / 边框 rgba(255,255,255,.12)）。
+   选择器写在 .body > .aside：glass-skin.css 里 .aside 只留膜（background-color: transparent，
+   玻璃底色交给页面），这里比它高一级，底色与迎光面由骨架自己给，两边不互相覆盖。 */
+.body > .aside {
+  display: flex; flex-direction: column; min-height: 0;
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  overflow: hidden;   /* 内部滚到底也不露直角 */
+}
+.aside-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim);
+  letter-spacing: 0.12em; flex: 0 0 auto;
+}
+.aside-h .spacer { flex: 1; }
+.aside-b { flex: 1; min-height: 0; overflow: auto; }
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: transparent; }
+/* 详情区头：悬浮玻璃条，与左栏板同一条基线（左 16 / 上 16），下沿不画分隔线 */
+.main-h {
+  display: flex; align-items: center; gap: var(--sp2);
+  margin: var(--sp4) var(--sp4) 0;
+  padding: var(--sp2) var(--sp3); min-height: 34px; flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.main-h h2 {
+  margin: 0; font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.12em; color: var(--acc);
+}
+.main-h .sub { font-size: var(--fz-xs); color: var(--text-dim); }
+.main-h .spacer { flex: 1; }
+.main-b { flex: 1; min-height: 0; overflow: auto; padding: var(--sp3) var(--sp4); }
+/* 底部口径条：悬浮玻璃条（统计/说明常驻在这里），左右与主体内容同一列线 */
+.main-f {
+  flex: 0 0 auto; margin: var(--sp3) var(--sp4) var(--sp4);
+  padding: var(--sp2) var(--sp3); font-size: var(--fz-xs); color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 全平台口径条（最底一行）：细玻璃条，不做大圆角，只提亮到膜上 */
+.statusbar {
+  display: flex; align-items: center; gap: var(--sp3); padding: 0 var(--sp4);
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  border-top: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-size: var(--fz-xs); color: var(--text-dim2);
+}
+.statusbar .spacer { flex: 1; }
+.statusbar .num { color: var(--text-dim); }
+
+/* ── 列表行（左栏主力形态）───────────────────────────────────────── */
+.list { display: flex; flex-direction: column; }
+.list .row {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center; gap: var(--sp2);
+  padding: 0 var(--sp2); min-height: 28px; cursor: pointer;
+  border-bottom: 1px solid var(--line); color: var(--text);
+  transition: background var(--t-fast) var(--ease);
+}
+.list .row:hover { background: var(--panel3); }
+/* 选中 = 左 2px 冷银竖线 + 一圈冷银亮边 + 极淡银底；全程冷银，不用任何彩色 */
+.list .row[aria-selected="true"] {
+  background: var(--acc-fill);
+  box-shadow: inset 2px 0 0 var(--acc), inset 0 0 0 1px var(--glass-line-hover);
+  color: var(--acc-hover);
+}
+.list .row[aria-selected="true"]:hover { background: var(--panel3); }
+.list .row .t { font-size: var(--fz); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .row .s { font-size: var(--fz-xs); color: var(--text-dim2); }
+.list .row .ico { display: flex; align-items: center; justify-content: center; color: var(--text-dim); }
+.list .row[aria-selected="true"] .ico { color: var(--acc); }
+.list .sect {
+  padding: var(--sp2) var(--sp2) var(--sp1); font-size: var(--fz-xs); color: var(--text-dim2);
+  letter-spacing: 0.12em; border-bottom: 1px solid var(--line); background: transparent;
+}
+.list .empty-row { padding: var(--sp3); color: var(--text-dim2); font-size: var(--fz-s); }
+
+/* ── 徽标与状态点 ────────────────────────────────────────────────── */
+.dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--text-dim2); flex: 0 0 auto; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); }
+.dot.acc { background: var(--acc); }
+.dot.off { background: var(--line2); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 17px; padding: 0 6px;
+  border: 1px solid var(--line2); border-radius: var(--r); background: var(--panel2);
+  font-size: var(--fz-xs); color: var(--text-dim); white-space: nowrap;
+}
+.badge.ok { border-color: var(--ok); color: var(--ok); background: var(--ok-fill); }
+.badge.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-fill); }
+.badge.bad { border-color: var(--bad); color: var(--bad-ink); background: var(--bad-fill); }
+.badge.acc { border-color: var(--acc-dim); color: var(--acc); background: var(--acc-fill); }
+.badge.pill { border-radius: var(--r-pill); }
+
+/* ── 按钮：玻璃底 + 1px 亮边 + 冷白字；hover 提亮泛冷光 ───────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 26px; padding: 0 11px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: var(--r2); background: rgba(255, 255, 255, 0.10);
+  color: var(--text); font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+              box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.btn:hover { background: rgba(255, 255, 255, 0.14); border-color: var(--glass-line-hover); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+.btn:active { background: var(--panel4); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+/* 主操作：不是实心色块，而是亮边更亮一档的玻璃碑牌 */
+.btn.acc { background: var(--panel3); border-color: var(--acc-dim); color: var(--acc-hover); letter-spacing: 0.12em; }
+.btn.acc:hover { background: var(--panel4); border-color: var(--acc-hover); box-shadow: var(--glow); }
+.btn.mini { height: 21px; padding: 0 7px; font-size: var(--fz-xs); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-dim); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.btn.ghost:hover { background: var(--panel3); color: var(--text); box-shadow: none; }
+
+/* ── 表单：膜内凹槽 + 1px 亮边；圆角 16（按钮 12，两者别混）────────── */
+.input, .select, .textarea {
+  height: 26px; padding: 0 8px; color: var(--text);
+  background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r3);
+  font: var(--fz-s)/1 var(--sans); outline: none;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.textarea { height: auto; padding: 5px 6px; font-family: var(--mono); resize: vertical; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--acc-hover); box-shadow: var(--glow); }
+.input::placeholder { color: var(--text-dim2); }
+label.field { display: flex; flex-direction: column; gap: var(--sp1); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 键值对 / 表格 ───────────────────────────────────────────────── */
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--sp3); font-size: var(--fz-s); }
+.kv dt { color: var(--text-dim); }
+.kv dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.kv dd.num { color: var(--text); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--fz-s); }
+.tbl th, .tbl td { text-align: left; padding: 0 var(--sp2); height: 26px; border-bottom: 1px solid var(--line); }
+/* 行 hover 只提亮膜内底色：行高/padding/transform 一律不动，258 行才不抖 */
+.tbl td { transition: background-color var(--t-fast) var(--ease); }
+.tbl th { color: var(--text-dim); font-weight: 500; font-size: var(--fz-xs); letter-spacing: 0.08em; background: var(--panel2); }
+.tbl tr:hover td { background-color: var(--glass-hover); }
+.tbl td.num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl td.mono { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 面板 / 卡片：半透明白 .06 + 1px 冷灰边 + 0 8px 32px rgba(0,0,0,.3)
+      + inset 0 1px 0 rgba(255,255,255,.08)。四行数值全部来自令牌：
+      --panel / --line / --shadow-pop / --shadow-inset，改令牌即全站生效。 */
+.panel {
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen);   /* 顶部迎光斜向渐变：平面看出弧面 */
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 网格里的卡片才上浮（市场概览卡 / 服务面板）；整幅区块例如 quality 的检查项不动，
+   否则鼠标划过正文时整块跳动。hover 只加 background-color，保住迎光面。 */
+.grid2 > .panel, .grid3 > .panel {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.grid2 > .panel:hover, .grid3 > .panel:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.panel + .panel { margin-top: var(--sp3); }
+.panel-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim); letter-spacing: 0.12em;
+}
+.panel-h .spacer { flex: 1; }
+.panel-b { padding: var(--sp3); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp3); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp3); }
+@media (max-width: 1100px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── 空态与提示 ──────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp2);
+  padding: var(--sp4); border: 1px dashed var(--line2); border-radius: var(--r3);
+  color: var(--text-dim); font-size: var(--fz-s); background: var(--panel);
+}
+.empty b { color: var(--text); font-weight: 600; }
+.hint { font-size: var(--fz-xs); color: var(--text-dim2); }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── 标签页（详情区切换）：膜内凹槽 + 分段胶囊，不画底线（避免与凹槽边框叠成双线）── */
+.tabs {
+  display: flex; align-items: center; gap: 2px;
+  margin: var(--sp3) var(--sp4) 0; padding: 3px;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.tabs .tab {
+  height: 24px; padding: 0 var(--sp3); cursor: pointer; border: 0; border-radius: var(--r2);
+  background: transparent; color: var(--text-dim);
+  font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.tabs .tab:hover { color: var(--text); background-color: var(--panel2); }
+.tabs .tab[aria-selected="true"] {
+  color: var(--acc-hover); background-color: var(--panel3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ── 进度条（银条；只做状态显示）────────────────────────────────── */
+.bar { height: 4px; background: var(--panel4); border-radius: var(--r); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--acc); }
+.bar.ok > i { background: var(--ok); }
+.bar.warn > i { background: var(--warn); }
+.bar.bad > i { background: var(--bad); }
+
+/* ── 代码/日志块：.glass-well 口径（膜内凹槽，不铺毛玻璃）──────────────
+   长文本上再叠一层 backdrop-filter 是纯浪费帧率，凹槽靠 bg-deep + 内描边成像。 */
+.code {
+  margin: 0; padding: var(--sp2);
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line); border-radius: var(--r2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  font-family: var(--mono); font-size: var(--fz-xs);
+  color: var(--text-dim); overflow: auto; max-height: 220px; white-space: pre-wrap; word-break: break-all;
+}
+.code .k { color: var(--t-text); }
+.code .ok { color: var(--ok); }
+.code .bad { color: var(--bad-ink); }
+
+/* ── 窄屏（≤900px）：悬浮板全部取消外边距、贴边全宽，卡片不再上浮 ─────
+   blur 的降档在 tokens.css 的 @media (max-width:900px) 里（--glass-blur →
+   blur(12px)），骨架一律引用 var(--glass-blur)，所以这里不用再写一遍 blur。 */
+@media (max-width: 900px) {
+  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .body > .aside {
+    margin: 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none;
+    max-height: 42vh;   /* 侧栏变成顶部条带，内部照旧滚动 */
+  }
+  .topbar { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .main-h { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none; }
+  .main-b { padding: var(--sp3); }
+  .main-f { margin: 0; border-width: 1px 0 0; border-radius: 0; box-shadow: none; }
+  .statusbar { padding: 0 var(--sp3); }
+  .tabs { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .grid2, .grid3 { gap: var(--sp2); }
+  /* 卡片不再上浮：hover 只提亮，位移与冷光一起收掉 */
+  .grid2 > .panel:hover, .grid3 > .panel:hover {
+    transform: none;
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+}
+/* ═══════════════════════════════════════════════════════════════════════
+   glass-skin.css —— 玻璃映射层（最后一遍）
+   ───────────────────────────────────────────────────────────────────────
+   定位：ui/tokens.css 定义「玻璃是什么」，本文件负责「把各页已经写好的
+   组件选择器映射到那套配方上」。页面源件里只留自己的结构与排版，不再各写
+   一份 background/border/blur/shadow。
+
+   为什么单独一层而不是逐组件改：
+     七个页面 + 帧检视器共 543KB 源，卡片族有 40 多个类名，逐个改一遍既容易
+     漏、又会在下一次改令牌时全部失配。映射层只做增量：圆角补齐、hover 三件套、
+     侧栏悬浮、弹窗居中、控件玻璃化。谁想加新卡片，挂 .glass-card 即可。
+
+   注入位置：每个页面 <style> 的最后一行（构建期替换 /*__SKIN__*\/）。
+     放在最后 = 同权重规则里一定赢，所以整份文件不需要一个 !important。
+
+   三条规矩：
+     1. 只写「页面自己的类名 → 玻璃配方」，不新增色值，全部走 var()。
+     2. 不改布局栅格（列宽/行高/顺序由各页自持）；只加外边距让它浮起来。
+     3. 循环动画、彩色光晕、纯白文字一律不写（tools/lint_ui.mjs 会拦）。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 悬浮侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20）── */
+#sidenav,
+nav#rail,
+#pRail,
+aside,
+.aside {
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);      /* 膜必须由本层给：页面侧多为 transparent，靠 skin 兜底 */
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏内部滚到底时的圆角不露直角 */
+#sidenav, nav#rail, #pRail, aside { overflow-y: auto; }
+
+/* ── 2. 圆角补齐：还停在 12px 的卡片族一律抬到 16px ───────────────── */
+.card,
+.style-card,
+.ai-card,
+.gen-card,
+.work-item,
+.opt,
+.honest,
+.summary,
+.reco,
+.prow,
+.np-row,
+.legend,
+.tip,
+#toast,
+.toast,
+.loaded,
+.errcard,
+.svc,
+.node,
+.wp,
+.stage-chip,
+.field,
+.empty {
+  border-radius: var(--r3);
+}
+
+/* 输入框：规范要求 16px（按钮 12px，别混） */
+select,
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="password"],
+input[type="url"],
+textarea {
+  border-radius: var(--r3);
+}
+
+/* ── 3. hover 三件套：提亮 + 亮边 + 上浮 3px + 一圈冷光 ────────────── */
+.card,
+.style-card,
+.work-item,
+.opt,
+.np-row,
+.loaded {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.card:hover,
+.style-card:hover,
+.work-item:hover,
+.opt:hover,
+.np-row:hover,
+.loaded:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* 提示块不是可点目标：.honest / .summary / .svc 只提亮，不上浮（跟着鼠标跳会很脏） */
+.honest,
+.summary,
+.svc {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.honest:hover,
+.summary:hover,
+.svc:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+}
+
+/* 列表行 / 参数行：只在膜内提亮，不上浮（上浮会让 258 行变成果冻） */
+.row:hover,
+.list .row:hover,
+.prow:hover,
+.tier-head:hover,
+.wstep:hover,
+.rail-item:hover,
+.nav-item:hover,
+.wi-acts:hover {
+  background-color: var(--glass-hover);
+}
+
+/* ── 4. 悬浮工具条 / 弹窗 / Toast ─────────────────────────────────── */
+/* 画布顶部与参数板顶部的横条：同一条玻璃，圆角 16 */
+#canvasTop,
+.canvas-tools,
+.toolbar,
+.board-head,
+.main-h,
+.viewhead {
+  border-radius: var(--r3);
+}
+#canvasTop,
+.canvas-tools,
+.toolbar {
+  background-color: var(--glass);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 弹窗：居中 + 玻璃 + 16px；遮罩压暗但不铺纯黑 */
+.wiz,
+.modal,
+.dialog,
+.panel-pop {
+  background-color: var(--panel);
+  background-image: var(--sheen);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 弹层遮罩只负责压暗与居中，毛玻璃档位交给页面自己（app 用 10px）。
+   这里若再写一份 blur(2px)，同权重且 skin 在后，会把页面的遮罩糊没了。 */
+#wizard,
+#forgeOverlay {
+  display: grid;
+  place-items: center;
+}
+
+/* Toast：玻璃胶囊，居中偏下 */
+#toast,
+.toast {
+  background-color: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 5. 画布：区域是深色凹槽，节点与属性面板是玻璃 ────────────────── */
+#nodeWrap {
+  margin: 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+#nodeWrap .legend,
+#nodeWrap .node,
+#estimator {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+#nodeWrap .node:hover {
+  border-color: var(--glass-line-hover);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 6. 表单控件：滑块轨道是膜内凹槽，拇指是一颗冷银 ─────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--panel4);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px; height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 1px solid var(--acc-hover);
+  box-shadow: 0 0 10px var(--glow-cool);
+  transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--acc-hover); }
+input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: var(--r-pill); background: var(--panel4);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--acc); border: 1px solid var(--acc-hover);
+}
+
+/* ── 7. 细节：风格图标去彩（emoji 只作字形，不作彩色贴纸）─────────── */
+.sc-emoji,
+.wi-emoji,
+.style-ico {
+  filter: grayscale(0.72) contrast(0.94);
+  opacity: 0.92;
+}
+
+/* 底部口径条 / 状态栏：细玻璃条，不做大圆角 */
+#statusbar,
+.statusbar,
+footer {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* 代码块 / 日志：膜内凹槽，别铺毛玻璃（长文本 blur 很贵） */
+.code,
+pre,
+.gout {
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+/* ── 8. 窄屏：侧栏取消外边距，改为贴边全宽；卡片不再上浮 ─────────── */
+@media (max-width: 900px) {
+  #sidenav,
+  nav#rail,
+  #pRail,
+  aside,
+  .aside {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .card:hover,
+  .style-card:hover,
+  .work-item:hover,
+  .opt:hover,
+  .honest:hover,
+  .summary:hover,
+  .np-row:hover,
+  .loaded:hover,
+  .svc:hover {
+    transform: none;
+  }
+  #nodeWrap { margin: 0; border-radius: 0; }
+}
+
+/* ── 本模块私有样式：只放服务控制台特有的几块，通用件一律用 module-ui.css ── */
+.topbar .live { display: inline-flex; align-items: center; gap: 6px; }
+.health { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp2); }
+@media (max-width: 1180px) { .health { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+/* 本地服务面板的一块读数卡：半透明白 0.06 + 1px 冷灰边 + 黑阴影托底 + 顶部内亮线，
+   与骨架的 .panel 同一套配方，只是圆角档位和内部排版不同 */
+.stat {
+  padding: var(--sp2) var(--sp2) var(--sp1);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen); background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+/* 读数卡成组出现，hover 走三件套（提亮 + 亮边 + 上浮 3px + 冷光） */
+.health .stat:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.stat .k { font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: .3px; }
+.stat .v { margin-top: 2px; font-size: var(--fz-l); color: var(--text); font-variant-numeric: tabular-nums; }
+.stat .v small { font-size: var(--fz-xs); color: var(--text-dim); margin-left: 3px; }
+.stat .n { margin-top: 2px; font-size: var(--fz-xs); color: var(--text-dim2); }
+
+.method { display: inline-block; min-width: 42px; padding: 0 5px; text-align: center;
+  font: var(--fz-xs)/17px var(--mono); border: 1px solid var(--line2); border-radius: var(--r); color: var(--text-dim); }
+.method.post { color: var(--acc); border-color: var(--acc-dim); }
+.route-path { font-family: var(--mono); font-size: var(--fz-s); color: var(--text); }
+tr.sel td { background: var(--acc-fill); }
+tr.sel td:first-child { box-shadow: inset 2px 0 0 var(--acc); }
+
+.try { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: var(--sp3); }
+@media (max-width: 1180px) { .try { grid-template-columns: minmax(0, 1fr); } }
+.try textarea { width: 100%; height: 120px; }
+.res { max-height: 260px; }
+.res-meta { display: flex; align-items: center; gap: var(--sp2); margin-bottom: var(--sp1); font-size: var(--fz-xs); color: var(--text-dim); }
+
+.chain2 { display: flex; align-items: center; gap: 0; flex-wrap: wrap; }
+.chain2 .n { padding: 2px 7px; border: 1px solid var(--line2); border-radius: var(--r); font: var(--fz-xs)/1.6 var(--mono); color: var(--text-dim); }
+.chain2 .n.term { border-color: var(--ok); color: var(--ok); }
+.chain2 .a { color: var(--text-dim2); padding: 0 5px; font-size: var(--fz-xs); }
+.trans { font-size: var(--fz-xs); color: var(--text-dim); }
+.trans b { color: var(--text); font-weight: 500; }
+
+.sse { max-height: 240px; }
+/* 日志 / 响应体：.glass-well 口径 —— 膜内凹槽（bg-deep + 内描边），不叠 backdrop-filter */
+.res, .sse {
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  overflow: auto;
+}
+.progress { display: flex; align-items: center; gap: var(--sp2); }
+.progress .bar { flex: 1; }
+.tag { font: var(--fz-xs)/1.6 var(--mono); color: var(--text-dim2); }
+.nowrap { white-space: nowrap; }
+.right { text-align: right; }
+
+/* ── 窄屏（≤900）：读数卡不再上浮，一格一行；侧栏由骨架改成贴边条带 ── */
+@media (max-width: 900px) {
+  .health { grid-template-columns: minmax(0, 1fr); }
+  .health .stat:hover { transform: none; box-shadow: var(--shadow-pop), var(--shadow-inset); }
+  .try { grid-template-columns: minmax(0, 1fr); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <a class="btn mini ghost" data-backlink href="../app/index.html" title="返回平台工作台（各模块页共用的回程路）">← 工作台</a>
+    <div class="brand"><b>本地服务</b><span>VisInter-Agent v0.1</span></div>
+    <span class="crumbs">工作台<i>/</i>服务</span>
+    <span class="spacer"></span>
+    <span class="live" id="liveBadge"><span class="dot off"></span><span id="liveText">探测中</span></span>
+    <button class="btn" id="btnReload" title="重新探测 /api/health（2.5s 超时）">重连</button>
+  </header>
+
+  <div class="body" style="--col:300px">
+    <aside class="aside">
+      <div class="aside-h">视图<span class="spacer"></span><span id="navHint">快照</span></div>
+      <div class="aside-b">
+        <div class="list" id="nav"></div>
+        <div class="sect">后端</div>
+        <div class="list" id="envList"></div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-h">
+        <h2 id="vTitle">概览</h2>
+        <span class="sub" id="vSub"></span>
+        <span class="spacer"></span>
+        <span class="badge" id="vBadge"></span>
+      </div>
+      <div class="main-b" id="view"></div>
+      <div class="main-f" id="viewFoot"></div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="footSrc"></span>
+    <span class="spacer"></span>
+    <span id="footRight"></span>
+  </footer>
+</div>
+
+<script>
+window.__SNAP = {
+  "schema": "ai-video-platform/server-snapshot@1",
+  "generatedAt": "2026-11-19T15:15:55.059Z",
+  "generator": "tools/snap_server.mjs",
+  "source": "静态解析 server/*.js、tools/serve.mjs、spec/*.json（不连接后端）",
+  "version": "0.1.0",
+  "service": {
+    "name": "ai-video-platform backend",
+    "version": "0.1.0",
+    "healthPath": "/api/health",
+    "cors": {
+      "Access-Control-Allow-Origin": "*",
+      "Access-Control-Allow-Methods": "GET,POST,OPTIONS",
+      "Access-Control-Allow-Headers": "Content-Type",
+      "Access-Control-Max-Age": "86400"
+    },
+    "maxBodyBytes": 4194304,
+    "maxBodyLabel": "4MB（app.js MAX_BODY）"
+  },
+  "server": {
+    "port": 8388,
+    "host": "127.0.0.1",
+    "baseUrl": "http://127.0.0.1:8388",
+    "start": "node tools/serve.mjs",
+    "envVars": [
+      {
+        "name": "PORT",
+        "default": "8388",
+        "where": "tools/serve.mjs",
+        "effect": "HTTP监听端口；HTTP页面使用当前origin，启动器发现并复用现有后端"
+      },
+      {
+        "name": "HOST",
+        "default": "127.0.0.1",
+        "where": "tools/serve.mjs",
+        "effect": "监听地址（默认仅本机）"
+      },
+      {
+        "name": "COMFY_URL",
+        "default": "http://127.0.0.1:8188",
+        "where": "server/comfy.js",
+        "effect": "ComfyUI 基址"
+      },
+      {
+        "name": "COMFY_TIMEOUT_MS",
+        "default": "15000",
+        "where": "server/comfy.js",
+        "effect": "ComfyUI 请求超时"
+      },
+      {
+        "name": "COMFY_WS",
+        "default": "未设=启用",
+        "where": "server/comfy.js",
+        "effect": "设为 0 强制轮询进度（无真实百分比）"
+      },
+      {
+        "name": "AVP_MOCK_MS",
+        "default": "3000",
+        "where": "server/jobs.js",
+        "effect": "mock 任务十步走完的总时长"
+      },
+      {
+        "name": "AVP_CONCURRENCY",
+        "default": "1",
+        "where": "server/jobs.js",
+        "effect": "并发执行任务数"
+      },
+      {
+        "name": "AVP_RECONNECT_MS",
+        "default": "5000",
+        "where": "server/jobs.js",
+        "effect": "ComfyUI 连接恢复与允许的自动重试等待间隔"
+      },
+      {
+        "name": "CACHE_ROOT",
+        "default": "D:\\\\缓存",
+        "where": "server/jobs.js",
+        "effect": "任务落盘根目录（avp/jobs）"
+      }
+    ]
+  },
+  "comfy": {
+    "base": "http://127.0.0.1:8188",
+    "env": "COMFY_URL",
+    "defaultBase": "http://127.0.0.1:8188",
+    "pingPath": "/system_stats",
+    "pingTimeoutMs": 2500,
+    "probeTtlMs": 2000,
+    "timeoutMs": 15000,
+    "modes": [
+      "live",
+      "mock"
+    ],
+    "mockNote": "仅显式 mock provider/AVP_ALLOW_MOCK=1 模拟进度（mock:true）；ComfyUI 不可达不会自动切换 mock，任务保存后等待重连"
+  },
+  "routes": [
+    {
+      "method": "GET",
+      "path": "/api/health",
+      "status": 200,
+      "purpose": "服务健康：版本、node/平台、pid、运行时长、ComfyUI 可达性与模式、注册表/规则/目录统计、磁盘、队列",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "ok",
+        "service",
+        "version",
+        "node",
+        "platform",
+        "arch",
+        "pid",
+        "uptime_sec",
+        "provider",
+        "comfy",
+        "registry",
+        "rules",
+        "catalog",
+        "gpu",
+        "disk",
+        "jobs"
+      ],
+      "notes": "每次请求 force 探测 provider；comfy provider 或配置 COMFY_URL 时才探测 ComfyUI。provider.degraded 表示真实后端不可达，不会据此把任务切成 mock",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/devices",
+      "status": 200,
+      "purpose": "设备档位表：显存/可用/功耗/来源 + 每档默认参数估算与 verdict（首次请求后缓存）",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "base",
+        "devices",
+        "count",
+        "tiers",
+        "probe"
+      ],
+      "notes": "档位估算基于默认参数并缓存；probe 为独立本机读数，?fresh=1/true 强制刷新，tier_suggestion 只是建议、不自动确认设备档位",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/params",
+      "status": 200,
+      "purpose": "参数注册表：按 stage 分组，支持 ?stage=<id> 过滤",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "version",
+        "total",
+        "counts",
+        "tiers",
+        "stages"
+      ],
+      "notes": "总 258 个参数；板块顺序与分层定义（L0–L4）来自 spec/params.registry.json",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/estimate",
+      "status": 200,
+      "purpose": "解析参数并估算显存/耗时/质量/成本，返回 warnings 与 trace",
+      "pathParams": [],
+      "sampleBody": {
+        "device": "T0",
+        "values": {}
+      },
+      "responseKeys": [
+        "device",
+        "estimate",
+        "warnings",
+        "trace",
+        "values"
+      ],
+      "notes": "estimate 内含 vram/time/quality/cost/dims；未知档位 → 400 BAD_DEVICE",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/degrade",
+      "status": 200,
+      "purpose": "质量优先预算提示：needed 表示当前估算超出显存预算，不提供降质方案",
+      "pathParams": [],
+      "sampleBody": {
+        "device": "T0-low",
+        "values": {}
+      },
+      "responseKeys": [
+        "needed",
+        "options",
+        "mode",
+        "reason"
+      ],
+      "notes": "mode=quality_first，options 恒为空数组；不自动降低分辨率、步数或量化。生成准入失败返回 422，而不是自动降档",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/workflow/compile",
+      "status": 200,
+      "purpose": "编译预览：参数落到哪些节点、哪些未绑定；不建任务、不投递 ComfyUI",
+      "pathParams": [],
+      "sampleBody": {
+        "values": {}
+      },
+      "responseKeys": [
+        "provider",
+        "stats",
+        "synthetic",
+        "workflow",
+        "applied",
+        "merged",
+        "unbound",
+        "warnings"
+      ],
+      "notes": "未传 template 时 synthetic=true（只有合成工作流），真实执行会以 WF_SYNTHETIC_TEMPLATE 失败",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/jobs",
+      "status": 202,
+      "purpose": "创建任务：返回 202 与受理时刻的 queued 快照（调度器随后会把它推进 running）",
+      "pathParams": [],
+      "sampleBody": {
+        "engine": "wan22",
+        "prompt": "远山云海，固定镜头",
+        "tier": "720p",
+        "output_fps": 60
+      },
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "experiment_id",
+        "prompt",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "valuesCount",
+        "cine"
+      ],
+      "notes": "engine=wan22/minimax_h3 编译本地图并经质量准入；不足显存/禁用权重等返回 422，不降尺寸。默认输出 60fps：Wan 原生 30fps，H3 原生固定 24fps；目标高于原生时由独立 RIFE 后处理插帧。ComfyUI 不可达则持久排队重连；仅显式 mock 模式模拟进度",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/jobs/:id/pick",
+      "status": 200,
+      "purpose": "电影管线选优窗口内的人工改选：8 组就绪后 windowMs 内可改选某一组作为 i2v 源",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": {
+        "index": 1
+      },
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "experiment_id",
+        "prompt",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "valuesCount",
+        "cine"
+      ],
+      "notes": "非 cine / 非 running / 窗口已关 / 已改选 → 409 JOB_NOT_PICKABLE；序号越界 → 400 BAD_PICK；index 为 0 基候选序号",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/jobs/:id/review",
+      "status": 200,
+      "purpose": "审核复核队列：人工对某条 QAReport（cineReport.audit[]）改判 PASS/REJECT，留痕 reviewer/reason/retryHistory",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": {
+        "auditId": "qa_xxx",
+        "decision": "PASS",
+        "reason": "人工目视确认无穿帮"
+      },
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "experiment_id",
+        "prompt",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "valuesCount",
+        "cine"
+      ],
+      "notes": "找不到审核报告 → 404 AUDIT_NOT_FOUND；decision 非 PASS/REJECT → 400 BAD_REVIEW；改判写回 job.cineReport.audit 并发 cine-review 事件",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/jobs/:id/candidates/:n",
+      "status": 200,
+      "purpose": "候选关键帧发射：流式发射第 n 组候选 PNG（image/png），供向导直播网格与作品库回放点选",
+      "pathParams": [
+        "id",
+        "n"
+      ],
+      "sampleBody": null,
+      "responseKeys": [],
+      "notes": "二进制流非 JSON；只发任务自己记录的候选文件路径（provider 产物，非用户输入）；无该组 → 404 NO_CANDIDATE；文件已清理 → 404 CANDIDATE_MISSING；未知 id → 404 JOB_NOT_FOUND",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/jobs",
+      "status": 200,
+      "purpose": "任务列表：按创建时间倒序，支持 ?state=、?status=、?active=1 与 ?limit=（1–500，默认 50）",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "jobs",
+        "stats"
+      ],
+      "notes": "列表项走 publicView；隐藏 values/valueSnapshot/canvasSnapshot/workflow/template/cineReport，附 valuesCount/canRetry/cine；status 为 pending/running/done/failed",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/jobs/:id",
+      "status": 200,
+      "purpose": "任务详情：完整持久任务、canRetry 与 events_url，含原生产物和独立增强状态",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": null,
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "template",
+        "experiment_id",
+        "prompt",
+        "canvasSnapshot",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "workflow",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "values",
+        "valueSnapshot",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "cineReport",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "events_url"
+      ],
+      "notes": "未知 id → 404 JOB_NOT_FOUND；直接返回 jobs.get 的全量字段，不经过 publicView，故不附 valuesCount/cine；运行期追加字段按任务阶段出现",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/jobs/:id/cancel",
+      "status": 200,
+      "purpose": "取消任务：queued 立即 canceled；running 只发中断请求，等当前节点返回",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": {},
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "experiment_id",
+        "prompt",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "valuesCount",
+        "cine"
+      ],
+      "notes": "已是终态再取消 → 409 JOB_NOT_CANCELABLE；真实执行时调 ComfyUI /interrupt（全局中断）",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/jobs/:id/retry",
+      "status": 202,
+      "purpose": "按原任务快照重新排队失败或取消任务，返回受理快照",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": {},
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "experiment_id",
+        "prompt",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "valuesCount",
+        "cine"
+      ],
+      "notes": "仅 failed/canceled 且无活跃 worker 可重试，否则 409 JOB_NOT_RETRYABLE；保留可复用远端结果，取消或指定执行错误会清除旧提交信息",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/jobs/:id/output",
+      "status": 200,
+      "purpose": "成片发射：流式发射任务记录的 output 产物（video/mp4），供小白向导预览与作品库下载",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": null,
+      "responseKeys": [],
+      "notes": "二进制流非 JSON；只发 provider 产物路径（非用户输入）；无产物（mock 演示/未完成）→ 404 NO_OUTPUT；文件已清理 → 404 OUTPUT_MISSING；未知 id → 404 JOB_NOT_FOUND",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/models",
+      "status": 200,
+      "purpose": "本地模型下拉列表：真源 spec/model.configs.json，附 provider 探测结果与默认模型/产物目录",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "provider",
+        "default",
+        "models",
+        "paid_video_models",
+        "output_dir"
+      ],
+      "notes": "每次请求 force 探测 provider；models 各项 id/label/paid=false/provider=comfy/kind，paid_video_models=[]；output_dir 未配置时为 null",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/jobs/:id/events",
+      "status": 200,
+      "purpose": "SSE：snapshot → state/log/progress/cine/enhancement 事件 → done；15s 心跳注释行",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": null,
+      "responseKeys": [
+        "snapshot",
+        "state",
+        "log",
+        "progress",
+        "enhancement",
+        "cine-group",
+        "cine-pick",
+        "cine-review",
+        "done"
+      ],
+      "notes": "Content-Type text/event-stream; charset=utf-8；终态任务发完 snapshot+done 立即关闭；未知 id → 404",
+      "sse": true
+    },
+    {
+      "method": "POST",
+      "path": "/api/recommend",
+      "status": 200,
+      "purpose": "AI 参数推荐（双轨）：有 DASHSCOPE_API_KEY 走 Qwen，无 key/失败显式降级规则推荐（source=rules），返回三层补丁 + 258 键求解值 + 四向估算",
+      "pathParams": [],
+      "sampleBody": {
+        "prompt": "黑白高反差，雕塑感人物，强烈侧光",
+        "device": "T0",
+        "values": {}
+      },
+      "responseKeys": [
+        "source",
+        "model",
+        "preset",
+        "reason",
+        "core",
+        "common",
+        "advanced_overrides",
+        "values",
+        "device",
+        "estimate",
+        "warnings",
+        "muse_level",
+        "ai",
+        "invalid_keys"
+      ],
+      "notes": "未知档位 → 400 BAD_DEVICE；muse_level.provenance=estimate（质量分/10，非实测）；ai.attempted/ai.error 说明降级原因，不伪装 AI 输出",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/capability",
+      "status": 200,
+      "purpose": "逆向能力包与 Seedream provider 探测结果",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "schema",
+        "version",
+        "updated",
+        "target",
+        "tiers",
+        "abilities",
+        "provider"
+      ],
+      "notes": "能力来自 spec/reverse.capabilities.json；provider 探测每次强制刷新",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/capability/image",
+      "status": 200,
+      "purpose": "Seedream 图像能力同步执行；dryRun 只返回编译载荷，不进入视频任务队列",
+      "pathParams": [],
+      "sampleBody": {
+        "dryRun": true,
+        "values": {}
+      },
+      "responseKeys": [
+        "ability",
+        "dry_run",
+        "payload",
+        "prompt",
+        "cost_cny_est",
+        "images",
+        "output",
+        "warnings"
+      ],
+      "notes": "ability 缺省取能力表第一项；未知能力 400 SR_BAD_ABILITY，密钥错误 400，连接/超时错误 502，其余执行错误 500",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/visinter",
+      "status": 200,
+      "purpose": "VisInter 双模式管线、预设、提示词与自检规格",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "schema",
+        "version",
+        "updated",
+        "pipeline",
+        "modes",
+        "presets",
+        "resolutions",
+        "risk_rules",
+        "risk_thresholds",
+        "linkage",
+        "prompts",
+        "selfcheck",
+        "banner",
+        "provenance"
+      ],
+      "notes": "只返回规格，不生成；风险提示不代表通过本地视频提交的质量准入",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/visinter/plan",
+      "status": 200,
+      "purpose": "组装 novice/expert 参数计划、角色提取与风险提示",
+      "pathParams": [],
+      "sampleBody": {
+        "text": "远山云海，固定镜头",
+        "mode": "novice",
+        "values": {},
+        "manualKeys": []
+      },
+      "responseKeys": [
+        "mode",
+        "mode_label",
+        "subject",
+        "subject_detail",
+        "values",
+        "applied",
+        "skipped",
+        "linkage",
+        "character",
+        "risks",
+        "submit_allowed",
+        "risk_count",
+        "provenance",
+        "banner"
+      ],
+      "notes": "未知模式 400 BAD_MODE；角色提取结果可手改，提取失败记入 character.error；submit_allowed 是提示层标记，不绕过生成质量校验",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/visinter/selfcheck",
+      "status": 200,
+      "purpose": "检查 ComfyUI 基础节点、人脸节点与模型是否齐备",
+      "pathParams": [],
+      "sampleBody": {
+        "run": false
+      },
+      "responseKeys": [
+        "at",
+        "models_dir",
+        "shots",
+        "status",
+        "provenance",
+        "reason",
+        "comfy",
+        "layers",
+        "models",
+        "missing",
+        "node_missing",
+        "landscape_ok",
+        "ran",
+        "report"
+      ],
+      "notes": "status/provenance 为 fail/inferred/measured；不可达分支不含 node_missing；当前 HTTP handler 未注入 buildWorkflow，run=true 不会伪报跑图成功",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/h3/status",
+      "status": 200,
+      "purpose": "本地 H3 通道探测、模板、质量采样约束、显存预算与并发建议",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "comfy",
+        "template",
+        "constraints",
+        "concurrency",
+        "vram_budget"
+      ],
+      "notes": "H3 原生 24fps；帧数 17k+5（124–362）、尺寸步长32、turbo=false；并发预算仅建议，实际提交仍走质量准入",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/h3/plan",
+      "status": 200,
+      "purpose": "H3 本地工作流与质量准入预览，不创建任务",
+      "pathParams": [],
+      "sampleBody": {
+        "prompt": "远山云海，固定镜头",
+        "tier": "720p",
+        "seconds": 5,
+        "output_fps": 60
+      },
+      "responseKeys": [
+        "workflow",
+        "quality",
+        "prompt",
+        "values",
+        "meta",
+        "applied",
+        "unapplied",
+        "risk",
+        "warnings",
+        "ready",
+        "note"
+      ],
+      "notes": "返回 quality.ok/errors；显存不足可返回计划供检查，生成时必须通过准入。非法帧数/参数返回 422，不自动减少尺寸或帧数。默认输出 60fps：Wan 原生 30fps，H3 原生固定 24fps；目标高于原生时由独立 RIFE 后处理插帧",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/jobs/plan",
+      "status": 200,
+      "purpose": "按 wan22/minimax_h3 编译本地执行图与质量准入预览，不创建任务",
+      "pathParams": [],
+      "sampleBody": {
+        "engine": "wan22",
+        "prompt": "远山云海，固定镜头",
+        "tier": "720p",
+        "seconds": 5,
+        "output_fps": 60
+      },
+      "responseKeys": [
+        "workflow",
+        "quality",
+        "prompt",
+        "values",
+        "meta",
+        "applied",
+        "unapplied",
+        "risk",
+        "warnings",
+        "ready",
+        "note",
+        "graph",
+        "mapped_nodes",
+        "save_latent"
+      ],
+      "notes": "未知/缺少 engine → 400 BAD_ENGINE；空提示词 → 400 ENGINE_EMPTY_PROMPT。共同字段 workflow/quality/prompt/values；Wan 另含 graph/mapped_nodes/save_latent/note，H3 另含 meta/applied/unapplied/risk/warnings/ready/note。quality.errors 报显存不足，非法参数返回 422，不降尺寸。默认输出 60fps：Wan 原生 30fps，H3 原生固定 24fps；目标高于原生时由独立 RIFE 后处理插帧",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/h3/(?:run|direct)",
+      "status": 202,
+      "purpose": "H3 run/direct 两个别名统一通过持久化任务队列提交",
+      "pathParams": [],
+      "sampleBody": {
+        "prompt": "远山云海，固定镜头",
+        "tier": "720p",
+        "seconds": 5,
+        "output_fps": 60
+      },
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "experiment_id",
+        "prompt",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "valuesCount",
+        "cine"
+      ],
+      "notes": "返回 queued 任务快照，不再直接返回 prompt_id；质量准入失败 → 422。默认输出 60fps：Wan 原生 30fps，H3 原生固定 24fps；目标高于原生时由独立 RIFE 后处理插帧",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/jobs/:id/enhance",
+      "status": 202,
+      "purpose": "为已归档原生视频排队独立增强，失败时仅重试后处理",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": {},
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "experiment_id",
+        "prompt",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "valuesCount",
+        "cine"
+      ],
+      "notes": "需 succeeded 且 pure_output 文件存在，否则 409 JOB_NOT_ENHANCEABLE；enhancement 为 queued/running/done 时幂等返回；增强失败不改原生任务终态或丢失纯净产物",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/h3/job/:id",
+      "status": 200,
+      "purpose": "按 ComfyUI prompt ID 查询旧 H3 直连任务历史",
+      "pathParams": [
+        "id"
+      ],
+      "sampleBody": null,
+      "responseKeys": [
+        "done",
+        "state",
+        "images",
+        "status"
+      ],
+      "notes": "不是平台 job ID；历史不存在时仅返回 done=false/state=running_or_queued，完成后附 images/status",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/h3/upscale",
+      "status": 202,
+      "purpose": "H3 兼容入口：通过 job_id 排队同一独立增强流水线",
+      "pathParams": [],
+      "sampleBody": {
+        "job_id": "job_example"
+      },
+      "responseKeys": [
+        "id",
+        "state",
+        "device",
+        "experiment_id",
+        "prompt",
+        "retryCount",
+        "nextRunAt",
+        "kind",
+        "cinePrompt",
+        "cineStyle",
+        "cineResume",
+        "cineMulti",
+        "cineContinuity",
+        "cineRatio",
+        "cineTheme",
+        "ability",
+        "imageStage",
+        "imageTier",
+        "imageRatio",
+        "imageSize",
+        "dryRun",
+        "rawPrompt",
+        "watermark",
+        "engine",
+        "quality",
+        "createdAt",
+        "startedAt",
+        "finishedAt",
+        "durationMs",
+        "attempt",
+        "attempts",
+        "mock",
+        "canceled",
+        "provider",
+        "providerTaskId",
+        "model",
+        "promptExtend",
+        "warnings",
+        "trace",
+        "estimate",
+        "actualPeakMib",
+        "actualDurationMs",
+        "comfyPromptId",
+        "images",
+        "output",
+        "error",
+        "progress",
+        "note",
+        "enhancement",
+        "enhancedError",
+        "enhanced",
+        "task_id",
+        "status",
+        "updatedAt",
+        "output_path",
+        "comfySubmission",
+        "result",
+        "cineLive",
+        "cinePick",
+        "workflowStats",
+        "workflowWarnings",
+        "dsRequest",
+        "providerRequestId",
+        "pure_output",
+        "archived",
+        "canRetry",
+        "valuesCount",
+        "cine"
+      ],
+      "notes": "缺少 job_id → 422 ENHANCE_JOB_REQUIRED；不是按任意文件路径同步缩放；任务前置条件同 /api/jobs/:id/enhance",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/quality",
+      "status": 124,
+      "purpose": "质量策略、分辨率档位、采样/帧率约束与当前显存可行性估算",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "mode",
+        "modes",
+        "tiers",
+        "sampling",
+        "fps",
+        "scoring",
+        "forbid",
+        "usable_mib",
+        "note"
+      ],
+      "notes": "策略来自 spec/quality.json；tiers.required_mib 是估算，无显存读数时 feasible=null；不足显存返回 422，不自动降低分辨率/步数。默认输出 60fps：Wan 原生 30fps，H3 原生固定 24fps；目标高于原生时由独立 RIFE 后处理插帧",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/works/preview",
+      "status": 200,
+      "purpose": "按 ?file= 文件名读取归档成片目录的视频流",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [],
+      "notes": "二进制 video/mp4，输入先取 basename；路径越界 400 WORKS_BAD_PATH，文件缺失 404 WORKS_NO_FILE",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/ultimate/score",
+      "status": 200,
+      "purpose": "仅评分任务已归档的原生纯净视频，返回四维目标与细节/时序指标",
+      "pathParams": [],
+      "sampleBody": {
+        "job_id": "job_example"
+      },
+      "responseKeys": [
+        "file",
+        "meta",
+        "sample_kind",
+        "frames",
+        "size",
+        "resolution",
+        "native_fps",
+        "output_fps",
+        "detail_score",
+        "temporal_stability_score",
+        "scores",
+        "F",
+        "weights",
+        "detail",
+        "cv",
+        "provenance",
+        "not_measured",
+        "note",
+        "source_job"
+      ],
+      "notes": "接受 job_id 或匹配列表中 pure_output 的 file；无原生产物 → 422 SCORE_NATIVE_REQUIRED，未知 job_id → 404。output_fps 仅来自已生成 enhanced，否则 null；目标只有 Sface/Sflow/Sstyle/Sbad，细节为规则代理，不宣称参考图保真度",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/works",
+      "status": 200,
+      "purpose": "归档作品列表与成片目录",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "works",
+        "dir"
+      ],
+      "notes": "?limit=1–100，默认20；内容来自 archive.recent()",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/h3/preview",
+      "status": 200,
+      "purpose": "按 ?file= 相对路径读取 ComfyUI/output 中的视频流",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [],
+      "notes": "二进制 video/mp4；路径越界 400 H3_BAD_PATH，文件缺失 404 H3_NO_FILE",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/muse-presets",
+      "status": 200,
+      "purpose": "Muse 预设叠加层：不改 258 参数结构，前端 http 模式取这份，file:// 模式用构建期内联的 __MUSE",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "schema",
+        "version",
+        "core_keys",
+        "layers",
+        "presets"
+      ],
+      "notes": "内容即 spec/muse.presets.json（4 个预设）；pickPreset 按关键词命中挑选，style 显式指定时优先",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/api/aesthetics",
+      "status": 200,
+      "purpose": "氛围审美层：8 题材配方(场景/光影/色调/镜头/质感/参数/负面/声音情绪/画幅) + 可拼接词库；前端 http 取这份，file:// 用内联 __AESTH",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "version",
+        "note",
+        "words",
+        "themes"
+      ],
+      "notes": "内容即 spec/aesthetics.json；matchTheme 按关键词命中挑题材；params 为请求口径(sampler/CFG/步数/HD applicable:false)，分辨率/画幅真生效",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/presets/export",
+      "status": 200,
+      "purpose": "导出预设：只保留与默认不同的值，附 djb2 checksum 与注册表版本",
+      "pathParams": [],
+      "sampleBody": {
+        "meta": {
+          "name": "server-console",
+          "author": "local"
+        }
+      },
+      "responseKeys": [
+        "schema",
+        "format",
+        "registry_version",
+        "name",
+        "author",
+        "device",
+        "created",
+        "checksum",
+        "values"
+      ],
+      "notes": "不传 values 时用全量默认值（导出结果通常接近空 values）",
+      "sse": false
+    },
+    {
+      "method": "POST",
+      "path": "/api/presets/import",
+      "status": 200,
+      "purpose": "导入预设：校验 schema 与 registry_version，返回 values/unknown/checksum_ok 与告警",
+      "pathParams": [],
+      "sampleBody": {
+        "preset": {
+          "schema": "ai-video-platform/preset",
+          "format": 1,
+          "registry_version": "0.1.0",
+          "name": "server-console 示例",
+          "values": {}
+        }
+      },
+      "responseKeys": [
+        "values",
+        "unknown",
+        "checksum_ok",
+        "warnings"
+      ],
+      "notes": "schema 不符 → 400 BAD_PRESET；registry_version 不符由 engine 抛普通 Error → 500 INTERNAL（现状）；checksum 不符只返回 checksum_ok=false",
+      "sse": false
+    },
+    {
+      "method": "GET",
+      "path": "/",
+      "status": 200,
+      "purpose": "服务自述：版本、路由清单（method + path）与文档路径",
+      "pathParams": [],
+      "sampleBody": null,
+      "responseKeys": [
+        "service",
+        "version",
+        "endpoints",
+        "entry",
+        "static_note",
+        "docs"
+      ],
+      "notes": "路径末尾斜杠会被剥掉（/api/health/ 等价 /api/health）",
+      "sse": false
+    }
+  ],
+  "stateMachine": {
+    "states": [
+      "queued",
+      "running",
+      "succeeded",
+      "failed",
+      "canceled"
+    ],
+    "terminal": [
+      "succeeded",
+      "failed",
+      "canceled"
+    ],
+    "transitions": [
+      {
+        "from": "queued",
+        "to": "running",
+        "trigger": "调度器 pump 取队（并发上限 1）",
+        "source": "jobs.js run()"
+      },
+      {
+        "from": "queued",
+        "to": "canceled",
+        "trigger": "排队中被取消，立即落终态",
+        "source": "jobs.js cancel()"
+      },
+      {
+        "from": "running",
+        "to": "succeeded",
+        "trigger": "provider 完成；ComfyUI 原生产物成功归档后落终态，增强独立排队",
+        "source": "jobs.js run()"
+      },
+      {
+        "from": "running",
+        "to": "failed",
+        "trigger": "不可自动重试的错误或重试耗尽；非 ComfyUI 自动重试最多 2 次尝试",
+        "source": "jobs.js afterFail()"
+      },
+      {
+        "from": "running",
+        "to": "canceled",
+        "trigger": "收到取消意图或 JOB_CANCELED",
+        "source": "jobs.js run()"
+      },
+      {
+        "from": "running",
+        "to": "queued",
+        "trigger": "后端退出保留任务、ComfyUI 等待重连或允许的自动重试",
+        "source": "jobs.js run()"
+      },
+      {
+        "from": "running",
+        "to": "queued",
+        "trigger": "重启恢复未取消任务，保留远端提交信息以续接",
+        "source": "jobs.js restore()"
+      },
+      {
+        "from": "failed",
+        "to": "queued",
+        "trigger": "人工 retry，沿用原任务快照",
+        "source": "jobs.js retry()"
+      },
+      {
+        "from": "canceled",
+        "to": "queued",
+        "trigger": "人工 retry，清除取消意图及旧提交信息",
+        "source": "jobs.js retry()"
+      }
+    ],
+    "retry": {
+      "maxAttempts": 2,
+      "nonRetryableCodes": [
+        "COMFY_VALIDATION_FAILED",
+        "COMFY_INVALID_PROMPT",
+        "COMFY_NO_OUTPUTS",
+        "COMFY_MISSING_NODE",
+        "WF_BAD_TEMPLATE",
+        "WF_SYNTHETIC_TEMPLATE",
+        "BAD_DEVICE",
+        "DS_NO_API_KEY",
+        "DS_INVALID_API_KEY",
+        "DS_EMPTY_PROMPT",
+        "DS_SUBMIT_FAILED",
+        "DS_TASK_FAILED",
+        "DS_TASK_UNKNOWN",
+        "CINE_EMPTY_PROMPT",
+        "SR_NO_API_KEY",
+        "SR_INVALID_API_KEY",
+        "SR_EMPTY_PROMPT",
+        "SR_BAD_SIZE",
+        "SR_BAD_ABILITY",
+        "SR_HTTP_ERROR",
+        "SR_UNREACHABLE",
+        "SR_KIND_UNSUPPORTED"
+      ],
+      "reconnectCodes": [
+        "COMFY_UNREACHABLE",
+        "COMFY_TIMEOUT",
+        "COMFY_HTTP_ERROR"
+      ],
+      "reconnectMs": 5000,
+      "note": "ComfyUI 连接错误（无 HTTP 状态或 >=500）持久排队重连，不受 maxAttempts 限制；普通自动重试仅非 comfy/cine、未提交任务且错误可重试；人工 retry 仅 failed/canceled"
+    },
+    "bootRecovery": {
+      "from": [
+        "queued",
+        "running"
+      ],
+      "to": "queued",
+      "canceledTo": "canceled",
+      "note": "服务重启恢复落盘任务并重新调度；保留远端提交信息用于续接，已有取消意图的任务恢复为 canceled；增强队列独立恢复"
+    }
+  },
+  "jobs": {
+    "statsFields": [
+      "total",
+      "running",
+      "concurrency",
+      "dir",
+      "enhancing",
+      "enhancementQueued",
+      "queued",
+      "succeeded",
+      "failed",
+      "canceled"
+    ],
+    "fields": [
+      "id",
+      "state",
+      "device",
+      "experiment_id",
+      "prompt",
+      "retryCount",
+      "nextRunAt",
+      "kind",
+      "cinePrompt",
+      "cineStyle",
+      "cineResume",
+      "cineMulti",
+      "cineContinuity",
+      "cineRatio",
+      "cineTheme",
+      "ability",
+      "imageStage",
+      "imageTier",
+      "imageRatio",
+      "imageSize",
+      "dryRun",
+      "rawPrompt",
+      "watermark",
+      "engine",
+      "quality",
+      "createdAt",
+      "startedAt",
+      "finishedAt",
+      "durationMs",
+      "attempt",
+      "attempts",
+      "mock",
+      "canceled",
+      "provider",
+      "providerTaskId",
+      "model",
+      "promptExtend",
+      "warnings",
+      "trace",
+      "estimate",
+      "actualPeakMib",
+      "actualDurationMs",
+      "comfyPromptId",
+      "images",
+      "output",
+      "error",
+      "progress",
+      "note",
+      "enhancement",
+      "enhancedError",
+      "enhanced",
+      "task_id",
+      "status",
+      "updatedAt",
+      "output_path",
+      "comfySubmission",
+      "result",
+      "cineLive",
+      "cinePick",
+      "workflowStats",
+      "workflowWarnings",
+      "dsRequest",
+      "providerRequestId",
+      "pure_output",
+      "archived",
+      "canRetry",
+      "valuesCount",
+      "cine"
+    ],
+    "detailFields": [
+      "id",
+      "state",
+      "device",
+      "template",
+      "experiment_id",
+      "prompt",
+      "canvasSnapshot",
+      "retryCount",
+      "nextRunAt",
+      "kind",
+      "cinePrompt",
+      "cineStyle",
+      "cineResume",
+      "cineMulti",
+      "cineContinuity",
+      "cineRatio",
+      "cineTheme",
+      "ability",
+      "imageStage",
+      "imageTier",
+      "imageRatio",
+      "imageSize",
+      "dryRun",
+      "rawPrompt",
+      "watermark",
+      "workflow",
+      "engine",
+      "quality",
+      "createdAt",
+      "startedAt",
+      "finishedAt",
+      "durationMs",
+      "attempt",
+      "attempts",
+      "mock",
+      "canceled",
+      "provider",
+      "providerTaskId",
+      "model",
+      "promptExtend",
+      "values",
+      "valueSnapshot",
+      "warnings",
+      "trace",
+      "estimate",
+      "actualPeakMib",
+      "actualDurationMs",
+      "comfyPromptId",
+      "images",
+      "output",
+      "error",
+      "progress",
+      "note",
+      "enhancement",
+      "enhancedError",
+      "enhanced",
+      "task_id",
+      "status",
+      "updatedAt",
+      "output_path",
+      "comfySubmission",
+      "result",
+      "cineLive",
+      "cinePick",
+      "workflowStats",
+      "workflowWarnings",
+      "dsRequest",
+      "providerRequestId",
+      "cineReport",
+      "pure_output",
+      "archived",
+      "canRetry",
+      "events_url"
+    ],
+    "dir": "%CACHE_ROOT%/avp/jobs",
+    "cacheRoot": "D:\\\\缓存",
+    "concurrency": 1,
+    "mockMs": 3000,
+    "maxAttempts": 2,
+    "defaultDevice": "T0",
+    "listDefaultLimit": 50,
+    "listMaxLimit": 500,
+    "sse": {
+      "urlTemplate": "/api/jobs/:id/events",
+      "events": [
+        "snapshot",
+        "state",
+        "log",
+        "progress",
+        "enhancement",
+        "cine-group",
+        "cine-pick",
+        "cine-review",
+        "done"
+      ],
+      "heartbeatMs": 15000,
+      "contentType": "text/event-stream; charset=utf-8"
+    }
+  },
+  "catalog": {
+    "version": "0.1.0",
+    "count": 7,
+    "devices": [
+      {
+        "id": "T0",
+        "name": "RTX 5060 Laptop 8G（本机）",
+        "vram_mib": 8151,
+        "usable_mib": 6900,
+        "usable_ratio": 0.847,
+        "watts": 140,
+        "price_yuan_per_kwh": 0.6,
+        "provenance": "doc：nvidia-smi 8151MiB，WDDM 下实际可用 6.6–7.2G"
+      },
+      {
+        "id": "T0-low",
+        "name": "T0 · 桌面占用高（2026-11-16 17:13 实测 4024MiB 被占用）",
+        "vram_mib": 8151,
+        "usable_mib": 4127,
+        "usable_ratio": 0.506,
+        "watts": 140,
+        "price_yuan_per_kwh": 0.6,
+        "provenance": "measured：nvidia-smi 本次查询 memory.used=4024MiB"
+      },
+      {
+        "id": "T1",
+        "name": "10–12G",
+        "vram_mib": 11264,
+        "usable_mib": 9600,
+        "usable_ratio": 0.852,
+        "watts": 200,
+        "price_yuan_per_kwh": 0.6,
+        "provenance": "estimate：按 0.85 可用率折算"
+      },
+      {
+        "id": "T2",
+        "name": "16G",
+        "vram_mib": 16384,
+        "usable_mib": 14200,
+        "usable_ratio": 0.867,
+        "watts": 260,
+        "price_yuan_per_kwh": 0.6,
+        "provenance": "estimate"
+      },
+      {
+        "id": "T3",
+        "name": "24G",
+        "vram_mib": 24576,
+        "usable_mib": 21800,
+        "usable_ratio": 0.887,
+        "watts": 320,
+        "price_yuan_per_kwh": 0.6,
+        "provenance": "estimate"
+      },
+      {
+        "id": "T4",
+        "name": "32G",
+        "vram_mib": 32768,
+        "usable_mib": 29600,
+        "usable_ratio": 0.903,
+        "watts": 400,
+        "price_yuan_per_kwh": 0.6,
+        "provenance": "estimate"
+      },
+      {
+        "id": "T5",
+        "name": "48G+",
+        "vram_mib": 49152,
+        "usable_mib": 45000,
+        "usable_ratio": 0.916,
+        "watts": 600,
+        "price_yuan_per_kwh": 0.6,
+        "provenance": "estimate"
+      }
+    ],
+    "note": "设备档位来自 spec/models.catalog.json；可用率 = usable_mib / vram_total_mib"
+  },
+  "registry": {
+    "version": "0.1.0",
+    "params": 258,
+    "l3": 43,
+    "l4": 215,
+    "updated": "2026-11-16",
+    "stages": [
+      {
+        "id": "character",
+        "name": "角色设定",
+        "count": 42
+      },
+      {
+        "id": "storyboard",
+        "name": "剧本分镜",
+        "count": 34
+      },
+      {
+        "id": "keyframe",
+        "name": "关键帧",
+        "count": 56
+      },
+      {
+        "id": "motion",
+        "name": "动效",
+        "count": 38
+      },
+      {
+        "id": "voice",
+        "name": "配音口型",
+        "count": 30
+      },
+      {
+        "id": "look",
+        "name": "质感后期",
+        "count": 32
+      },
+      {
+        "id": "export",
+        "name": "输出",
+        "count": 26
+      }
+    ],
+    "tiers": {
+      "L0": "系统硬约束：显存方程与模型能力上限，用户不可见",
+      "L1": "机型预设：探测+标定自动生成，可覆盖但提示风险",
+      "L2": "模板默认：作者打包时设定，改动后卡片标记已自定义",
+      "L3": "用户常用：每板块 5–8 个核心参数，界面直接露出",
+      "L4": "高级裸参：折叠区/专家模式/导入导出，覆盖后强制重算"
+    }
+  },
+  "rules": {
+    "version": "0.1.0",
+    "count": 22
+  },
+  "errors": {
+    "shape": "{ error: { code, message, detail, hint?, stack? } }",
+    "statusMap": {
+      "SR_NO_API_KEY": 400,
+      "SR_INVALID_API_KEY": 400,
+      "SR_UNREACHABLE": 502,
+      "SR_TIMEOUT": 502,
+      "AUDIT_NOT_FOUND": 404,
+      "JOB_NOT_FOUND": 404,
+      "JOB_NOT_ENHANCEABLE": 409,
+      "JOB_NOT_CANCELABLE": 409,
+      "JOB_NOT_PICKABLE": 409,
+      "JOB_NOT_RETRYABLE": 409,
+      "JOB_WORKER_ACTIVE": 409,
+      "BAD_EXPERIMENT_ID": 400,
+      "BAD_DEVICE": 400,
+      "BAD_KIND": 400,
+      "BAD_PICK": 400,
+      "BAD_REVIEW": 400,
+      "CINE_EMPTY_PROMPT": 400,
+      "CINE_INPUT_GATE": 400,
+      "BODY_TOO_LARGE": 413,
+      "BAD_JSON": 400,
+      "ENGINE_EMPTY_PROMPT": 400,
+      "PROVIDER_RETIRED": 410,
+      "BAD_ENGINE": 400,
+      "NO_CANDIDATE": 404,
+      "CANDIDATE_MISSING": 404,
+      "NO_OUTPUT": 404,
+      "OUTPUT_MISSING": 404,
+      "BAD_RANGE": 400,
+      "RANGE_NOT_SATISFIABLE": 416,
+      "BAD_MODEL": 400,
+      "SR_BAD_ABILITY": 400,
+      "BAD_MODE": 400,
+      "ENHANCE_JOB_REQUIRED": 422,
+      "WORKS_BAD_PATH": 400,
+      "WORKS_NO_FILE": 404,
+      "SCORE_NATIVE_REQUIRED": 422,
+      "H3_BAD_PATH": 400,
+      "H3_NO_FILE": 404,
+      "BAD_PRESET": 400,
+      "QUALITY_BAD_FRAMES": 422,
+      "H3_FRAME_GRID": 422,
+      "QUALITY_BAD_SAMPLING": 422,
+      "QUALITY_BAD_OUTPUT_FPS": 422,
+      "QUALITY_BAD_NATIVE_FPS": 422,
+      "QUALITY_FPS_REDUCTION": 422,
+      "QUALITY_UNKNOWN_TIER": 422,
+      "QUALITY_BAD_RESOLUTION": 422,
+      "QUALITY_VRAM_INSUFFICIENT": 422,
+      "QUALITY_SPEED_MODE_FORBIDDEN": 422,
+      "QUALITY_BAD_WORKFLOW_SAMPLING": 422,
+      "QUALITY_EXISTING_QUANTIZED_WEIGHTS": 422,
+      "DEFAULT": 500
+    },
+    "codes": [
+      "ARCHIVE_NO_OUTPUT",
+      "AUDIT_NOT_FOUND",
+      "BAD_DEVICE",
+      "BAD_ENGINE",
+      "BAD_EXPERIMENT_ID",
+      "BAD_JSON",
+      "BAD_KIND",
+      "BAD_MODE",
+      "BAD_MODEL",
+      "BAD_PICK",
+      "BAD_PRESET",
+      "BAD_PROVIDER",
+      "BAD_RANGE",
+      "BAD_REVIEW",
+      "BODY_TOO_LARGE",
+      "CANDIDATE_MISSING",
+      "CANVAS_LOCKED_REUSED",
+      "CANVAS_NO_LOCKED_TOPOLOGY",
+      "CANVAS_TOO_SMALL",
+      "CINE_EMPTY_PROMPT",
+      "CINE_INPUT_GATE",
+      "COMFY_BAD_RESPONSE",
+      "COMFY_HTTP_ERROR",
+      "COMFY_INVALID_PROMPT",
+      "COMFY_MISSING_NODE",
+      "COMFY_NO_OUTPUTS",
+      "COMFY_TASK_LOST",
+      "COMFY_TIMEOUT",
+      "COMFY_UNREACHABLE",
+      "COMFY_VALIDATION_FAILED",
+      "DS_EMPTY_PROMPT",
+      "DS_INVALID_API_KEY",
+      "DS_NO_API_KEY",
+      "DS_SUBMIT_FAILED",
+      "DS_TASK_FAILED",
+      "DS_TASK_UNKNOWN",
+      "ENGINE_EMPTY_PROMPT",
+      "ENHANCE_ARCHIVE_FAILED",
+      "ENHANCE_JOB_REQUIRED",
+      "ENHANCE_NO_PURE",
+      "H3_BAD_PATH",
+      "H3_FRAME_GRID",
+      "H3_NO_FILE",
+      "JOB_CANCELED",
+      "JOB_DETACHED",
+      "JOB_NOT_CANCELABLE",
+      "JOB_NOT_ENHANCEABLE",
+      "JOB_NOT_FOUND",
+      "JOB_NOT_PICKABLE",
+      "JOB_NOT_RETRYABLE",
+      "JOB_WORKER_ACTIVE",
+      "JOB_WORKER_CLOSED",
+      "MODEL_FILE_MISSING",
+      "NOT_FOUND",
+      "NO_CANDIDATE",
+      "NO_OUTPUT",
+      "OUTPUT_MISSING",
+      "PRESET_UNKNOWN_KEYS",
+      "PROVIDER_RETIRED",
+      "QUALITY_BAD_FRAMES",
+      "QUALITY_BAD_NATIVE_FPS",
+      "QUALITY_BAD_OUTPUT_FPS",
+      "QUALITY_BAD_RESOLUTION",
+      "QUALITY_BAD_SAMPLING",
+      "QUALITY_BAD_WORKFLOW_SAMPLING",
+      "QUALITY_EXISTING_QUANTIZED_WEIGHTS",
+      "QUALITY_FPS_REDUCTION",
+      "QUALITY_SPEED_MODE_FORBIDDEN",
+      "QUALITY_UNKNOWN_TIER",
+      "QUALITY_VRAM_INSUFFICIENT",
+      "QWEN_BAD_JSON",
+      "QWEN_EMPTY",
+      "RANGE_NOT_SATISFIABLE",
+      "SCORE_BAD_DIMENSIONS",
+      "SCORE_BAD_WEIGHTS",
+      "SCORE_ENHANCED_FORBIDDEN",
+      "SCORE_EXTRACT_FAILED",
+      "SCORE_NATIVE_REQUIRED",
+      "SCORE_NO_FILE",
+      "SCORE_PROBE_FAILED",
+      "SCORE_TOO_FEW_FRAMES",
+      "SCORE_WORKER_FAILED",
+      "SELFCHECK_NO_OUTPUT",
+      "SR_BAD_ABILITY",
+      "SR_BAD_SIZE",
+      "SR_EMPTY_PROMPT",
+      "SR_HTTP_ERROR",
+      "SR_INVALID_API_KEY",
+      "SR_KIND_UNSUPPORTED",
+      "SR_NO_API_KEY",
+      "SR_TIMEOUT",
+      "SR_UNREACHABLE",
+      "WF_BAD_TEMPLATE",
+      "WF_SLOT_OVERWRITTEN",
+      "WF_SYNTHETIC_TEMPLATE",
+      "WF_UNBOUND",
+      "WORKS_BAD_PATH",
+      "WORKS_NO_FILE"
+    ],
+    "notes": "5xx 额外带 error.stack 前 4 行；404 兜底 NOT_FOUND"
+  },
+  "limits": {
+    "maxBodyBytes": 4194304,
+    "note": "body 超过上限 → 413 BODY_TOO_LARGE；非 JSON → 400 BAD_JSON"
+  },
+  "provenance": [
+    "server/app.js",
+    "server/jobs.js",
+    "server/comfy.js",
+    "server/wf.js",
+    "server/recommend.js",
+    "server/quality.js",
+    "server/h3workflow.js",
+    "server/canvasbuilder.js",
+    "server/visinter.js",
+    "server/scoring.js",
+    "server/providers/index.js",
+    "spec/quality.json",
+    "core/engine.js",
+    "tools/serve.mjs",
+    "tools/launch.mjs",
+    "spec/params.registry.json",
+    "spec/models.catalog.json",
+    "spec/rules.linkage.json",
+    "spec/muse.presets.json",
+    "spec/aesthetics.json"
+  ]
+};
+(function () {
+  'use strict';
+
+  var S = window.__SNAP || {};
+  var BASE = location.protocol === 'file:' ? ((S.server && S.server.baseUrl) || 'http://127.0.0.1:8388') : location.origin;
+  var ROUTES = (S.routes || []).slice();
+  var VIEWS = [
+    { id: 'overview', name: '概览', svg: 'M3 3h6v6H3zM9 9h4v4H9zM3 11h4v4H3z' },
+    { id: 'routes', name: '端点', svg: 'M3 4h10M3 8h10M3 12h6' },
+    { id: 'jobs', name: '队列', svg: 'M3 3h10M3 7h10M3 11h10' },
+    { id: 'devices', name: '设备档', svg: 'M3 4h10v6H3zM5 12h6' },
+    { id: 'contract', name: '契约', svg: 'M4 2h5l3 3v7H4zM9 2v3h3' }
+  ];
+
+  var st = {
+    online: null, health: null, error: null, view: 'overview',
+    route: (S.routes && S.routes.length) ? 0 : -1,
+    jobs: [], job: null, timer: null, sse: null, log: [], tryBody: null, tryRes: null, busy: false
+  };
+
+  function $(id) { return document.getElementById(id); }
+
+  function se(v) {
+    return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  function svg(path, size) {
+    var s = size || 14;
+    return '<svg width="' + s + '" height="' + s + '" viewBox="0 0 16 16" fill="none" stroke="currentColor" '
+      + 'stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="' + path + '"/></svg>';
+  }
+
+  function num(v, unit) {
+    return '<span class="num">' + se(v) + '</span>' + (unit ? ' <span class="hint">' + se(unit) + '</span>' : '');
+  }
+
+  /* ── HTTP ───────────────────────────────────────────────────────── */
+
+  function call(path, init, ms) {
+    var opt = init || {};
+    var ctl = typeof AbortController === 'function' ? new AbortController() : null;
+    if (ctl) opt.signal = ctl.signal;
+    var timer = ctl ? setTimeout(function () { ctl.abort(); }, ms || 2500) : null;
+    var t0 = Date.now();
+    return fetch(BASE + path, opt).then(function (r) {
+      if (timer) clearTimeout(timer);
+      return r.text().then(function (txt) {
+        var body = null;
+        try { body = txt ? JSON.parse(txt) : null; } catch (e) { body = { raw: String(txt).slice(0, 1200) }; }
+        return { status: r.status, ok: r.ok, ms: Date.now() - t0, body: body };
+      });
+    }, function (e) {
+      if (timer) clearTimeout(timer);
+      var err = new Error(e && e.name === 'AbortError' ? '请求超时' : '连接失败（后端未启动？）');
+      err.code = 'E_OFFLINE';
+      throw err;
+    });
+  }
+
+  function probe() {
+    $('liveText').textContent = '探测中';
+    return call('/api/health', null, 2500).then(function (r) {
+      if (!r.ok) throw new Error('health 返回 ' + r.status);
+      st.online = true; st.health = r.body; st.error = null;
+      paintLive();
+      if (st.view === 'overview' || st.view === 'jobs') paint();
+      return r.body;
+    }).catch(function (e) {
+      st.online = false; st.health = null; st.error = e.code ? e.code + ' · ' + e.message : '连接失败';
+      paintLive();
+      if (st.view === 'overview' || st.view === 'jobs') paint();
+    });
+  }
+
+  function paintLive() {
+    var dot = $('liveBadge').querySelector('.dot');
+    if (st.online === null) { dot.className = 'dot off'; $('liveText').textContent = '探测中'; return; }
+    if (!st.online) { dot.className = 'dot off'; $('liveText').textContent = '未连接'; return; }
+    var h = st.health || {};
+    dot.className = 'dot ok';
+    $('liveText').textContent = '在线 · v' + (h.version || '?') + ' · comfy ' + ((h.comfy && h.comfy.mode) || '?');
+    $('liveText').title = 'pid ' + (h.pid || '?') + ' · uptime ' + (h.uptime_sec != null ? h.uptime_sec + 's' : '?');
+  }
+
+  /* ── 侧栏 ───────────────────────────────────────────────────────── */
+
+  function paintNav() {
+    $('nav').innerHTML = VIEWS.map(function (v) {
+      return '<div class="row" role="button" tabindex="0" data-view="' + v.id + '" aria-selected="' + (st.view === v.id) + '">'
+        + '<span class="ico">' + svg(v.svg) + '</span>'
+        + '<span class="t">' + v.name + '</span>'
+        + '<span class="s">' + (v.id === 'routes' ? ROUTES.length : v.id === 'devices' ? ((S.catalog && S.catalog.count) || 0) : '') + '</span></div>';
+    }).join('');
+
+    var srv = S.server || {};
+    $('envList').innerHTML = [
+      ['端口', srv.port || '?'],
+      ['宿主', srv.host || '?'],
+      ['基址', BASE.replace(/^http:\/\//, '')],
+      ['启动', (srv.start || 'node tools/serve.mjs')],
+      ['版本', (S.service && S.service.version) || '?']
+    ].map(function (kv) {
+      return '<div class="row" style="cursor:default;grid-template-columns:56px minmax(0,1fr)">'
+        + '<span class="s">' + se(kv[0]) + '</span><span class="t mono" style="font-size:var(--fz-xs)" title="' + se(kv[1]) + '">' + se(kv[1]) + '</span></div>';
+    }).join('');
+  }
+
+  /* ── 视图：概览 ─────────────────────────────────────────────────── */
+
+  function stat(k, v, unit, note) {
+    return '<div class="stat"><div class="k">' + se(k) + '</div><div class="v">' + se(v)
+      + (unit ? '<small>' + se(unit) + '</small>' : '') + '</div>'
+      + (note ? '<div class="n">' + se(note) + '</div>' : '') + '</div>';
+  }
+
+  function viewOverview() {
+    var h = st.health;
+    if (st.online === null) return '<div class="empty"><b>正在探测后端</b><span>GET ' + se(BASE) + '/api/health · 2.5s 超时</span></div>';
+    if (!st.online) {
+      return '<div class="empty"><b>后端未启动</b>'
+        + '<span>本页其余部分仍可读：端点表、状态机、错误码都来自构建期契约快照 ' + se(S.generatedAt || '') + '。</span>'
+        + '<span>启动方式：<span class="mono">node tools/serve.mjs</span>（PORT / HOST 可覆盖，默认 ' + se((S.server && S.server.port) || 8388) + ' / 127.0.0.1）</span>'
+        + '<span class="hint">失败原因：' + se(st.error || '未知') + '</span></div>'
+        + '<div class="panel" style="margin-top:var(--sp3)"><div class="panel-h">离线快照里的接口规模</div><div class="panel-b">'
+        + '<div class="health">' + stat('接口', ROUTES.length, '条')
+        + stat('状态', (S.stateMachine && S.stateMachine.states.length) || 0, '个')
+        + stat('设备档', (S.catalog && S.catalog.count) || 0, '档')
+        + stat('参数', (S.registry && S.registry.params) || 0, '个') + '</div></div></div>';
+    }
+    var comfy = h.comfy || {};
+    var reg = h.registry || {};
+    var disk = h.disk || {};
+    var jobs = h.jobs || {};
+    var diskTxt = disk.free_gib != null ? disk.free_gib : (disk.free_mib != null ? Math.round(disk.free_mib / 1024 * 10) / 10 : '—');
+    var diskNote = disk.mount ? (disk.mount + (disk.total_gib != null ? ' · 共 ' + disk.total_gib + ' GB' : '')) : '';
+    return '<div class="health">'
+      + stat('服务版本', h.version || '?', '', 'node ' + (h.node || '?'))
+      + stat('运行时长', h.uptime_sec != null ? h.uptime_sec : '?', 's', 'pid ' + (h.pid || '?') + ' · ' + (h.platform || '') + '/' + (h.arch || ''))
+      + stat('ComfyUI', comfy.reachable ? '可达' : '不可达', '', comfy.reachable ? (comfy.base || '') : '模式 mock · ' + ((comfy.detail && comfy.detail.code) || '连不上'))
+      + stat('磁盘余量', diskTxt, 'GB', diskNote)
+      + stat('参数注册表', reg.params != null ? reg.params : '?', '个', (reg.stages || 0) + ' 板块 · v' + (reg.version || '?'))
+      + stat('联动规则', (h.rules && h.rules.count) || 0, '条', 'v' + ((h.rules && h.rules.version) || '?'))
+      + stat('设备档', (h.catalog && h.catalog.devices) || 0, '档', 'v' + ((h.catalog && h.catalog.version) || '?'))
+      + stat('队列', jobs.total != null ? jobs.total : '?', '个', '并发 ' + (jobs.concurrency != null ? jobs.concurrency : '?') + ' · 运行 ' + (jobs.running || 0))
+      + '</div>'
+      + '<div class="grid2" style="margin-top:var(--sp3)">'
+      + '<div class="panel"><div class="panel-h">队列近况<span class="spacer"></span><button class="btn mini" id="btnQuickJobs">刷新</button></div>'
+      + '<div class="panel-b"><div class="health" style="grid-template-columns:repeat(3,minmax(0,1fr))">'
+      + stat('总任务', jobs.total != null ? jobs.total : '?', '')
+      + stat('排队', jobs.queued || 0, '')
+      + stat('运行', jobs.running || 0, '')
+      + stat('成功', jobs.succeeded || 0, '')
+      + stat('失败', jobs.failed || 0, '')
+      + stat('取消', jobs.canceled || 0, '')
+      + '</div><div class="hint" style="margin-top:var(--sp2)">任务落盘：<span class="mono">' + se(jobs.dir || '') + '</span>；并发上限 ' + se(jobs.concurrency) + '。</div></div></div>'
+      + '<div class="panel"><div class="panel-h">快速试调（真请求）</div><div class="panel-b">'
+      + '<div style="display:flex;flex-wrap:wrap;gap:var(--sp2)">'
+      + '<button class="btn mini" data-quick="/api/params">GET /api/params</button>'
+      + '<button class="btn mini" data-quick="/api/devices">GET /api/devices</button>'
+      + '<button class="btn mini" data-quick="/api/health">GET /api/health</button>'
+      + '</div><div id="quickOut" style="margin-top:var(--sp2)"><div class="hint">点一个接口，本页直接发请求并把原始 JSON 显示在这里。</div></div></div></div>'
+      + '</div>'
+      + '<div class="panel" style="margin-top:var(--sp3)"><div class="panel-h">实时值（/api/health 原始口径）</div>'
+      + '<div class="panel-b"><dl class="kv">'
+      + kv('service', h.service) + kv('comfy.base', comfy.base) + kv('comfy.mode', comfy.mode)
+      + kv('jobs.dir', jobs.dir) + kv('registry.updated', reg.updated)
+      + '</dl></div></div>';
+  }
+
+  function kv(k, v) {
+    return '<dt>' + se(k) + '</dt><dd class="mono">' + se(v == null ? '—' : String(v)) + '</dd>';
+  }
+
+  /* ── 视图：端点 ─────────────────────────────────────────────────── */
+
+  function viewRoutes() {
+    var r = st.route >= 0 ? ROUTES[st.route] : null;
+    var rows = ROUTES.map(function (x, i) {
+      return '<tr data-route="' + i + '" class="' + (i === st.route ? 'sel' : '') + '" style="cursor:pointer">'
+        + '<td class="nowrap"><span class="method' + (x.method === 'POST' ? ' post' : '') + '">' + se(x.method) + '</span></td>'
+        + '<td class="route-path">' + se(x.path) + '</td>'
+        + '<td class="right num">' + se(x.status || '') + '</td>'
+        + '<td class="hint" style="max-width:420px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="' + se(x.purpose) + '">' + se(x.purpose) + '</td>'
+        + '<td>' + (x.sse ? '<span class="badge">SSE</span>' : '') + '</td></tr>';
+    }).join('');
+
+    var detail = '';
+    if (r) {
+      var need = (r.pathParams || []).slice();
+      var fillable = need.length === 0 || (st.jobs.length > 0);
+      var sample = r.sampleBody == null ? '' : JSON.stringify(r.sampleBody, null, 2);
+      var body = st.tryBody != null ? st.tryBody : sample;
+      detail = '<div class="panel" style="margin-top:var(--sp3)">'
+        + '<div class="panel-h">' + se(r.method) + ' ' + se(r.path) + '<span class="spacer"></span>'
+        + (need.length ? '<span class="badge warn">路径参数 ' + se(need.join(', ')) + '</span>' : '')
+        + '<button class="btn mini acc" id="btnTry"' + (fillable ? '' : ' disabled title="先刷新队列拿到任务 id"') + '>试一下</button></div>'
+        + '<div class="panel-b"><div class="try">'
+        + '<div><div class="hint" style="margin-bottom:4px">请求体' + (r.method === 'GET' ? '（GET 无请求体）' : '（示例来自契约快照）') + '</div>'
+        + '<textarea class="textarea" id="tryBody"' + (r.method === 'GET' ? ' disabled' : '') + ' placeholder="' + (r.method === 'GET' ? '无' : '{}') + '">' + se(body) + '</textarea>'
+        + '<div class="hint" style="margin-top:4px">' + se(r.notes || '') + '</div></div>'
+        + '<div><div class="hint" style="margin-bottom:4px">响应</div><div id="tryOut">'
+        + (st.tryRes ? renderTry(st.tryRes) : '<div class="empty" style="padding:var(--sp2)">还没调用。</div>') + '</div></div>'
+        + '</div></div></div>';
+    }
+
+    return '<div class="panel"><div class="panel-h">接口表<span class="spacer"></span><span class="tag">' + ROUTES.length + ' 条 · 源 server/snapshot.json</span></div>'
+      + '<table class="tbl"><thead><tr><th>方法</th><th>路径</th><th class="right">码</th><th>用途</th><th></th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + detail;
+  }
+
+  function renderTry(res) {
+    var cls = res.ok ? 'ok' : 'bad';
+    var body = res.body == null ? '（空响应体）' : JSON.stringify(res.body, null, 2);
+    return '<div class="res-meta"><span class="badge ' + cls + '">' + se(res.status) + '</span>'
+      + '<span class="num">' + se(res.ms) + '</span> <span class="hint">ms</span>'
+      + '<span class="hint">' + (res.ok ? '成功' : '错误（code 原样显示）') + '</span></div>'
+      + '<pre class="code res">' + se(body.length > 4000 ? body.slice(0, 4000) + '\n…（已截断，完整 ' + body.length + ' 字符）' : body) + '</pre>';
+  }
+
+  function tryCall() {
+    var r = st.route >= 0 ? ROUTES[st.route] : null;
+    if (!r || st.busy) return;
+    var path = r.path;
+    var need = (r.pathParams || []);
+    if (need.length) {
+      var id = st.jobs.length ? st.jobs[0].id : null;
+      if (!id) { st.tryRes = { ok: false, status: '—', ms: 0, body: { error: { code: 'NO_TARGET_ID', message: '队列里没有任务，先提交一个再试路径参数接口' } } }; paint(); return; }
+      need.forEach(function (p) { path = path.replace(':' + p, id).replace('{' + p + '}', id).replace('[' + p + ']', id); });
+      // 快照里的路径是 /api/jobs/:id 这种形态；上一步已把 :id 换掉
+      if (path.indexOf(':') >= 0 || path.indexOf('[') >= 0) path = path.replace(/[:\[][A-Za-z_]+\]?/g, id);
+    }
+    var opt = { method: r.method };
+    var txt = $('tryBody') ? $('tryBody').value.trim() : '';
+    if (r.method !== 'GET' && txt) {
+      opt.headers = { 'Content-Type': 'application/json' };
+      opt.body = txt;
+    }
+    st.busy = true; st.tryRes = null; paint();
+    call(path, opt, 8000).then(function (res) {
+      st.busy = false; st.tryRes = res; paint();
+    }).catch(function (e) {
+      st.busy = false;
+      st.tryRes = { ok: false, status: '—', ms: 0, body: { error: { code: e.code || 'E_FAIL', message: e.message } } };
+      paint();
+    });
+  }
+
+  /* ── 视图：队列 ─────────────────────────────────────────────────── */
+
+  function viewJobs() {
+    if (!st.online) {
+      return '<div class="empty"><b>后端未连接，队列不可读</b>'
+        + '<span>队列状态只存在于服务进程里，快照不保存运行时任务（快照保存的是字段与状态机）。</span>'
+        + '<span>启动 <span class="mono">node tools/serve.mjs</span> 后点顶部「重连」。</span></div>'
+        + '<div class="panel" style="margin-top:var(--sp3)"><div class="panel-h">状态机（契约）</div><div class="panel-b">' + smHtml() + '</div></div>';
+    }
+    var rows = st.jobs.map(function (j) {
+      var p = j.progress || {};
+      var badge = stateBadge(j.state);
+      return '<tr data-job="' + se(j.id) + '" style="cursor:pointer" class="' + (st.job && st.job.id === j.id ? 'sel' : '') + '">'
+        + '<td class="mono nowrap">' + se(j.id) + '</td>'
+        + '<td>' + badge + '</td>'
+        + '<td class="num right">' + se(p.percent != null ? p.percent : 0) + '%</td>'
+        + '<td class="hint">' + se(p.stage || '') + '</td>'
+        + '<td class="nowrap hint">' + se(j.device || '') + '</td>'
+        + '<td class="nowrap hint">' + se((j.createdAt || '').replace('T', ' ').slice(0, 19)) + '</td>'
+        + '<td class="right hint">' + (j.durationMs != null ? (j.durationMs / 1000).toFixed(1) + 's' : '—') + '</td></tr>';
+    }).join('');
+
+    var detail = '';
+    if (st.job) {
+      var j = st.job;
+      detail = '<div class="panel" style="margin-top:var(--sp3)"><div class="panel-h">任务 ' + se(j.id)
+        + '<span class="spacer"></span>'
+        + (j.state === 'queued' || j.state === 'running' ? '<button class="btn mini" id="btnCancel">取消任务</button>' : '')
+        + '<button class="btn mini" id="btnSse"' + (st.sse ? ' disabled' : '') + '>订阅事件</button>'
+        + '<button class="btn mini ghost" id="btnCloseJob">关闭</button></div>'
+        + '<div class="panel-b"><div class="progress"><span class="tag">' + se(j.state) + '</span>'
+        + '<span class="bar' + (j.state === 'succeeded' ? ' ok' : j.state === 'failed' ? ' bad' : '') + '"><i style="width:' + Math.max(0, Math.min(100, (j.progress && j.progress.percent) || 0)) + '%"></i></span>'
+        + '<span class="num">' + ((j.progress && j.progress.percent) || 0) + '%</span></div>'
+        + '<dl class="kv" style="margin-top:var(--sp2)">'
+        + kv('device', j.device) + kv('attempt', j.attempt) + kv('createdAt', j.createdAt)
+        + kv('startedAt', j.startedAt) + kv('finishedAt', j.finishedAt)
+        + kv('error', j.error ? JSON.stringify(j.error) : '—')
+        + kv('images', (j.images || []).length + ' 张')
+        + '</dl>'
+        + (st.log.length ? '<div class="hint" style="margin-top:var(--sp2)">事件流（最多 200 行）</div><pre class="code sse">' + se(st.log.join('\n')) + '</pre>' : '')
+        + '</div></div>';
+    }
+
+    return '<div class="panel"><div class="panel-h">任务队列<span class="spacer"></span>'
+      + '<span class="tag">' + (st.jobs.length ? st.jobs.length + ' 个 · 3s 轮询' : '0 个 · 3s 轮询') + '</span></div>'
+      + (st.jobs.length
+        ? '<table class="tbl"><thead><tr><th>id</th><th>状态</th><th class="right">进度</th><th>阶段</th><th>设备</th><th>创建</th><th class="right">耗时</th></tr></thead><tbody>' + rows + '</tbody></table>'
+        : '<div class="panel-b"><div class="empty"><b>队列是空的</b><span>提交方式：外壳里点「开始渲染」，或在本页「端点」页试调 <span class="mono">POST /api/jobs</span>。</span><span class="hint">任务落盘目录：' + se((S.jobs && S.jobs.dir) || '（见 /api/health 的 jobs.dir）') + '</span></div></div>')
+      + '</div>' + detail;
+  }
+
+  function stateBadge(s) {
+    var map = { queued: '', running: 'acc', succeeded: 'ok', failed: 'bad', canceled: 'warn' };
+    return '<span class="badge ' + (map[s] || '') + '"><span class="dot ' + (s === 'succeeded' ? 'ok' : s === 'failed' ? 'bad' : s === 'canceled' ? 'warn' : s === 'running' ? 'acc' : 'off') + '"></span>' + se(s) + '</span>';
+  }
+
+  /* ── 视图：设备档 ───────────────────────────────────────────────── */
+
+  function viewDevices() {
+    var devs = (S.catalog && S.catalog.devices) || [];
+    if (!devs.length) return '<div class="empty"><b>快照里没有设备档</b><span>检查 server/snapshot.json 的 catalog 字段。</span></div>';
+    var rows = devs.map(function (d) {
+      return '<tr><td class="mono nowrap">' + se(d.id) + '</td><td>' + se(d.name) + '</td>'
+        + '<td class="right num">' + se(d.vram_mib) + '</td><td class="right num">' + se(d.usable_mib) + '</td>'
+        + '<td class="right num">' + se(d.usable_ratio != null ? (d.usable_ratio * 100).toFixed(1) + '%' : '—') + '</td>'
+        + '<td class="right num">' + se(d.watts != null ? d.watts : '—') + '</td>'
+        + '<td class="hint">' + se(d.provenance || '') + '</td></tr>';
+    }).join('');
+    return '<div class="panel"><div class="panel-h">设备档（spec/models.catalog.json）<span class="spacer"></span><span class="tag">' + devs.length + ' 档</span></div>'
+      + '<table class="tbl"><thead><tr><th>档</th><th>名称</th><th class="right">显存 MiB</th><th class="right">可用 MiB</th><th class="right">可用比</th><th class="right">功耗 W</th><th>来源</th></tr></thead><tbody>' + rows + '</tbody></table></div>'
+      + '<div class="main-f" style="border:0;background:transparent;padding:var(--sp2) 0">'
+      + '<span class="hint">' + se((S.catalog && S.catalog.note) || '') + '</span></div>'
+      + (st.online ? '<div class="panel" style="margin-top:var(--sp3)"><div class="panel-h">实时探测（GET /api/devices）</div><div class="panel-b"><button class="btn" id="btnDev">调用</button><div id="devOut" style="margin-top:var(--sp2)"></div></div></div>' : '');
+  }
+
+  /* ── 视图：契约 ─────────────────────────────────────────────────── */
+
+  function smHtml() {
+    var sm = S.stateMachine || { states: [], transitions: [] };
+    var chain = sm.states.map(function (s) {
+      var term = (sm.terminal || []).indexOf(s) >= 0;
+      return '<span class="n' + (term ? ' term' : '') + '">' + se(s) + '</span>';
+    }).join('<span class="a">→</span>');
+    var trans = (sm.transitions || []).map(function (t) {
+      return '<div class="trans"><b>' + se(t.from) + ' → ' + se(t.to) + '</b> · ' + se(t.trigger)
+        + (t.source ? ' <span class="tag">' + se(t.source) + '</span>' : '') + '</div>';
+    }).join('');
+    return '<div class="chain2">' + chain + '</div><div style="margin-top:var(--sp2)">' + trans + '</div>';
+  }
+
+  function viewContract() {
+    var err = S.errors || {};
+    var codes = (err.codes || []).map(function (c) { return '<span class="badge mono">' + se(c) + '</span>'; }).join(' ');
+    var sm = (err.statusMap || {});
+    var smRows = Object.keys(sm).map(function (k) { return '<div class="trans"><b>' + se(k) + '</b> → ' + se(sm[k]) + '</div>'; }).join('');
+    return '<div class="grid2">'
+      + '<div class="panel"><div class="panel-h">任务状态机</div><div class="panel-b">' + smHtml()
+      + '<div class="hint" style="margin-top:var(--sp2)">终态：' + se(((S.stateMachine && S.stateMachine.terminal) || []).join(' / ')) + '</div></div></div>'
+      + '<div class="panel"><div class="panel-h">错误形状</div><div class="panel-b"><pre class="code">' + se(err.shape || '—') + '</pre>'
+      + '<div class="hint" style="margin-top:var(--sp2)">状态码映射</div>' + smRows + '</div></div>'
+      + '</div>'
+      + '<div class="panel" style="margin-top:var(--sp3)"><div class="panel-h">错误码（' + ((err.codes || []).length) + ' 个）</div><div class="panel-b">' + codes + '</div></div>'
+      + '<div class="panel" style="margin-top:var(--sp3)"><div class="panel-h">请求体与限额</div><div class="panel-b"><dl class="kv">'
+      + kv('maxBodyBytes', (S.limits && S.limits.maxBodyBytes)) + kv('说明', (S.limits && S.limits.note))
+      + kv('CORS', JSON.stringify((S.service && S.service.cors) || {}))
+      + kv('作业字段', ((S.jobs && S.jobs.fields) || []).join(', '))
+      + '</dl></div></div>'
+      + '<div class="panel" style="margin-top:var(--sp3)"><div class="panel-h">快照来源</div><div class="panel-b"><dl class="kv">'
+      + kv('schema', S.schema) + kv('generatedAt', S.generatedAt) + kv('generator', S.generator) + kv('source', S.source)
+      + '</dl></div></div>';
+  }
+
+  /* ── 渲染调度 ───────────────────────────────────────────────────── */
+
+  var TITLES = {
+    overview: ['概览', '后端健康与关键计数'],
+    routes: ['端点', '契约表 + 真实试调'],
+    jobs: ['队列', '任务状态与事件流'],
+    devices: ['设备档', '显存账本'],
+    contract: ['契约', '状态机 / 错误码 / 限额']
+  };
+
+  function paint() {
+    var v = st.view;
+    $('vTitle').textContent = TITLES[v][0];
+    $('vSub').textContent = TITLES[v][1];
+    $('vBadge').className = 'badge ' + (st.online ? 'ok' : st.online === null ? '' : 'warn');
+    $('vBadge').textContent = st.online ? '在线' : st.online === null ? '探测中' : '离线快照';
+    paintNav();
+    $('view').innerHTML = v === 'overview' ? viewOverview()
+      : v === 'routes' ? viewRoutes()
+      : v === 'jobs' ? viewJobs()
+      : v === 'devices' ? viewDevices() : viewContract();
+    bindView();
+    $('viewFoot').innerHTML = v === 'routes'
+      ? '试调是本页直接发到 ' + se(BASE) + ' 的真实请求（CORS 由后端 Access-Control-Allow-Origin:* 放行）；路径参数用队列第一个任务 id 填充。'
+      : v === 'jobs'
+        ? '队列只在校验后端在线时可读；事件流走 SSE（' + se('/api/jobs/<id>/events') + '），关闭视图即断开。'
+        : v === 'devices'
+          ? '设备档来自 spec/models.catalog.json 的构建期快照；可用显存是标称值，不是运行时探测。'
+          : v === 'contract'
+            ? '契约来自静态解析 server/*.js，不依赖后端是否在跑；字段名与错误码以代码为准。'
+            : '健康检查每次请求都会 force 探测 ComfyUI（2.5s 超时）；不可达时 mode=mock，队列仍会跑真实状态机。';
+    paintLive();
+  }
+
+  function bindView() {
+    [].forEach.call($('nav').querySelectorAll('[data-view]'), function (row) {
+      row.addEventListener('click', function () { st.view = row.getAttribute('data-view'); st.tryRes = null; paint(); });
+      row.addEventListener('keydown', function (e) { if (e.key === 'Enter' || e.key === ' ') { st.view = row.getAttribute('data-view'); paint(); } });
+    });
+
+    [].forEach.call($('view').querySelectorAll('[data-route]'), function (tr) {
+      tr.addEventListener('click', function () {
+        st.route = Number(tr.getAttribute('data-route'));
+        st.tryBody = null; st.tryRes = null; paint();
+      });
+    });
+
+    var bTry = $('btnTry');
+    if (bTry) bTry.addEventListener('click', tryCall);
+
+    var bQj = $('btnQuickJobs');
+    if (bQj) bQj.addEventListener('click', function () { bQj.disabled = true; refreshJobs(); setTimeout(function () { bQj.disabled = false; }, 800); });
+
+    [].forEach.call($('view').querySelectorAll('[data-quick]'), function (b) {
+      b.addEventListener('click', function () {
+        var path = b.getAttribute('data-quick');
+        b.disabled = true;
+        $('quickOut').innerHTML = '<div class="hint">请求中 ' + se(path) + ' …</div>';
+        call(path, null, 6000).then(function (r) {
+          $('quickOut').innerHTML = renderTry(r);
+        }).catch(function (e) {
+          $('quickOut').innerHTML = '<div class="empty" style="padding:var(--sp2)">失败：' + se(e.code || '') + ' · ' + se(e.message) + '</div>';
+        }).then(function () { b.disabled = false; });
+      });
+    });
+
+    var bDev = $('btnDev');
+    if (bDev) bDev.addEventListener('click', function () {
+      bDev.disabled = true;
+      call('/api/devices', null, 4000).then(function (r) {
+        $('devOut').innerHTML = renderTry(r);
+      }).catch(function (e) {
+        $('devOut').innerHTML = '<div class="empty" style="padding:var(--sp2)">失败：' + se(e.code || '') + ' · ' + se(e.message) + '</div>';
+      }).then(function () { bDev.disabled = false; });
+    });
+
+    [].forEach.call($('view').querySelectorAll('[data-job]'), function (tr) {
+      tr.addEventListener('click', function () { openJob(tr.getAttribute('data-job')); });
+    });
+
+    var bCancel = $('btnCancel');
+    if (bCancel) bCancel.addEventListener('click', function () {
+      bCancel.disabled = true;
+      call('/api/jobs/' + encodeURIComponent(st.job.id) + '/cancel', { method: 'POST' }, 4000)
+        .then(function (r) { st.log.push('cancel → ' + r.status + ' ' + JSON.stringify(r.body).slice(0, 200)); refreshJobs(); })
+        .catch(function (e) { st.log.push('cancel 失败 ' + (e.code || '') + ' ' + e.message); paint(); });
+    });
+
+    var bSse = $('btnSse');
+    if (bSse) bSse.addEventListener('click', subscribe);
+
+    var bClose = $('btnCloseJob');
+    if (bClose) bClose.addEventListener('click', function () { closeSse(); st.job = null; st.log = []; paint(); });
+  }
+
+  /* ── 队列数据与事件流 ───────────────────────────────────────────── */
+
+  function refreshJobs() {
+    if (!st.online) return;
+    call('/api/jobs?limit=50', null, 3000).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      st.jobs = (r.body && r.body.jobs) || [];
+      if (st.job) {
+        var cur = st.jobs.filter(function (j) { return j.id === st.job.id; })[0];
+        if (cur) st.job = Object.assign({}, st.job, cur);
+      }
+      if (st.view === 'jobs') paint();
+    }).catch(function (e) {
+      st.online = false; st.error = e.code ? e.code + ' · ' + e.message : '连接断开';
+      paintLive(); paint();
+    });
+  }
+
+  function openJob(id) {
+    call('/api/jobs/' + encodeURIComponent(id), null, 4000).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      st.job = r.body; st.log = [];
+      closeSse();
+      paint();
+    }).catch(function (e) {
+      st.log = ['取任务详情失败：' + (e.code || '') + ' ' + e.message];
+      paint();
+    });
+  }
+
+  function subscribe() {
+    if (!st.job || typeof EventSource !== 'function') return;
+    closeSse();
+    var url = BASE + '/api/jobs/' + encodeURIComponent(st.job.id) + '/events';
+    var es = new EventSource(url);
+    st.sse = es;
+    es.onmessage = function (ev) {
+      st.log.push(String(ev.data).slice(0, 300));
+      if (st.log.length > 200) st.log.splice(0, st.log.length - 200);
+      paint();
+    };
+    es.addEventListener('done', function (ev) {
+      st.log.push('done ' + String(ev.data).slice(0, 200));
+      closeSse(); refreshJobs();
+    });
+    es.onerror = function () {
+      st.log.push('事件流中断（后端关闭或任务结束）；已停止接收。');
+      closeSse(); paint();
+    };
+  }
+
+  function closeSse() {
+    if (st.sse) { try { st.sse.close(); } catch (e) { /* 已关闭 */ } st.sse = null; }
+  }
+
+  /* ── 启动 ───────────────────────────────────────────────────────── */
+
+  function boot() {
+    var srv = S.server || {};
+    $('footSrc').textContent = '数据来源 server/snapshot.json · 生成于 ' + (S.generatedAt || '?')
+      + ' · 后端 ' + BASE + ' · 端口来自 ' + (srv.start || 'tools/serve.mjs');
+    $('footRight').innerHTML = '接口 <span class="num">' + ROUTES.length + '</span> · 状态机 <span class="num">'
+      + ((S.stateMachine && S.stateMachine.states.length) || 0) + '</span> · 错误码 <span class="num">'
+      + ((S.errors && S.errors.codes && S.errors.codes.length) || 0) + '</span>';
+
+    $('btnReload').addEventListener('click', function () {
+      probe().then(function () { if (st.online) refreshJobs(); });
+    });
+
+    // 视图切换动画一律不做；轮询只在可见且停留在队列视图时跑
+    st.timer = setInterval(function () {
+      if (document.visibilityState !== 'visible') return;
+      if (st.view === 'jobs' && st.online) refreshJobs();
+    }, 3000);
+
+    window.addEventListener('beforeunload', function () { clearInterval(st.timer); closeSse(); });
+
+    paint();
+    probe().then(function () { if (st.online) refreshJobs(); });
+  }
+
+  boot();
+})();
+</script>
+</body>
+</html>

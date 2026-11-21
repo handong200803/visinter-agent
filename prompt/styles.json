@@ -1,0 +1,1970 @@
+{
+  "schema": "ai-video-platform/styles",
+  "version": "0.3.2",
+  "updated": "2026-11-18",
+  "note": "风格预设是『structured 的增量』而不是一段成品提示词。为什么这么做：成品提示词不可合并、不可追溯、改一个词就不知道是谁贡献的；增量则能与参数槽位合并、能被 notes 追溯到 style:<id>，还能被冲突检测看见。｜v0.3.1：圣殿固定 8 门位（6 张 noir + Muse氛围感 + 抖音网红脸），撞图的两张 noir 风格保留能力但不占卡位。",
+  "resolution": {
+    "note": "风格名解析顺序：id 精确匹配 → name 精确匹配 → aliases 匹配 → 子串包含。中文用户习惯说『古风』而不是 oriental-ancient，所以 aliases 是必需的。"
+  },
+  "styles": [
+    {
+      "id": "muse-atmosphere",
+      "name": "Muse氛围感",
+      "aliases": [
+        "氛围感",
+        "Muse",
+        "muse",
+        "情绪感",
+        "电影氛围",
+        "朦胧感",
+        "atmospheric",
+        "air mood"
+      ],
+      "stages": [
+        "storyboard",
+        "keyframe",
+        "motion",
+        "look"
+      ],
+      "noir": true,
+      "card": {
+        "cover": "../assets/covers/muse-atmosphere.jpg",
+        "tagline": "光被空气看见的那一秒",
+        "prompt": "暖金主光与青蓝天光对撞，侧逆光勾出发丝与肩线轮廓，画内光源单向打光，空气中有薄雾与浮尘，湿地面柔反射，浅景深前后景分层虚化，35mm 人眼视角，轻胶片颗粒，高光柔和滚降带轻微光晕，暗部抬起保留细节，低饱和高对比电影调色，写实电影摄影"
+      },
+      "why": "从 Muse 九段式提示词实录（江山人间 36 镜 / 4min 版 50 镜）反推的配方。结论先说：氛围感不是加雾滤镜，而是『单一方向的画内光 + 空气介质 + 抬起暗部』三件事同时成立，再叠一层轻颗粒与高光光晕收尾。缺任意一条，画面就退化成发灰的塑料片——这也是『雾』被当成氛围同义词之后最常见的翻车点。｜overrides 接管默认的『厚涂 / 古风 / 东方暖调』：不改画风就会渲染成加了雾的厚涂插画。",
+      "structured_delta": {
+        "light": [
+          {
+            "zh": "画内光源单向打光，方向可辨",
+            "en": "single directional key from an in-frame light source",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "发丝与肩线有连续轮廓光",
+            "en": "continuous rim light along hair and shoulders",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "暖金主光与青蓝天光对撞",
+            "en": "warm gold key against cool cyan ambient",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "暗部抬起保留细节，不死黑",
+            "en": "lifted shadows with retained detail, no crushed blacks",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "scene": [
+          {
+            "zh": "空气中可见薄雾与浮尘",
+            "en": "visible thin haze and floating dust",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "湿地面与潮气形成柔反射",
+            "en": "damp ground with soft specular reflection",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "浅景深，前后景分层虚化",
+            "en": "shallow depth of field, layered foreground and background blur",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "35mm 到 50mm 人眼视角",
+            "en": "35-50mm lens, human-eye perspective",
+            "w": 1.05,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "单条缓慢运镜，落幅稳定",
+            "en": "one slow camera path, stable settle",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "写实摄影影像，非绘画渲染",
+            "en": "photographic image, not painterly rendering",
+            "w": 1.15,
+            "provenance": "inferred",
+            "overrides": [
+              "ch.style"
+            ]
+          },
+          {
+            "zh": "当代都市或自然实景",
+            "en": "contemporary urban or natural location",
+            "w": 1.05,
+            "provenance": "inferred",
+            "overrides": [
+              "sb.genre"
+            ]
+          },
+          {
+            "zh": "冷青与暖金的电影调色",
+            "en": "cinematic warm-gold against cool-teal grade",
+            "w": 1.15,
+            "provenance": "inferred",
+            "overrides": [
+              "ch.palette"
+            ]
+          },
+          {
+            "zh": "电影静帧构图，留白克制",
+            "en": "cinematic still framing, restrained negative space",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "轻胶片颗粒",
+            "en": "fine film grain",
+            "w": 1.05,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "高光柔和滚降，高光边缘轻微光晕",
+            "en": "soft highlight rolloff, subtle halation at highlight edges",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "低饱和高对比的调色",
+            "en": "desaturated high-contrast grade",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "平光",
+        "均匀亮度",
+        "无阴影",
+        "塑料感",
+        "过曝死白",
+        "灰雾一片",
+        "过度锐化",
+        "人脸糊",
+        "单一暖色调"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m",
+        "kf.scheduler": "karras",
+        "kf.cfg": 6.0,
+        "kf.steps": 30,
+        "kf.tonemap": "filmic",
+        "kf.dof": 62,
+        "kf.light_ratio": 4.0,
+        "kf.color_temp": 4800,
+        "kf.grain": 8,
+        "lk.grain": 14,
+        "lk.bloom": 28,
+        "lk.film_halation": 18,
+        "lk.highlight_rolloff": 34,
+        "lk.shadow_lift": 22,
+        "lk.contrast": 112,
+        "lk.saturation": 92,
+        "lk.temperature": -4,
+        "lk.vignette": 28
+      },
+      "usage": {
+        "preconditions": [
+          "主体模板（ch.subject）默认含『站在窗边』这类平光场景，用本风格前把场景改成有明确光源的环境（窗、门、火堆、路灯）",
+          "单一画面只给一条运镜路径；不要在同一条里叠推+摇"
+        ],
+        "do_not": [
+          "不要为了氛围感把雾量拉大：雾只在有方向光时才读作氛围，否则读作脏",
+          "不要把『氛围感』直接写进提示词——它是结果，不是指令"
+        ],
+        "seedream_note": "出关键帧时把本风格产物直接喂 doubao-seedream-5-0-pro；size 用 2K 档或显式 1584x2816"
+      },
+      "cost": {
+        "vram_note": "只改提示词与后期参数，不引入额外采样分支；浅景深/颗粒是采样后处理，显存不变",
+        "time_note": "halation 与 bloom 在后期链上各多一遍全图卷积，1080p 单帧增加不到 3ms",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "douyin-face",
+      "name": "抖音网红脸",
+      "aliases": [
+        "网红脸",
+        "抖音脸",
+        "网感",
+        "纯欲",
+        "清冷感",
+        "douyin face",
+        "influencer face",
+        "short-video face"
+      ],
+      "stages": [
+        "character",
+        "keyframe",
+        "motion",
+        "look"
+      ],
+      "noir": true,
+      "card": {
+        "cover": "../assets/covers/douyin-face.jpg",
+        "tagline": "不靠修图的可复现网感",
+        "prompt": "写实人像摄影，瓜子脸下颌线收窄至尖下巴，山根起点低鼻梁窄直，眼睛偏大卧蚕饱满，人中短唇峰清晰，皮肤保留毛孔颧骨与鼻尖有水光高光点，柔光箱式均匀面光低光比，85mm 中近景正面偏侧十五度，机位略高于视线，暖肤配冷背景低对比柔调，竖构图人像"
+      },
+      "why": "Seedream 5.0 pro 对『网红脸』这类社会标签词的响应是发散的美颜泛化——直接写会得到塑料大眼娃娃，因为该词在训练语料里绑的是修图 App 的液化模板，不是一张脸的几何。这套配方把它拆成三组可判定的描述：骨相几何（下颌收窄/山根起点/卧蚕）、皮相光点（水光但保留毛孔）、镜头位（85-105mm + 正面偏侧 + 略高机位）。三组齐了才可复现；缺皮相那组就必然塑料，缺镜头那组就会得到证件照式的大头。｜overrides 接管『厚涂 / 古风 / 东方暖调 + 脸型 / 肤质』五项默认立场。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "瓜子脸，下颌线收窄，尖下巴，颧骨略宽于下颌",
+            "en": "V-shaped face, tapered jawline, pointed chin, cheekbones slightly wider than jaw",
+            "w": 1.15,
+            "provenance": "inferred",
+            "overrides": [
+              "ch.face_shape"
+            ]
+          },
+          {
+            "zh": "山根起点低，鼻梁窄而直，鼻尖小巧",
+            "en": "low nose root, narrow straight bridge, small refined tip",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "眼睛偏大，内外眼角清晰，卧蚕饱满",
+            "en": "large eyes, defined inner and outer canthus, full aegyo-sal",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "人中短，唇峰清晰，嘴角微上扬",
+            "en": "short philtrum, sharp cupid's bow, slightly upturned mouth corners",
+            "w": 1.05,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "皮肤保留毛孔，颧骨与鼻尖有水光高光点",
+            "en": "visible pores retained, dewy highlight points on cheekbones and nose tip",
+            "w": 1.2,
+            "provenance": "inferred",
+            "overrides": [
+              "ch.skin"
+            ]
+          }
+        ],
+        "light": [
+          {
+            "zh": "柔光箱式均匀面光，光比低",
+            "en": "softbox frontal light, low lighting ratio, wraparound falloff",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "鼻下与下巴留对称浅影",
+            "en": "symmetric soft shadow under nose and chin",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "85mm 到 105mm 中近景，正面偏侧 10 到 15 度",
+            "en": "85-105mm medium close-up, 10-15 degree three-quarter angle",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "机位略高于视线 5 到 8 度",
+            "en": "camera 5-8 degrees above eye level",
+            "w": 1.05,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "焦点落在眼睛，双眼有清晰眼神光",
+            "en": "focus on the eyes, clear catchlight in both pupils",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "写实人像摄影",
+            "en": "realistic photographic portrait",
+            "w": 1.2,
+            "provenance": "inferred",
+            "overrides": [
+              "ch.style"
+            ]
+          },
+          {
+            "zh": "当代日常城市场景",
+            "en": "contemporary everyday urban setting",
+            "w": 1.05,
+            "provenance": "inferred",
+            "overrides": [
+              "sb.genre"
+            ]
+          },
+          {
+            "zh": "暖肤配冷背景的双色调",
+            "en": "two-tone grade, warm skin against cool background",
+            "w": 1.1,
+            "provenance": "inferred",
+            "overrides": [
+              "ch.palette"
+            ]
+          },
+          {
+            "zh": "竖构图人像，人物占画面七成",
+            "en": "vertical portrait framing, subject fills most of the frame",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "低对比柔调，暖肤配冷背景",
+            "en": "low-contrast soft grade, warm skin against cool background",
+            "w": 1.05,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "轻微晕影压边",
+            "en": "subtle edge vignette",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "塑料皮肤",
+        "磨皮过度",
+        "锥子脸",
+        "卡通大眼",
+        "动漫脸",
+        "面部变形",
+        "五官错位",
+        "假睫毛结块",
+        "油光满面",
+        "对称到失真的脸",
+        "畸形手指"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 5.0,
+        "kf.steps": 28,
+        "ch.face_shape": "瓜子",
+        "ch.skin": "水光",
+        "ch.eye_highlight": 72,
+        "kf.ratio": "9:16",
+        "kf.dof": 46,
+        "kf.face_denoise": 0.28,
+        "kf.eye_fix": true,
+        "kf.light_ratio": 2.2,
+        "kf.color_temp": 5600,
+        "lk.contrast": 98,
+        "lk.saturation": 108,
+        "lk.vignette": 18,
+        "lk.bloom": 14,
+        "lk.shadow_lift": 16
+      },
+      "usage": {
+        "preconditions": [
+          "默认主体模板含『鹅蛋脸』，与本风格的瓜子脸骨相直接冲突：先把 ch.subject 里的脸型改成瓜子或心形再编译",
+          "ch.face_shape / ch.skin 已被本风格 overrides 接管，UI 里手改这两项不会生效（刻意）",
+          "竖屏投放：kf.ratio 已预设 9:16"
+        ],
+        "do_not": [
+          "不要把『网红脸』写回提示词正文——它在词库黑名单里（对扩散模型无实义，且会把画面推向修图 App 的液化模板）",
+          "不要在同一条里同时把『水光肌』与『写实毛孔』拉到极致：水光靠高光点，毛孔靠纹理，两边都满会得到油光塑料"
+        ],
+        "seedream_note": "Seedream 5.0 pro 一次只出一张，候选数是成本乘数；先用 1K 档试骨相，定稿再上 2K"
+      },
+      "cost": {
+        "vram_note": "9:16 竖构图在同等高度下像素更少，显存压力低于 16:9",
+        "time_note": "eye_fix 与 face_denoise 走 inpaint 分支，单帧多一次局部重绘，约 +8%",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "cinematic-real",
+      "name": "写实电影感",
+      "aliases": [
+        "电影感",
+        "写实",
+        "剧情",
+        "cinematic",
+        "realistic"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "voice",
+        "look"
+      ],
+      "why": "短剧主力的默认风格：低对比、motivated lighting、克制的调色。它的价值不在『好看』而在『不抢戏』，人物与台词才是重点。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "皮肤保留毛孔与细小绒毛",
+            "en": "realistic skin texture, visible pores, fine vellus hair",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "眼神有明确焦点",
+            "en": "clear eye focus, catchlight in both eyes",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "有动机的主光",
+            "en": "motivated key light from an in-frame source",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "暗部保留细节而非死黑",
+            "en": "lifted shadows with retained detail",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "35mm 纪实视角",
+            "en": "35mm lens, natural perspective",
+            "w": 1.0,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "浅到中等的景深",
+            "en": "moderate shallow depth of field",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "照片级的写实质感",
+            "en": "photographic realism, cinematic still",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "柔和高光滚降",
+            "en": "soft highlight rolloff, filmic tonemapping",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "过度磨皮",
+        "塑料质感",
+        "插画笔触",
+        "夸张透视"
+      ],
+      "params": {
+        "ch.style": "厚涂",
+        "ch.skin": "写实纹理",
+        "kf.tonemap": "filmic",
+        "kf.dof": 45,
+        "kf.light_ratio": 2.5,
+        "lk.lut": "胶片",
+        "lk.lut_strength": 55,
+        "lk.sharpen": 20
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "风格本身不加时间；写实质感靠 skin/tonemap 两项已在上游计费",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "oriental-ancient",
+      "name": "东方古风",
+      "aliases": [
+        "古风",
+        "古装",
+        "国风",
+        "汉服",
+        "仙侠",
+        "oriental",
+        "guofeng"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "voice",
+        "look"
+      ],
+      "why": "平台差异化的门面。古风的成败 80% 在『器物 + 形制 + 侧逆光』三件事上，堆形容词（唯美、仙气）几乎无效。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "柳叶眉与丹凤眼",
+            "en": "willow eyebrows, phoenix eyes, upward outer corners",
+            "w": 1.05,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "肤色温润偏哑光",
+            "en": "warm matte skin, soft porcelain tone",
+            "w": 1.0,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "古风发髻与发簪",
+            "en": "traditional Chinese updo with hairpins, loose strands",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "outfit": [
+          {
+            "zh": "交领广袖汉服",
+            "en": "hanfu with crossed collar, wide sleeves, layered skirt",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "丝质哑光面料",
+            "en": "matte silk fabric, subtle sheen",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "scene": [
+          {
+            "zh": "木质窗棂与屏风",
+            "en": "wooden lattice window, folding screen",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "侧逆光勾出轮廓",
+            "en": "side-backlight, rim light along silhouette",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "暖烛光做辅光",
+            "en": "warm candlelight fill",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "中景，留白给字幕",
+            "en": "medium shot, negative space on one side",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "工笔重彩的东方古典审美",
+            "en": "Chinese classical aesthetic, gongbi-inspired rendering",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "低对比的暖调",
+            "en": "low contrast warm grade",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "西式礼裙",
+        "现代配饰",
+        "塑料花",
+        "欧式家具"
+      ],
+      "params": {
+        "ch.style": "工笔",
+        "ch.palette": "东方暖调",
+        "ch.hair_style": "古风发髻",
+        "kf.color_temp": 4800,
+        "kf.key_light_dir": "侧逆光",
+        "kf.tonemap": "filmic",
+        "lk.lut": "东方暖调",
+        "lk.lut_strength": 70,
+        "vo.bgm_genre": "古风",
+        "vo.voice_id": "茉莉"
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "工笔风格需要更稳的线条，步数低于 20 时线条会断，建议 24+",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "anime",
+      "name": "二次元",
+      "aliases": [
+        "动漫",
+        "日漫",
+        "动画",
+        "anime",
+        "2d"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "voice"
+      ],
+      "why": "二次元的容错最高（脸不容易崩），但它与写实质感互斥：一旦同时写『写实皮肤』和『赛璐璐』，得到的是一张哪种都不是的图。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "大眼睛与简化鼻梁",
+            "en": "large eyes, simplified nose bridge, small mouth",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "赛璐璐平涂肤色",
+            "en": "flat cel-shaded skin, no pore texture",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "正面或四分之三侧脸",
+            "en": "frontal or three-quarter view",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "日式动画赛璐璐",
+            "en": "Japanese anime cel shading, clean line art",
+            "w": 1.15,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "干净的线稿与两阶阴影",
+            "en": "clean outlines, two-tone shading",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "写实毛孔",
+        "照片质感",
+        "景深虚化",
+        "三维渲染感"
+      ],
+      "params": {
+        "ch.style": "赛璐璐",
+        "ch.skin": "磨皮",
+        "ch.shadow_levels": 2,
+        "ch.line_weight": 55,
+        "kf.dof": 10,
+        "kf.tonemap": "none",
+        "lk.cel_levels": 2,
+        "lk.sharpen": 0
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "赛璐璐在低步数下反而更稳，可用 16-20 步省时间",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "cyber",
+      "name": "赛博",
+      "aliases": [
+        "赛博朋克",
+        "科幻",
+        "cyberpunk",
+        "霓虹"
+      ],
+      "stages": [
+        "character",
+        "keyframe",
+        "motion",
+        "look"
+      ],
+      "why": "赛博的核心不是霓虹色，是『人造光源 + 硬材质 + 高光溢出可控』。霓虹堆太多会过曝成白块，这是它最常见的失败。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "冷调皮肤与硬质高光",
+            "en": "cool-toned skin, hard specular highlights",
+            "w": 1.0,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "金属与合成材质配饰",
+            "en": "metallic implants, synthetic fabric accents",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "scene": [
+          {
+            "zh": "湿滑路面与人造雾",
+            "en": "wet asphalt, artificial haze, reflective ground",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "品红与青色双色光源",
+            "en": "magenta and cyan practical lights, colored rim",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "暗部压深",
+            "en": "crushed shadows, high contrast",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "赛博朋克类型片质感",
+            "en": "cyberpunk film still, industrial sci-fi",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "受控的高光溢出",
+            "en": "controlled highlight bloom, no clipping",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "日光暖调",
+        "田园元素",
+        "过度霓虹过曝",
+        "塑料玩具感"
+      ],
+      "params": {
+        "ch.palette": "冷青电影",
+        "ch.style": "厚涂",
+        "kf.color_temp": 7500,
+        "kf.light_ratio": 5,
+        "kf.tonemap": "aces",
+        "lk.lut": "赛博",
+        "lk.bloom": 40,
+        "lk.chroma": 20
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "高对比与 bloom 会放大噪点，需要更多步数或更强降噪",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "ink",
+      "name": "水墨",
+      "aliases": [
+        "水墨",
+        "国画",
+        "写意",
+        "ink",
+        "inkwash"
+      ],
+      "stages": [
+        "character",
+        "keyframe",
+        "motion",
+        "look"
+      ],
+      "why": "水墨的价值是『减法』，所以它和平台里大多数数值参数（锐化、颗粒、细节增强）方向相反；用 default 值跑水墨基本都会破功。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "淡墨勾勒的五官",
+            "en": "features outlined with diluted ink strokes",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "留白代替高光",
+            "en": "paper white as highlight, no specular",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "scene": [
+          {
+            "zh": "宣纸肌理与淡墨山影",
+            "en": "rice paper texture, faint ink mountains",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "无方向性的散射光",
+            "en": "diffuse ambient light, no directional key",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "大留白构图",
+            "en": "large negative space, sparse composition",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "写意水墨",
+            "en": "Chinese ink wash painting, expressive brushwork",
+            "w": 1.15,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "墨色自然扩散的边缘",
+            "en": "natural ink bleed edges, soft wash gradients",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "数字锐化边缘",
+        "彩色高光",
+        "写实照片纹理",
+        "硬边阴影"
+      ],
+      "params": {
+        "ch.style": "水墨",
+        "ch.negative_space": 45,
+        "kf.grain": 0,
+        "kf.tonemap": "none",
+        "lk.sharpen": 0,
+        "lk.grain": 0,
+        "lk.ink_bleed": 60,
+        "lk.paper_texture": 55,
+        "lk.watercolor_edge": 40
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "水墨需要纸纹 pass，lk.paper_texture 会多一次合成但不进扩散采样",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "film-doc",
+      "name": "胶片纪实",
+      "aliases": [
+        "纪实",
+        "胶片",
+        "纪录片",
+        "film",
+        "documentary"
+      ],
+      "stages": [
+        "keyframe",
+        "motion",
+        "look",
+        "voice"
+      ],
+      "why": "纪实的可信度来自『不完美的光 + 颗粒 + 手持』。它对一致性要求最高（同一卷胶片同一支镜头），所以别在一条片子里混用风格。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "未经修饰的肤色与细纹",
+            "en": "unretouched skin, visible texture and fine lines",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "现场可用光",
+            "en": "available light, practical sources only",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "手持与轻微晃动",
+            "en": "handheld camera, slight shake, imperfect framing",
+            "w": 1.05,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "35mm 广角贴近",
+            "en": "35mm wide lens, close to subject",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "胶片纪录片的现场感",
+            "en": "documentary film still, 16mm look",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "明显颗粒与光晕",
+            "en": "visible grain, halation around highlights",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "影棚布光",
+        "完美对称构图",
+        "过度锐化",
+        "数字洁净感"
+      ],
+      "params": {
+        "kf.grain": 35,
+        "kf.light_ratio": 3.5,
+        "lk.lut": "胶片",
+        "lk.grain": 40,
+        "lk.film_halation": 35,
+        "lk.sharpen": 0,
+        "mo.camera": "手持",
+        "mo.flicker_guard": true
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "颗粒 + 手持在动效阶段会触发 deflicker，时间成本主要体现在后处理链",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "commercial",
+      "name": "商业广告",
+      "aliases": [
+        "广告",
+        "商业",
+        "产品",
+        "commercial",
+        "ad"
+      ],
+      "stages": [
+        "character",
+        "keyframe",
+        "motion",
+        "look",
+        "export"
+      ],
+      "why": "广告的判据是『一眼看懂卖点』：所以它要顺光、要干净、要高饱和、要留出文案位。这是唯一一个『堆画质词反而有效』的语境——但有效的仍是布光与材质，不是 8K。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "光洁的水光肤质",
+            "en": "dewy flawless skin, soft specular on cheekbones",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "整洁的发丝走向",
+            "en": "neatly styled hair, controlled flyaways",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "outfit": [
+          {
+            "zh": "干净的纯色服装",
+            "en": "clean solid-color outfit, crisp fabric",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "柔光箱级别的均匀主光",
+            "en": "softbox key light, even fill, no harsh shadow",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "居中构图留文案位",
+            "en": "centered product framing, space reserved for copy",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "商业静物摄影质感",
+            "en": "commercial product photography, high-key",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "干净通透的色彩",
+            "en": "clean vibrant color, high key exposure",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "杂乱背景",
+        "低饱和灰调",
+        "手持晃动",
+        "颗粒"
+      ],
+      "params": {
+        "ch.skin": "水光",
+        "ch.palette": "高饱和",
+        "kf.color_temp": 5600,
+        "kf.light_ratio": 1.5,
+        "kf.key_light_dir": "顺光",
+        "kf.composition": "居中",
+        "lk.lut": "无",
+        "lk.bloom": 30,
+        "lk.sharpen": 35
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "顺光低光比出图最稳，步数可以压到 20 左右",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "manga-drama",
+      "name": "漫剧",
+      "aliases": [
+        "漫剧",
+        "条漫",
+        "漫画剧",
+        "manga",
+        "webtoon"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "voice"
+      ],
+      "why": "漫剧是竖屏信息流的最优形态：网点 + 分格 + 强情绪符号，且对时序稳定性要求低（可以靠贴纸/速度线补运动）。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "清晰的轮廓线与网点阴影",
+            "en": "bold outlines, screentone shading",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "放大的眼睛与强烈的表情符号",
+            "en": "oversized eyes, strong emotion symbols, graphic emphasis",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "竖构图，人物占七成",
+            "en": "vertical framing, subject fills most of the frame",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "条漫式的分格叙事",
+            "en": "webtoon panel style, graphic staging",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "两到三阶的硬阴影",
+            "en": "two or three tonal steps, hard shadow edges",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "写实照片",
+        "柔焦",
+        "复杂景深",
+        "三维体积光"
+      ],
+      "params": {
+        "ch.style": "韩漫",
+        "ch.screen_tone": 45,
+        "ch.shadow_levels": 3,
+        "kf.ratio": "9:16",
+        "kf.dof": 5,
+        "lk.screen_tone": 40,
+        "lk.outline": 30,
+        "lk.cel_levels": 3
+      },
+      "cost": {
+        "vram_note": "竖屏 9:16 在同等宽度下像素更少，显存压力反而低",
+        "time_note": "网点与描边是后期叠加，采样时间不变",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "noir-angel-statue",
+      "name": "暗黑天使雕像",
+      "aliases": [
+        "暗黑天使",
+        "天使雕像",
+        "雕像",
+        "noir angel",
+        "statue"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "voice",
+        "look"
+      ],
+      "noir": true,
+      "card": {
+        "cover": "../assets/covers/noir-01.jpg",
+        "tagline": "石与羽的悲剧碑铭",
+        "prompt": "黑白高反差，雕塑感人物，粗粝石材质感，古典悲剧气质，强烈侧光，暗部层次丰富，冷白高光，银灰色调，云雾缠绕，羽毛与破碎布条，写实电影摄影，低饱和，深黑背景，神圣压迫感"
+      },
+      "why": "首页圣殿第一卡。雕塑感的成败在『材质 + 侧光 + 暗部层次』：石材没有毛孔但有风化裂纹，侧光把裂纹变成浮雕；暗部一旦死黑，石头就变成剪影纸片。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "粗粝石材质感与风化裂纹",
+            "en": "coarse stone surface, weathered cracks and chisel marks",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "羽毛与破碎布条缠绕",
+            "en": "feathers and torn cloth strips wrapped around the figure",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "强烈侧光，冷白高光",
+            "en": "hard side light, cold white highlights",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "暗部层次丰富而非死黑",
+            "en": "rich shadow gradation, no crushed blacks",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "scene": [
+          {
+            "zh": "云雾缠绕，深黑背景",
+            "en": "swirling mist, deep black background",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "古典悲剧气质的雕塑感",
+            "en": "classical tragic sculpture presence, sacred oppressive awe",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "黑白高反差，银灰色调",
+            "en": "black-and-white high contrast, silver-grey grade",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "彩色",
+        "鲜艳",
+        "卡通",
+        "动漫",
+        "光滑塑料感",
+        "过度磨皮",
+        "低对比",
+        "明亮背景",
+        "商业海报感"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 6.5,
+        "kf.steps": 26,
+        "kf.dof": 30,
+        "kf.grain": 8,
+        "kf.key_light_dir": "侧光",
+        "kf.light_ratio": 5,
+        "kf.tonemap": "filmic",
+        "kf.color_temp": 6800,
+        "ch.palette": "黑白灰",
+        "lk.lut": "黑白",
+        "lk.lut_strength": 85,
+        "lk.sharpen": 15
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "高反差侧光需要 24+ 步稳住暗部过渡，26 步为估算 sweet spot",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "gothic-ruin-temple",
+      "name": "哥特废墟神殿",
+      "aliases": [
+        "哥特废墟",
+        "废墟神殿",
+        "哥特神殿",
+        "gothic ruin",
+        "temple"
+      ],
+      "stages": [
+        "storyboard",
+        "keyframe",
+        "motion",
+        "look"
+      ],
+      "noir": false,
+      "why": "空间深邃靠『雾的衰减 + 拱顶的重复节奏』：体积雾让每一排石柱比前一排淡一档，纵深就出来了；没有雾的废墟只是一堆石头素材。｜（首页卡位让给撞图的两张能力卡：本风格的封面底图与 Muse氛围感/抖音网红脸 同源，四张并排会看成重复；风格本身仍可用 --style 调起。）",
+      "structured_delta": {
+        "scene": [
+          {
+            "zh": "破碎石柱与阴暗拱顶",
+            "en": "broken columns, gloomy gothic vaults",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "地面苔藓与碎尘",
+            "en": "moss and rubble dust on the floor",
+            "w": 1.0,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "体积雾拉开空间纵深",
+            "en": "volumetric fog, depth falloff between column rows",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "微弱月光穿过云层",
+            "en": "faint moonlight breaking through clouds",
+            "w": 1.15,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "废弃神殿的深邃与肃穆",
+            "en": "deep solemn space of an abandoned temple",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "石材风化裂纹的真实摄影质感",
+            "en": "photographic texture of weathered, cracked stone",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "彩色",
+        "鲜艳",
+        "卡通",
+        "动漫",
+        "光滑塑料感",
+        "过度磨皮",
+        "低对比",
+        "明亮背景",
+        "商业海报感"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 6.0,
+        "kf.steps": 24,
+        "kf.dof": 15,
+        "kf.grain": 6,
+        "kf.key_light_dir": "顶光",
+        "kf.light_ratio": 4,
+        "kf.tonemap": "filmic",
+        "kf.color_temp": 7200,
+        "ch.palette": "黑白灰",
+        "lk.lut": "黑白",
+        "lk.lut_strength": 85,
+        "lk.sharpen": 15
+      },
+      "cost": {
+        "vram_note": "体积雾在采样内完成，无额外 pass",
+        "time_note": "大纵深构图建议 24 步起，低于 20 步雾会出现色带",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "mist-cemetery",
+      "name": "冷雾墓园",
+      "aliases": [
+        "冷雾墓园",
+        "墓园",
+        "墓地",
+        "mist cemetery",
+        "graveyard"
+      ],
+      "stages": [
+        "storyboard",
+        "keyframe",
+        "motion",
+        "look"
+      ],
+      "noir": true,
+      "card": {
+        "cover": "../assets/covers/noir-03.jpg",
+        "tagline": "铁栏与枯树的寂静",
+        "prompt": "黑白高反差，冷雾墓园，倾斜墓碑与枯树，低垂晨雾，铁艺围栏锈迹，湿冷石面反光，远处教堂剪影，微弱天光，银灰色调，低饱和，粗粝颗粒，空间纵深，寂静肃穆，写实电影摄影"
+      },
+      "why": "墓园的冷不是色温而是湿度：湿石面的微弱反光 + 低垂雾把天光压成一片灰白，锈迹提供唯一的纹理焦点。剪影只留给最远一层，近景必须有细节。",
+      "structured_delta": {
+        "scene": [
+          {
+            "zh": "倾斜墓碑与枯树",
+            "en": "tilted headstones, bare dead trees",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "铁艺围栏锈迹与湿冷石面反光",
+            "en": "rusted iron fence, wet cold stone reflections",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "低垂晨雾，远处教堂剪影",
+            "en": "low morning mist, distant church silhouette",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "微弱天光，无方向硬光",
+            "en": "faint overcast skylight, no hard directional key",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "粗粝颗粒与寂静肃穆的空气感",
+            "en": "coarse grain, silent solemn atmosphere",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "彩色",
+        "鲜艳",
+        "卡通",
+        "动漫",
+        "光滑塑料感",
+        "过度磨皮",
+        "低对比",
+        "明亮背景",
+        "商业海报感"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 6.5,
+        "kf.steps": 22,
+        "kf.dof": 25,
+        "kf.grain": 10,
+        "kf.key_light_dir": "顺光",
+        "kf.light_ratio": 3,
+        "kf.tonemap": "filmic",
+        "kf.color_temp": 7000,
+        "ch.palette": "黑白灰",
+        "lk.lut": "黑白",
+        "lk.lut_strength": 80,
+        "lk.sharpen": 10
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "散射光收敛快，22 步足够；颗粒靠 kf.grain 不进采样预算",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "dark-fantasy-figure",
+      "name": "暗黑玄幻人物",
+      "aliases": [
+        "暗黑玄幻",
+        "玄幻人物",
+        "暗黑人像",
+        "dark fantasy",
+        "fantasy figure"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "voice",
+        "look"
+      ],
+      "noir": true,
+      "card": {
+        "cover": "../assets/covers/noir-04.jpg",
+        "tagline": "披风下的悲伤神圣",
+        "prompt": "黑白高反差电影肖像，暗黑玄幻人物，苍白面部，深色披风，银灰冷光，强烈轮廓光，背景深黑烟雾，皮肤真实纹理，悲伤神圣表情，低饱和，粗粝颗粒，浅景深，悲剧浪漫主义"
+      },
+      "why": "玄幻人像最怕『游戏 CG 脸』：苍白不等于磨皮，皮肤必须留纹理；轮廓光只勾边不照脸，脸靠一点冷灰辅光保住悲伤的表情细节。",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "苍白面部，皮肤真实纹理",
+            "en": "pale face with real skin texture, visible pores",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "悲伤而神圣的表情",
+            "en": "sorrowful yet sacred expression",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "outfit": [
+          {
+            "zh": "深色披风",
+            "en": "dark heavy cloak",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "银灰冷光，强烈轮廓光",
+            "en": "silver-grey cold light, strong rim light",
+            "w": 1.15,
+            "provenance": "inferred"
+          }
+        ],
+        "scene": [
+          {
+            "zh": "背景深黑烟雾",
+            "en": "deep black smoke background",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "浅景深肖像",
+            "en": "shallow depth of field portrait",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "悲剧浪漫主义",
+            "en": "tragic romanticism",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "彩色",
+        "鲜艳",
+        "卡通",
+        "动漫",
+        "光滑塑料感",
+        "过度磨皮",
+        "低对比",
+        "明亮背景",
+        "商业海报感"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 7.0,
+        "kf.steps": 28,
+        "kf.dof": 75,
+        "kf.grain": 8,
+        "kf.key_light_dir": "侧逆光",
+        "kf.light_ratio": 5,
+        "kf.tonemap": "filmic",
+        "kf.color_temp": 7200,
+        "ch.palette": "黑白灰",
+        "ch.skin": "写实纹理",
+        "ch.hair_color": "自然黑",
+        "lk.lut": "黑白",
+        "lk.lut_strength": 85,
+        "lk.sharpen": 15
+      },
+      "cost": {
+        "vram_note": "浅景深不增加显存",
+        "time_note": "肖像 + 轮廓光对步数敏感，28 步保住发丝与皮肤纹理",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "silver-snow-realm",
+      "name": "银灰神域雪景",
+      "aliases": [
+        "银灰神域",
+        "神域雪景",
+        "雪景",
+        "snow realm",
+        "silver snow"
+      ],
+      "stages": [
+        "storyboard",
+        "keyframe",
+        "motion",
+        "look"
+      ],
+      "noir": true,
+      "card": {
+        "cover": "../assets/covers/noir-05.jpg",
+        "tagline": "雪线之上的神性寂寥",
+        "prompt": "黑白高反差，银灰神域雪景，巍峨雪山与冰晶神殿，飞雪粒子，冷白天光，雪面细微反光，断崖与云海，神性寂寥，低饱和，银灰色调，体积雾，写实电影摄影，深黑阴影层次"
+      },
+      "why": "雪景的高反差不在雪而在阴影：雪面本身是灰白渐层，真正黑的是断崖背光面与云海缝隙。把雪写成纯白会得到一张过曝的明信片。",
+      "structured_delta": {
+        "scene": [
+          {
+            "zh": "巍峨雪山与冰晶神殿",
+            "en": "towering snow mountains, ice-crystal shrine",
+            "w": 1.1,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "断崖与云海",
+            "en": "sheer cliffs above a sea of clouds",
+            "w": 1.05,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "飞雪粒子",
+            "en": "drifting snow particles",
+            "w": 1.0,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "冷白天光，雪面细微反光",
+            "en": "cold white skylight, subtle snow sparkle",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "深黑阴影层次托住雪的高光",
+            "en": "deep black shadow gradation anchoring snow highlights",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "彩色",
+        "鲜艳",
+        "卡通",
+        "动漫",
+        "光滑塑料感",
+        "过度磨皮",
+        "低对比",
+        "明亮背景",
+        "商业海报感"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 6.0,
+        "kf.steps": 24,
+        "kf.dof": 10,
+        "kf.grain": 6,
+        "kf.key_light_dir": "顺光",
+        "kf.light_ratio": 3,
+        "kf.tonemap": "aces",
+        "kf.color_temp": 7500,
+        "ch.palette": "黑白灰",
+        "lk.lut": "黑白",
+        "lk.lut_strength": 80,
+        "lk.sharpen": 10
+      },
+      "cost": {
+        "vram_note": "飞雪若走 mo.mode=粒子 才计粒子预算，静帧内不计",
+        "time_note": "aces 滚降护住雪面高光，24 步估算足够",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "fallen-angel-ruins",
+      "name": "堕天使战场废墟",
+      "aliases": [
+        "堕天使",
+        "战场废墟",
+        "堕天使战场",
+        "fallen angel",
+        "battle ruins"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "look"
+      ],
+      "noir": true,
+      "card": {
+        "cover": "../assets/covers/noir-06.jpg",
+        "tagline": "折翼者的悲壮史诗",
+        "prompt": "黑白高反差，堕天使战场废墟，折损羽翼与断裂兵器，焦土与残旗，尘烟未散，强烈侧逆光，冷白高光勾边，暗部浓重，银灰色调，低饱和，粗粝颗粒，悲壮史诗感，写实电影摄影"
+      },
+      "why": "战场的史诗感靠『残骸的指向性』：折翼、断兵、残旗都朝同一个方向倒，画面才有叙事；尘烟未散给侧逆光提供了体积，光才有形状。",
+      "structured_delta": {
+        "scene": [
+          {
+            "zh": "折损羽翼与断裂兵器",
+            "en": "broken wings, shattered weapons",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "焦土与残旗，尘烟未散",
+            "en": "scorched earth, torn banners, lingering dust smoke",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "强烈侧逆光，冷白高光勾边",
+            "en": "hard side-backlight, cold white rim on edges",
+            "w": 1.15,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "悲壮史诗感",
+            "en": "tragic epic grandeur",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "暗部浓重但保留残骸细节",
+            "en": "heavy shadows retaining wreckage detail",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "彩色",
+        "鲜艳",
+        "卡通",
+        "动漫",
+        "光滑塑料感",
+        "过度磨皮",
+        "低对比",
+        "明亮背景",
+        "商业海报感"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 7.0,
+        "kf.steps": 28,
+        "kf.dof": 40,
+        "kf.grain": 12,
+        "kf.key_light_dir": "侧逆光",
+        "kf.light_ratio": 6,
+        "kf.tonemap": "aces",
+        "kf.color_temp": 6800,
+        "ch.palette": "黑白灰",
+        "lk.lut": "黑白",
+        "lk.lut_strength": 90,
+        "lk.sharpen": 20
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "高光比 + 颗粒放大噪点，28 步是估算下限",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "tragic-portrait",
+      "name": "古典悲剧人像",
+      "aliases": [
+        "古典悲剧",
+        "悲剧人像",
+        "古典人像",
+        "tragic portrait",
+        "classical portrait"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "voice",
+        "look"
+      ],
+      "noir": false,
+      "why": "古典悲剧 portrait 的光是伦勃朗三角：颧骨一块冷白高光、眼窝留在暗里，哀恸靠眉间肌肉不靠眼泪。背景必须被暗部吞掉，任何背景细节都在抢戏。｜（首页卡位让给撞图的两张能力卡：本风格的封面底图与 Muse氛围感/抖音网红脸 同源，四张并排会看成重复；风格本身仍可用 --style 调起。）",
+      "structured_delta": {
+        "appearance": [
+          {
+            "zh": "深邃眼窝与克制哀恸",
+            "en": "deep-set eyes, restrained grief",
+            "w": 1.15,
+            "provenance": "inferred"
+          },
+          {
+            "zh": "皮肤真实纹理与细纹",
+            "en": "real skin texture and fine lines",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "伦勃朗式侧光，冷白高光落在颧骨",
+            "en": "Rembrandt side light, cold white highlight on cheekbone",
+            "w": 1.15,
+            "provenance": "inferred"
+          }
+        ],
+        "scene": [
+          {
+            "zh": "暗部吞没背景",
+            "en": "background swallowed by shadow",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ],
+        "camera": [
+          {
+            "zh": "浅景深庄重肖像",
+            "en": "shallow depth of field, solemn portrait framing",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "彩色",
+        "鲜艳",
+        "卡通",
+        "动漫",
+        "光滑塑料感",
+        "过度磨皮",
+        "低对比",
+        "明亮背景",
+        "商业海报感"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 6.5,
+        "kf.steps": 26,
+        "kf.dof": 80,
+        "kf.grain": 8,
+        "kf.key_light_dir": "侧光",
+        "kf.light_ratio": 5,
+        "kf.tonemap": "filmic",
+        "kf.color_temp": 6500,
+        "ch.palette": "黑白灰",
+        "ch.skin": "写实纹理",
+        "ch.hair_color": "自然黑",
+        "lk.lut": "黑白",
+        "lk.lut_strength": 85,
+        "lk.sharpen": 15
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "伦勃朗光的光比过渡需要 26 步估算稳住三角区",
+        "provenance": "estimate"
+      }
+    },
+    {
+      "id": "vampire-gothic",
+      "name": "吸血鬼哥特氛围",
+      "aliases": [
+        "吸血鬼",
+        "哥特氛围",
+        "吸血鬼哥特",
+        "vampire",
+        "gothic mood"
+      ],
+      "stages": [
+        "character",
+        "storyboard",
+        "keyframe",
+        "motion",
+        "voice",
+        "look"
+      ],
+      "noir": true,
+      "card": {
+        "cover": "../assets/covers/noir-08.jpg",
+        "tagline": "烛影丝绒的危险优雅",
+        "prompt": "黑白高反差，吸血鬼哥特氛围，烛台与丝绒帷幔，古堡长廊，苍白面容与深色礼服，烛光在灰阶里只剩明度，冷银轮廓光，暗部丝绒层次，银灰色调，低饱和，浅景深，粗粝颗粒，危险而优雅"
+      },
+      "why": "哥特的优雅在材质对比：丝绒吸光、银器反光、皮肤半透光，三种灰阶挤在一帧里才有层次。烛光在黑白里只贡献明度不贡献色相，写『暖烛』反而会诱导出彩色。",
+      "structured_delta": {
+        "scene": [
+          {
+            "zh": "烛台与丝绒帷幔，古堡长廊",
+            "en": "candelabra, velvet drapes, castle corridor",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "appearance": [
+          {
+            "zh": "苍白面容与深色礼服",
+            "en": "pale countenance, dark formal attire",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "light": [
+          {
+            "zh": "烛光只留明度，冷银轮廓光",
+            "en": "candlelight as luminance only, cold silver rim light",
+            "w": 1.15,
+            "provenance": "inferred"
+          }
+        ],
+        "quality": [
+          {
+            "zh": "暗部丝绒层次",
+            "en": "velvet gradation inside the shadows",
+            "w": 1.1,
+            "provenance": "inferred"
+          }
+        ],
+        "style": [
+          {
+            "zh": "危险而优雅",
+            "en": "dangerous elegance",
+            "w": 1.05,
+            "provenance": "inferred"
+          }
+        ]
+      },
+      "negative_extra": [
+        "彩色",
+        "鲜艳",
+        "卡通",
+        "动漫",
+        "光滑塑料感",
+        "过度磨皮",
+        "低对比",
+        "明亮背景",
+        "商业海报感"
+      ],
+      "params": {
+        "kf.sampler": "dpmpp_2m_sde",
+        "kf.scheduler": "karras",
+        "kf.cfg": 6.5,
+        "kf.steps": 26,
+        "kf.dof": 60,
+        "kf.grain": 10,
+        "kf.key_light_dir": "侧逆光",
+        "kf.light_ratio": 5,
+        "kf.tonemap": "filmic",
+        "kf.color_temp": 6200,
+        "ch.palette": "黑白灰",
+        "ch.skin": "写实纹理",
+        "ch.hair_color": "自然黑",
+        "lk.lut": "黑白",
+        "lk.lut_strength": 85,
+        "lk.sharpen": 15
+      },
+      "cost": {
+        "vram_note": "无额外占用",
+        "time_note": "丝绒暗部层次吃步数，26 步估算为下限",
+        "provenance": "estimate"
+      }
+    }
+  ],
+  "noir_negative_append": "彩色，鲜艳，卡通，动漫，光滑塑料感，过度磨皮，低对比，明亮背景，商业海报感"
+}

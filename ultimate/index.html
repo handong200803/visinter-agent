@@ -1,0 +1,1784 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ultimate · 双引擎科研台</title>
+<style>
+/* ═══════════════════════════════════════════════════════════════════════
+   tokens.css —— 平台唯一视觉令牌源
+   ───────────────────────────────────────────────────────────────────────
+   定位：「暗黑玻璃拟态 · 冷银基调」。深黑 #08080a 上悬浮两团冷色光晕
+   （左上蓝灰、右下紫灰），所有卡片/面板/输入/弹窗是一层半透明白玻璃：
+   光从玻璃后面透出来，边缘靠 1px 亮线勾勒，hover 上浮并泛一圈冷光。
+
+   为什么要有这个文件：
+     七套界面此前各持一份配色。令牌集中到一处之后，全平台只有一种视觉人格，
+     并且「像不像暗黑玻璃」这件事变成了可被 lint 校验的硬指标（tools/lint_ui.mjs）。
+
+   四条硬规矩（违反即 lint 失败）：
+     1. 玻璃面统一：背景 rgba(255,255,255,.06)、边框 rgba(255,255,255,.12)、
+        圆角 16px、blur(20px) saturate(1.4)、黑阴影 + 顶部 1px 内亮线。
+     2. 冷银唯一强调：--acc #C8CDD4，高亮 #EEF1F5。光晕只许冷色
+        （蓝灰/紫灰/银，通道差 ≤ 64 且蓝≥红），禁止暖色荧光与 AI 紫。
+     3. hover 三件套：背景提亮到 .10、边框提亮到 .25、上浮 3px + 冷光
+        0 0 20px rgba(180,200,230,.15)。循环动画只给铸造粒子/烟雾加载器。
+     4. 碑铭字体保留：平台名与卡片标题走 --serif 宽字距；正文 --sans
+        小字号松行高；数字一律 tabular-nums。颗粒层保留（胶片感）。
+
+   使用方式：
+     单文件产物要求双击 file:// 可用 → 不允许运行时 @import。
+     各 HTML 的 :root 必须**逐字复制**本文件的变量块；lint 会比对变量名与取值。
+     通用玻璃类 .glass-card / .glass-btn / .glass-input 在本文件底部，
+     组件直接挂类，不要各写一份玻璃配方。移动端 blur 自动降到 12px。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 碑铭衬线：Cinzel（SIL OFL，本地 woff2，见 assets/fonts/LICENSE-Cinzel.txt）。
+   中文无 Cinzel 字形，自然落到宋体/思源宋体——碑铭感靠字距与字重，不靠假字体。 */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-700.woff2") format("woff2");
+}
+
+:root {
+  /* ── 玻璃明度阶梯：半透明白膜叠在深黑上，冷光晕从后面透出来 ──────
+     越靠近内容越亮。--panel 是标准玻璃面，--panel2 是膜内凹槽。 */
+  --bg:        #08080a;   /* 应用底（双光晕的落点） */
+  --bg-deep:   #0a0a0d;   /* 画布凹槽（节点图、时间轴）：比玻璃面更暗 */
+  --panel:     rgba(255, 255, 255, 0.06);   /* 标准玻璃面 */
+  --panel2:    rgba(255, 255, 255, 0.04);   /* 输入框 / 膜内凹槽 */
+  --panel3:    rgba(255, 255, 255, 0.10);   /* 悬停态 */
+  --panel4:    rgba(255, 255, 255, 0.14);   /* 按下 / 选中填充 */
+
+  /* ── 分隔线：玻璃边缘的亮线（1px 半透明白）───────────────────── */
+  --line:      rgba(255, 255, 255, 0.12);   /* 常规玻璃边框 */
+  --line2:     rgba(255, 255, 255, 0.18);   /* 强分隔 / 输入框边框 */
+  --line3:     rgba(255, 255, 255, 0.25);   /* hover / 焦点边框 */
+
+  /* ── 文字（三级，绝不用纯白：纯白在暗底上光晕扩散）────────────── */
+  --text:      #d4d8de;   /* 主文本 */
+  --text-dim:  #7a8089;   /* 次要说明 */
+  --text-dim2: #565c66;   /* 占位 / 禁用 */
+
+  /* ── 唯一强调色：冷银。高亮 #eef1f5，像光扫过玻璃边缘 ─────────── */
+  --acc:       #c8cdd4;
+  --acc-hover: #eef1f5;
+  --acc-dim:   #8a9099;
+  --acc-fill:  rgba(200, 205, 212, 0.10);  /* 选中行底色 */
+
+  /* ── 语义状态（降饱和；血红只作错误信号，不铺大面）──────────────
+     --bad 太暗不能作文字色，错误文案用 --bad-ink，边框/填充用 --bad。 */
+  --ok:        #7d9b84;
+  --warn:      #b3985a;
+  --bad:       #6b2020;
+  --bad-ink:   #c98080;
+  --ok-fill:   rgba(125, 155, 132, 0.12);
+  --warn-fill: rgba(179, 152, 90, 0.12);
+  --bad-fill:  rgba(107, 32, 32, 0.16);
+
+  /* ── 端口/类型色（节点图专用，仅连线与 3-4px 圆点；全部压成灰调）── */
+  --t-model:   #8d84a0;   /* 模型 */
+  --t-latent:  #a08489;   /* 潜空间 */
+  --t-image:   #a09678;   /* 图像 */
+  --t-number:  #7f948c;   /* 数值 */
+  --t-text:    #84909f;   /* 文本 */
+
+  /* ── 字号（正文小字号 + 松行高；碑铭标题另走 --serif 放大）────── */
+  --fz-xs: 10.5px;
+  --fz-s:  11.5px;
+  --fz:    12.5px;
+  --fz-l:  13.5px;
+  --fz-xl: 15px;
+  --lh:    1.6;
+
+  /* ── 间距（4 的倍数）─────────────────────────────────────────── */
+  --sp1: 4px;  --sp2: 8px;  --sp3: 12px;  --sp4: 16px;  --sp5: 24px;
+
+  /* ── 圆角（玻璃 16 / 按钮与输入 12 / 小件 8）──────────────────── */
+  --r:   8px;
+  --r2:  12px;
+  --r3:  16px;       /* 卡片 / 面板 / 弹窗 */
+  --r-pill: 999px;   /* 只用于状态点、计数徽标 */
+
+  /* ── 阴影与光：黑阴影托底 + 顶部内亮线；冷光只给 hover/焦点 ────── */
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 20px rgba(180, 200, 230, 0.15);
+  --glow-soft: 0 0 20px rgba(180, 200, 230, 0.08);
+  --glass: rgba(255, 255, 255, 0.06);   /* 导航/顶栏/侧栏的玻璃底 */
+
+  /* ── 玻璃配方（通用类共用；移动端 --glass-blur 自动降档）───────── */
+  --glass-blur: blur(20px) saturate(1.4);
+  --glass-blur-lite: blur(12px) saturate(1.3);
+  --glass-hover: rgba(255, 255, 255, 0.10);
+  --glass-line-hover: rgba(255, 255, 255, 0.25);
+  --glow-cool: rgba(180, 200, 230, 0.15);
+  /* 环境光：玻璃必须「有东西可透」。0.16 的光晕压在 #08080a 上只剩 #1a1d24，
+     肉眼等于平黑——玻璃层再正确也读不出来。这里提到 0.30/0.26，
+     合成后左上≈#262d39（蓝灰）、右下≈#241f2c（紫灰），仍远低于卡片明度。 */
+  --amb-blue: rgba(108, 132, 172, 0.30);   /* 左上蓝灰环境光 */
+  --amb-purple: rgba(132, 112, 168, 0.26); /* 右下紫灰环境光 */
+  --amb-core: rgba(226, 232, 240, 0.05);   /* 中景冷白核心光，给玻璃一层极淡的迎光面 */
+  --vignette: radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  --sheen: linear-gradient(158deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0) 46%);
+
+  /* ── 动效（状态切换 90-140ms；入场与铸造加载走 --t-slow）───────── */
+  --t-fast: 90ms;
+  --t:      140ms;
+  --t-slow: 320ms;
+  --ease:   cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── 过渡别名（迁移垫片，不是设计决策）───────────────────────── */
+  --dim:   #7a8089;
+  --dim2:  #565c66;
+  --acc2:  #eef1f5;
+
+  /* ── 字体 ─────────────────────────────────────────────────────
+     数字一律 tabular-nums：参数面板全是会跳动的数字，等宽数字能避免整行抖动。 */
+  --sans: -apple-system, "Segoe UI", "Microsoft YaHei UI", "PingFang SC",
+          "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --serif: "Cinzel", "Palatino Linotype", "Book Antiqua", Georgia,
+           "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+}
+
+/* ── 基础层：七个界面共用的最小复位与排版基调 ───────────────────── */
+/* 底：深黑 + 两团冷色径向光晕（左上蓝灰 / 右下紫灰）+ 中景冷白核光 + 边缘压暗。
+   fixed 不随滚动漂移。光晕是玻璃的「景」——没有它们，blur 透出来的只是一片死黑。 */
+html {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(78% 62% at 6% -4%, var(--amb-blue) 0%, rgba(108, 132, 172, 0) 68%),
+    radial-gradient(70% 58% at 104% 102%, var(--amb-purple) 0%, rgba(132, 112, 168, 0) 68%),
+    radial-gradient(60% 46% at 50% 34%, var(--amb-core) 0%, rgba(226, 232, 240, 0) 70%),
+    radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+body {
+  background: transparent;
+  color: var(--text);
+  font: var(--fz)/var(--lh) var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* 胶片颗粒：极细噪点铺满视口，不拦截指针；4% 透明度只够"感觉到"不够"看到" */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background: url("../assets/grain.png") repeat;
+  background-size: 160px 160px;
+}
+
+/* ── 通用玻璃类：组件直接挂类，配方只此一份 ─────────────────────── */
+.glass-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 可交互玻璃卡：hover 提亮 + 上浮 3px + 冷光（风格卡/作品卡/模板卡） */
+.glass-card.hoverable {
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.glass-card.hoverable:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.glass-btn {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--glass-line-hover);
+  color: var(--acc-hover);
+  box-shadow: 0 0 20px var(--glow-cool);
+}
+.glass-input {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease),
+              background var(--t) var(--ease);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: var(--glass-line-hover);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: var(--glow);
+}
+.glass-input::placeholder { color: var(--text-dim2); }
+
+/* 移动端：blur 降到 12px，避免大面积毛玻璃拖垮帧率 */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+}
+
+/* 碑铭体：平台名、卡片标题、章节题字共用 */
+.serif {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+/* 数字等宽：所有数值读数都用它 */
+.num, kbd, code, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点环：冷银描边 + 一圈极淡冷光，键盘可达 */
+:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(180, 200, 230, 0.12);
+}
+
+/* 滚动条：细、暗、玻璃亮线 thumb，hover 提亮；不用系统默认蓝条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+*::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* 选区：银的低透明填充，不用系统蓝 */
+::selection { background: var(--acc-fill); color: var(--acc-hover); }
+
+/* ── 玻璃族第二批：弹窗 / 浮条 / 侧栏 / 凹槽 / 胶囊 ──────────────────
+   同一套配方，只是圆角与投影档位不同。组件直接挂类，别再复写 blur。 */
+.glass-modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.glass-toast {
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+/* 悬浮工具条：画布顶部/参数板顶部那种横条，圆角 16 贴在内容之上 */
+.glass-toolbar {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏 / 导航栏：从贴边条改成悬浮玻璃板（margin 16 + 圆角 16） */
+.glass-rail {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 凹槽：画布底、代码块、时间轴这类「玻璃板里的暗面」，不铺毛玻璃 */
+.glass-well {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.glass-chip {
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r2);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+}
+
+/* 玻璃卡顶部迎光：一层极淡的白到透明的斜向渐变，让平面看出弧面 */
+.glass-card, .glass-modal, .glass-rail, .panel {
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+}
+
+/* ── 无 backdrop-filter 的浏览器：把膜加厚一档，至少不塌成纯黑 ──────── */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar { background-color: rgba(255, 255, 255, 0.10); }
+  .glass-toast { background-color: rgba(255, 255, 255, 0.14); }
+}
+
+/* ── 移动端：blur 降到 12px；小控件直接关掉毛玻璃，省一次合成 ────────── */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+  .glass-btn, .glass-chip, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+}
+
+/* ── 尊重系统设置：减少动效 / 减少透明 ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .glass-card.hoverable:hover, .glass-btn:hover { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar, .glass-toast, .glass-chip, .glass-btn, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(24, 26, 30, 0.92);
+  }
+}
+
+/* ═══════════════════════════════════════════════════════════════════════
+   module-ui.css —— 功能模块入口的共享骨架
+   ───────────────────────────────────────────────────────────────────────
+   定位：market / plugins / quality / server 四个入口共用同一套外壳结构
+   （顶栏 / 左列表 / 右详情 / 底部口径条），差异只在中间的「内容形态」。
+
+   视觉人格：暗黑玻璃拟态 · 冷银基调（ui/tokens.css 为唯一令牌源）。
+     - 顶栏 / 侧栏 / 详情区头 / 底部口径条：四块悬浮玻璃板，统一 margin 16 + 圆角 16 + blur 20
+     - 侧栏：#08080a 上的半透明白膜（.body > .aside，比 skin 的 .aside 高一级）
+     - 选中态：左侧 2px 冷银竖线 + 一圈冷银亮边，不做亮色填充、不引入彩色
+     - 按钮：玻璃底 rgba(255,255,255,.1) + 1px 亮边 + 冷白字，圆角 12；输入框圆角 16
+     - 卡片：.06 白膜 + 0 8px 32px rgba(0,0,0,.3) + inset 0 1px 0 rgba(255,255,255,.08)
+     - 凹槽：标签页与代码/日志块走 .glass-well 口径（bg-deep + 内描边，不铺毛玻璃）
+     - 卡片标题：碑铭衬线（--serif）宽字距；表格行 hover 只提亮、不位移
+
+   规矩（与 docs/09-design-system.md 一致，lint 会拦）：
+     - 只用 ui/tokens.css 的变量，不新增色值
+     - 圆角只走 --r / --r2 / --r3 / --r-pill（卡片上限 16px）
+     - 光晕只给冷色（--glow / --glow-soft / --glow-cool），投影只给中性黑
+   ═══════════════════════════════════════════════════════════════════════ */
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; height: 100%; overflow: hidden; }
+body { background: transparent; color: var(--text); font: var(--fz)/var(--lh) var(--sans); }
+a { color: var(--acc); text-decoration: none; }
+a:hover { color: var(--acc-hover); }
+
+/* ── 页面骨架：悬浮玻璃顶栏 + 主体 + 口径条 24 ───────────────────── */
+.app { display: grid; grid-template-rows: auto minmax(0, 1fr) 24px; height: 100vh; }
+
+.topbar {
+  display: flex; align-items: center; gap: var(--sp3);
+  margin: var(--sp4) var(--sp4) 0; min-height: 38px;
+  padding: 0 var(--sp3);
+  background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  position: relative; z-index: 5;
+}
+.topbar .brand { display: flex; align-items: baseline; gap: var(--sp2); }
+.topbar .brand b {
+  font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.18em; color: var(--acc);
+}
+.topbar .brand span { font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: 0.08em; }
+.topbar .spacer { flex: 1; }
+.topbar .crumbs { font-size: var(--fz-s); color: var(--text-dim); }
+.topbar .crumbs i { color: var(--text-dim2); font-style: normal; padding: 0 var(--sp1); }
+
+.body { display: grid; grid-template-columns: var(--col, 320px) minmax(0, 1fr); min-height: 0; }
+.body.no-aside { grid-template-columns: minmax(0, 1fr); }
+
+/* 侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20 / 边框 rgba(255,255,255,.12)）。
+   选择器写在 .body > .aside：glass-skin.css 里 .aside 只留膜（background-color: transparent，
+   玻璃底色交给页面），这里比它高一级，底色与迎光面由骨架自己给，两边不互相覆盖。 */
+.body > .aside {
+  display: flex; flex-direction: column; min-height: 0;
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  overflow: hidden;   /* 内部滚到底也不露直角 */
+}
+.aside-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim);
+  letter-spacing: 0.12em; flex: 0 0 auto;
+}
+.aside-h .spacer { flex: 1; }
+.aside-b { flex: 1; min-height: 0; overflow: auto; }
+
+.main { display: flex; flex-direction: column; min-width: 0; min-height: 0; background: transparent; }
+/* 详情区头：悬浮玻璃条，与左栏板同一条基线（左 16 / 上 16），下沿不画分隔线 */
+.main-h {
+  display: flex; align-items: center; gap: var(--sp2);
+  margin: var(--sp4) var(--sp4) 0;
+  padding: var(--sp2) var(--sp3); min-height: 34px; flex: 0 0 auto;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.main-h h2 {
+  margin: 0; font-family: var(--serif); font-size: var(--fz-l); font-weight: 700;
+  letter-spacing: 0.12em; color: var(--acc);
+}
+.main-h .sub { font-size: var(--fz-xs); color: var(--text-dim); }
+.main-h .spacer { flex: 1; }
+.main-b { flex: 1; min-height: 0; overflow: auto; padding: var(--sp3) var(--sp4); }
+/* 底部口径条：悬浮玻璃条（统计/说明常驻在这里），左右与主体内容同一列线 */
+.main-f {
+  flex: 0 0 auto; margin: var(--sp3) var(--sp4) var(--sp4);
+  padding: var(--sp2) var(--sp3); font-size: var(--fz-xs); color: var(--text-dim);
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--glass);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 全平台口径条（最底一行）：细玻璃条，不做大圆角，只提亮到膜上 */
+.statusbar {
+  display: flex; align-items: center; gap: var(--sp3); padding: 0 var(--sp4);
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  border-top: 1px solid var(--line);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  font-size: var(--fz-xs); color: var(--text-dim2);
+}
+.statusbar .spacer { flex: 1; }
+.statusbar .num { color: var(--text-dim); }
+
+/* ── 列表行（左栏主力形态）───────────────────────────────────────── */
+.list { display: flex; flex-direction: column; }
+.list .row {
+  display: grid; grid-template-columns: 16px minmax(0, 1fr) auto;
+  align-items: center; gap: var(--sp2);
+  padding: 0 var(--sp2); min-height: 28px; cursor: pointer;
+  border-bottom: 1px solid var(--line); color: var(--text);
+  transition: background var(--t-fast) var(--ease);
+}
+.list .row:hover { background: var(--panel3); }
+/* 选中 = 左 2px 冷银竖线 + 一圈冷银亮边 + 极淡银底；全程冷银，不用任何彩色 */
+.list .row[aria-selected="true"] {
+  background: var(--acc-fill);
+  box-shadow: inset 2px 0 0 var(--acc), inset 0 0 0 1px var(--glass-line-hover);
+  color: var(--acc-hover);
+}
+.list .row[aria-selected="true"]:hover { background: var(--panel3); }
+.list .row .t { font-size: var(--fz); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list .row .s { font-size: var(--fz-xs); color: var(--text-dim2); }
+.list .row .ico { display: flex; align-items: center; justify-content: center; color: var(--text-dim); }
+.list .row[aria-selected="true"] .ico { color: var(--acc); }
+.list .sect {
+  padding: var(--sp2) var(--sp2) var(--sp1); font-size: var(--fz-xs); color: var(--text-dim2);
+  letter-spacing: 0.12em; border-bottom: 1px solid var(--line); background: transparent;
+}
+.list .empty-row { padding: var(--sp3); color: var(--text-dim2); font-size: var(--fz-s); }
+
+/* ── 徽标与状态点 ────────────────────────────────────────────────── */
+.dot { width: 8px; height: 8px; border-radius: var(--r-pill); background: var(--text-dim2); flex: 0 0 auto; }
+.dot.ok { background: var(--ok); }
+.dot.warn { background: var(--warn); }
+.dot.bad { background: var(--bad); }
+.dot.acc { background: var(--acc); }
+.dot.off { background: var(--line2); }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 5px; height: 17px; padding: 0 6px;
+  border: 1px solid var(--line2); border-radius: var(--r); background: var(--panel2);
+  font-size: var(--fz-xs); color: var(--text-dim); white-space: nowrap;
+}
+.badge.ok { border-color: var(--ok); color: var(--ok); background: var(--ok-fill); }
+.badge.warn { border-color: var(--warn); color: var(--warn); background: var(--warn-fill); }
+.badge.bad { border-color: var(--bad); color: var(--bad-ink); background: var(--bad-fill); }
+.badge.acc { border-color: var(--acc-dim); color: var(--acc); background: var(--acc-fill); }
+.badge.pill { border-radius: var(--r-pill); }
+
+/* ── 按钮：玻璃底 + 1px 亮边 + 冷白字；hover 提亮泛冷光 ───────────── */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 5px;
+  height: 26px; padding: 0 11px; cursor: pointer; white-space: nowrap;
+  border: 1px solid var(--line); border-radius: var(--r2); background: rgba(255, 255, 255, 0.10);
+  color: var(--text); font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease),
+              box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.btn:hover { background: rgba(255, 255, 255, 0.14); border-color: var(--glass-line-hover); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+.btn:active { background: var(--panel4); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; box-shadow: none; }
+/* 主操作：不是实心色块，而是亮边更亮一档的玻璃碑牌 */
+.btn.acc { background: var(--panel3); border-color: var(--acc-dim); color: var(--acc-hover); letter-spacing: 0.12em; }
+.btn.acc:hover { background: var(--panel4); border-color: var(--acc-hover); box-shadow: var(--glow); }
+.btn.mini { height: 21px; padding: 0 7px; font-size: var(--fz-xs); }
+.btn.ghost { background: transparent; border-color: transparent; color: var(--text-dim); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.btn.ghost:hover { background: var(--panel3); color: var(--text); box-shadow: none; }
+
+/* ── 表单：膜内凹槽 + 1px 亮边；圆角 16（按钮 12，两者别混）────────── */
+.input, .select, .textarea {
+  height: 26px; padding: 0 8px; color: var(--text);
+  background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r3);
+  font: var(--fz-s)/1 var(--sans); outline: none;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.textarea { height: auto; padding: 5px 6px; font-family: var(--mono); resize: vertical; }
+.input:focus, .select:focus, .textarea:focus { border-color: var(--acc-hover); box-shadow: var(--glow); }
+.input::placeholder { color: var(--text-dim2); }
+label.field { display: flex; flex-direction: column; gap: var(--sp1); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 键值对 / 表格 ───────────────────────────────────────────────── */
+.kv { display: grid; grid-template-columns: max-content minmax(0, 1fr); gap: 2px var(--sp3); font-size: var(--fz-s); }
+.kv dt { color: var(--text-dim); }
+.kv dd { margin: 0; color: var(--text); overflow-wrap: anywhere; }
+.kv dd.num { color: var(--text); }
+
+.tbl { width: 100%; border-collapse: collapse; font-size: var(--fz-s); }
+.tbl th, .tbl td { text-align: left; padding: 0 var(--sp2); height: 26px; border-bottom: 1px solid var(--line); }
+/* 行 hover 只提亮膜内底色：行高/padding/transform 一律不动，258 行才不抖 */
+.tbl td { transition: background-color var(--t-fast) var(--ease); }
+.tbl th { color: var(--text-dim); font-weight: 500; font-size: var(--fz-xs); letter-spacing: 0.08em; background: var(--panel2); }
+.tbl tr:hover td { background-color: var(--glass-hover); }
+.tbl td.num, .tbl th.num { text-align: right; font-variant-numeric: tabular-nums; }
+.tbl td.mono { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* ── 面板 / 卡片：半透明白 .06 + 1px 冷灰边 + 0 8px 32px rgba(0,0,0,.3)
+      + inset 0 1px 0 rgba(255,255,255,.08)。四行数值全部来自令牌：
+      --panel / --line / --shadow-pop / --shadow-inset，改令牌即全站生效。 */
+.panel {
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen);   /* 顶部迎光斜向渐变：平面看出弧面 */
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 网格里的卡片才上浮（市场概览卡 / 服务面板）；整幅区块例如 quality 的检查项不动，
+   否则鼠标划过正文时整块跳动。hover 只加 background-color，保住迎光面。 */
+.grid2 > .panel, .grid3 > .panel {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.grid2 > .panel:hover, .grid3 > .panel:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.panel + .panel { margin-top: var(--sp3); }
+.panel-h {
+  display: flex; align-items: center; gap: var(--sp2); height: 28px; padding: 0 var(--sp2);
+  border-bottom: 1px solid var(--line); font-size: var(--fz-xs); color: var(--text-dim); letter-spacing: 0.12em;
+}
+.panel-h .spacer { flex: 1; }
+.panel-b { padding: var(--sp3); }
+.grid2 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--sp3); }
+.grid3 { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--sp3); }
+@media (max-width: 1100px) { .grid2, .grid3 { grid-template-columns: minmax(0, 1fr); } }
+
+/* ── 空态与提示 ──────────────────────────────────────────────────── */
+.empty {
+  display: flex; flex-direction: column; align-items: flex-start; gap: var(--sp2);
+  padding: var(--sp4); border: 1px dashed var(--line2); border-radius: var(--r3);
+  color: var(--text-dim); font-size: var(--fz-s); background: var(--panel);
+}
+.empty b { color: var(--text); font-weight: 600; }
+.hint { font-size: var(--fz-xs); color: var(--text-dim2); }
+.mono { font-family: var(--mono); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ── 标签页（详情区切换）：膜内凹槽 + 分段胶囊，不画底线（避免与凹槽边框叠成双线）── */
+.tabs {
+  display: flex; align-items: center; gap: 2px;
+  margin: var(--sp3) var(--sp4) 0; padding: 3px;
+  border: 1px solid var(--line); border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.tabs .tab {
+  height: 24px; padding: 0 var(--sp3); cursor: pointer; border: 0; border-radius: var(--r2);
+  background: transparent; color: var(--text-dim);
+  font: var(--fz-s)/1 var(--sans); letter-spacing: 0.06em;
+  transition: background-color var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.tabs .tab:hover { color: var(--text); background-color: var(--panel2); }
+.tabs .tab[aria-selected="true"] {
+  color: var(--acc-hover); background-color: var(--panel3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+}
+
+/* ── 进度条（银条；只做状态显示）────────────────────────────────── */
+.bar { height: 4px; background: var(--panel4); border-radius: var(--r); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--acc); }
+.bar.ok > i { background: var(--ok); }
+.bar.warn > i { background: var(--warn); }
+.bar.bad > i { background: var(--bad); }
+
+/* ── 代码/日志块：.glass-well 口径（膜内凹槽，不铺毛玻璃）──────────────
+   长文本上再叠一层 backdrop-filter 是纯浪费帧率，凹槽靠 bg-deep + 内描边成像。 */
+.code {
+  margin: 0; padding: var(--sp2);
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line); border-radius: var(--r2);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  font-family: var(--mono); font-size: var(--fz-xs);
+  color: var(--text-dim); overflow: auto; max-height: 220px; white-space: pre-wrap; word-break: break-all;
+}
+.code .k { color: var(--t-text); }
+.code .ok { color: var(--ok); }
+.code .bad { color: var(--bad-ink); }
+
+/* ── 窄屏（≤900px）：悬浮板全部取消外边距、贴边全宽，卡片不再上浮 ─────
+   blur 的降档在 tokens.css 的 @media (max-width:900px) 里（--glass-blur →
+   blur(12px)），骨架一律引用 var(--glass-blur)，所以这里不用再写一遍 blur。 */
+@media (max-width: 900px) {
+  .body { grid-template-columns: minmax(0, 1fr); grid-template-rows: auto minmax(0, 1fr); }
+  .body > .aside {
+    margin: 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none;
+    max-height: 42vh;   /* 侧栏变成顶部条带，内部照旧滚动 */
+  }
+  .topbar { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .main-h { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; box-shadow: none; }
+  .main-b { padding: var(--sp3); }
+  .main-f { margin: 0; border-width: 1px 0 0; border-radius: 0; box-shadow: none; }
+  .statusbar { padding: 0 var(--sp3); }
+  .tabs { margin: var(--sp2) 0 0; border-width: 0 0 1px; border-radius: 0; }
+  .grid2, .grid3 { gap: var(--sp2); }
+  /* 卡片不再上浮：hover 只提亮，位移与冷光一起收掉 */
+  .grid2 > .panel:hover, .grid3 > .panel:hover {
+    transform: none;
+    box-shadow: var(--shadow-pop), var(--shadow-inset);
+  }
+}
+/* ═══════════════════════════════════════════════════════════════════════
+   glass-skin.css —— 玻璃映射层（最后一遍）
+   ───────────────────────────────────────────────────────────────────────
+   定位：ui/tokens.css 定义「玻璃是什么」，本文件负责「把各页已经写好的
+   组件选择器映射到那套配方上」。页面源件里只留自己的结构与排版，不再各写
+   一份 background/border/blur/shadow。
+
+   为什么单独一层而不是逐组件改：
+     七个页面 + 帧检视器共 543KB 源，卡片族有 40 多个类名，逐个改一遍既容易
+     漏、又会在下一次改令牌时全部失配。映射层只做增量：圆角补齐、hover 三件套、
+     侧栏悬浮、弹窗居中、控件玻璃化。谁想加新卡片，挂 .glass-card 即可。
+
+   注入位置：每个页面 <style> 的最后一行（构建期替换 /*__SKIN__*\/）。
+     放在最后 = 同权重规则里一定赢，所以整份文件不需要一个 !important。
+
+   三条规矩：
+     1. 只写「页面自己的类名 → 玻璃配方」，不新增色值，全部走 var()。
+     2. 不改布局栅格（列宽/行高/顺序由各页自持）；只加外边距让它浮起来。
+     3. 循环动画、彩色光晕、纯白文字一律不写（tools/lint_ui.mjs 会拦）。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 悬浮侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20）── */
+#sidenav,
+nav#rail,
+#pRail,
+aside,
+.aside {
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);      /* 膜必须由本层给：页面侧多为 transparent，靠 skin 兜底 */
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏内部滚到底时的圆角不露直角 */
+#sidenav, nav#rail, #pRail, aside { overflow-y: auto; }
+
+/* ── 2. 圆角补齐：还停在 12px 的卡片族一律抬到 16px ───────────────── */
+.card,
+.style-card,
+.ai-card,
+.gen-card,
+.work-item,
+.opt,
+.honest,
+.summary,
+.reco,
+.prow,
+.np-row,
+.legend,
+.tip,
+#toast,
+.toast,
+.loaded,
+.errcard,
+.svc,
+.node,
+.wp,
+.stage-chip,
+.field,
+.empty {
+  border-radius: var(--r3);
+}
+
+/* 输入框：规范要求 16px（按钮 12px，别混） */
+select,
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="password"],
+input[type="url"],
+textarea {
+  border-radius: var(--r3);
+}
+
+/* ── 3. hover 三件套：提亮 + 亮边 + 上浮 3px + 一圈冷光 ────────────── */
+.card,
+.style-card,
+.work-item,
+.opt,
+.np-row,
+.loaded {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.card:hover,
+.style-card:hover,
+.work-item:hover,
+.opt:hover,
+.np-row:hover,
+.loaded:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* 提示块不是可点目标：.honest / .summary / .svc 只提亮，不上浮（跟着鼠标跳会很脏） */
+.honest,
+.summary,
+.svc {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.honest:hover,
+.summary:hover,
+.svc:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+}
+
+/* 列表行 / 参数行：只在膜内提亮，不上浮（上浮会让 258 行变成果冻） */
+.row:hover,
+.list .row:hover,
+.prow:hover,
+.tier-head:hover,
+.wstep:hover,
+.rail-item:hover,
+.nav-item:hover,
+.wi-acts:hover {
+  background-color: var(--glass-hover);
+}
+
+/* ── 4. 悬浮工具条 / 弹窗 / Toast ─────────────────────────────────── */
+/* 画布顶部与参数板顶部的横条：同一条玻璃，圆角 16 */
+#canvasTop,
+.canvas-tools,
+.toolbar,
+.board-head,
+.main-h,
+.viewhead {
+  border-radius: var(--r3);
+}
+#canvasTop,
+.canvas-tools,
+.toolbar {
+  background-color: var(--glass);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 弹窗：居中 + 玻璃 + 16px；遮罩压暗但不铺纯黑 */
+.wiz,
+.modal,
+.dialog,
+.panel-pop {
+  background-color: var(--panel);
+  background-image: var(--sheen);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 弹层遮罩只负责压暗与居中，毛玻璃档位交给页面自己（app 用 10px）。
+   这里若再写一份 blur(2px)，同权重且 skin 在后，会把页面的遮罩糊没了。 */
+#wizard,
+#forgeOverlay {
+  display: grid;
+  place-items: center;
+}
+
+/* Toast：玻璃胶囊，居中偏下 */
+#toast,
+.toast {
+  background-color: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 5. 画布：区域是深色凹槽，节点与属性面板是玻璃 ────────────────── */
+#nodeWrap {
+  margin: 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+#nodeWrap .legend,
+#nodeWrap .node,
+#estimator {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+#nodeWrap .node:hover {
+  border-color: var(--glass-line-hover);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 6. 表单控件：滑块轨道是膜内凹槽，拇指是一颗冷银 ─────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--panel4);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px; height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 1px solid var(--acc-hover);
+  box-shadow: 0 0 10px var(--glow-cool);
+  transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--acc-hover); }
+input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: var(--r-pill); background: var(--panel4);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--acc); border: 1px solid var(--acc-hover);
+}
+
+/* ── 7. 细节：风格图标去彩（emoji 只作字形，不作彩色贴纸）─────────── */
+.sc-emoji,
+.wi-emoji,
+.style-ico {
+  filter: grayscale(0.72) contrast(0.94);
+  opacity: 0.92;
+}
+
+/* 底部口径条 / 状态栏：细玻璃条，不做大圆角 */
+#statusbar,
+.statusbar,
+footer {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* 代码块 / 日志：膜内凹槽，别铺毛玻璃（长文本 blur 很贵） */
+.code,
+pre,
+.gout {
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+/* ── 8. 窄屏：侧栏取消外边距，改为贴边全宽；卡片不再上浮 ─────────── */
+@media (max-width: 900px) {
+  #sidenav,
+  nav#rail,
+  #pRail,
+  aside,
+  .aside {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .card:hover,
+  .style-card:hover,
+  .work-item:hover,
+  .opt:hover,
+  .honest:hover,
+  .summary:hover,
+  .np-row:hover,
+  .loaded:hover,
+  .svc:hover {
+    transform: none;
+  }
+  #nodeWrap { margin: 0; border-radius: 0; }
+}
+
+/* Ultimate 专属：只补三块版式（引擎切换 / 指标行 / 微型柱图），色值圆角全部走令牌 */
+.u-engines { display: flex; gap: var(--sp2); }
+.u-engines .btn { flex: 1; height: 30px; letter-spacing: .12em; }
+.u-engines .btn[aria-pressed="true"] { border-color: var(--acc-hover); color: var(--acc-hover); background: var(--panel4); box-shadow: var(--glow); }
+
+.u-row { display: grid; grid-template-columns: 96px minmax(0, 1fr) 64px; gap: var(--sp2); align-items: center; padding: 4px 0; font-size: var(--fz-s); }
+.u-row .k { color: var(--text-dim); }
+.u-row .v { color: var(--text); font-family: var(--mono); font-size: var(--fz-xs); }
+.u-row .n { text-align: right; color: var(--text); font-family: var(--mono); }
+
+.u-bar { height: 8px; border-radius: var(--r2); background: var(--panel4); overflow: hidden; }
+.u-bar > i { display: block; height: 100%; background: var(--acc); }
+.u-bar[data-tone="ok"] > i { background: var(--ok); }
+.u-bar[data-tone="warn"] > i { background: var(--warn); }
+.u-bar[data-tone="bad"] > i { background: var(--bad); }
+
+.u-curve { display: flex; align-items: flex-end; gap: 4px; height: 96px; margin-top: var(--sp2); }
+.u-curve > div { flex: 1; background: var(--acc-dim); border-radius: var(--r) var(--r) 0 0; min-height: 2px; }
+.u-curve > div[data-best="1"] { background: var(--acc-hover); }
+
+.u-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--sp2); }
+.u-metric { border: 1px solid var(--line); border-radius: var(--r2); padding: var(--sp2); background: var(--panel2); }
+.u-metric .lab { font-size: var(--fz-xs); color: var(--text-dim); letter-spacing: .08em; }
+.u-metric .num { font-size: 20px; font-weight: 600; margin-top: 2px; }
+.u-metric .sub { font-size: var(--fz-xs); color: var(--text-dim2); font-family: var(--mono); margin-top: 2px; }
+.u-line { font-size: var(--fz-s); color: var(--text-dim); line-height: 1.7; }
+.u-line b { color: var(--text); font-weight: 500; }
+.u-mono { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim); word-break: break-all; }
+.u-pill { display: inline-flex; align-items: center; height: 18px; padding: 0 7px; border: 1px solid var(--line); border-radius: var(--r-pill); font-size: var(--fz-xs); color: var(--text-dim); }
+.u-pill[data-tone="ok"] { border-color: var(--ok); color: var(--ok); }
+.u-pill[data-tone="warn"] { border-color: var(--warn); color: var(--warn); }
+.u-pill[data-tone="bad"] { border-color: var(--bad); color: var(--bad-ink); }
+@media (max-width: 1100px) { .u-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <div class="brand"><b>Ultimate</b><span>双引擎 · 画布 · 贝叶斯</span></div>
+    <div class="crumbs">Wan2.2 <i>/</i> MiniMax H3 <i>/</i> 四维打分</div>
+    <div class="spacer"></div>
+    <span class="u-pill" id="pill-gates" data-tone="warn">关卡</span>
+    <a class="btn ghost" data-backlink href="../app/index.html">← 工作台</a>
+  </header>
+
+  <div class="body">
+    <aside class="aside">
+      <div class="aside-h"><span>引擎</span><div class="spacer"></div><span class="u-pill" id="pill-paid">免费本地</span></div>
+      <div class="aside-b">
+        <div class="panel">
+          <div class="panel-b">
+            <div class="u-engines" id="engines"></div>
+            <div class="u-line" id="engine-note" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">显存策略</div>
+          <div class="panel-b" id="vram"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">参数隔离</div>
+          <div class="panel-b" id="isolation"></div>
+        </div>
+        <div class="panel">
+          <div class="panel-h">评分口径</div>
+          <div class="panel-b">
+            <div class="u-line">Sflow 可读取实测 OpenCV 光流；Sface、Sstyle、Sbad 和细节分仍为<b>规则代理</b>，逐项标注 provenance，不冒充模型保真度评分。</div>
+            <div class="u-mono" id="provenance" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+      </div>
+    </aside>
+
+    <main class="main">
+      <div class="main-h"><h2>画布拓扑</h2><span class="sub" id="sub-plan">—</span><div class="spacer"></div><span class="u-pill" id="pill-exec">执行</span></div>
+      <div class="main-b">
+        <div class="panel">
+          <div class="panel-h">七大模块 <span class="spacer"></span><span class="u-mono" id="topo-digest"></span></div>
+          <div class="panel-b" id="modules"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">贝叶斯寻优 <span class="spacer"></span><span class="u-pill" id="pill-bayes" data-tone="warn">proxy</span></div>
+          <div class="panel-b">
+            <div class="u-line" id="bayes-line"></div>
+            <div class="u-curve" id="curve"></div>
+            <div class="u-mono" id="bayes-best" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">A / B / C 对照 <span class="spacer"></span><span class="u-mono" id="abc-csv"></span></div>
+          <div class="panel-b" id="abc"></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">单参数消融 <span class="spacer"></span><span class="u-pill" id="abl-param">—</span></div>
+          <div class="panel-b">
+            <div class="u-grid" id="abl-grid"></div>
+            <div class="u-mono" id="abl-bars" style="margin-top:var(--sp2);white-space:pre"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">本地 H3 生成 <span class="spacer"></span><span class="u-pill" id="h3-conc">并发 —</span><span class="u-pill" id="h3-state" data-tone="warn">检测中</span></div>
+          <div class="panel-b">
+            <label class="field">提示词（H3 原生音画同步，一次出 5 秒）
+              <textarea class="textarea" id="h3-prompt" rows="3" placeholder="例：雨夜江南水乡，湿石板路，白墙黑瓦，镜头缓慢前推"></textarea>
+            </label>
+            <div class="u-grid" style="margin-top:var(--sp2)">
+              <label class="u-metric">分辨率档位<select class="input" id="h3-tier"><option value="720p" selected>1280×720</option><option value="864p">1536×864</option><option value="1080p">1920×1080</option><option value="cinema_2176">2176×912</option><option value="custom">自定义原生尺寸（手动选择）</option></select></label>
+              <label class="u-metric">原生帧率（H3 模型固定）<select class="input" id="h3-native-fps" disabled><option value="24" selected>24fps</option></select></label>
+              <label class="u-metric">输出帧率<select class="input" id="h3-output-fps"><option value="24">24fps</option><option value="30">30fps</option><option value="60" selected>60fps（插帧）</option></select></label>
+              <label class="u-metric">时长（秒，5–15）<input class="input" id="h3-sec" type="number" min="5" max="15" value="5"></label>
+              <label class="u-metric">采样步数（16–25）<input class="input" id="h3-steps" type="number" min="16" max="25" step="1" value="20"></label>
+              <label class="u-metric">CFG（7–10）<input class="input" id="h3-cfg" type="number" min="7" max="10" step="0.1" value="8"></label>
+              <label class="u-metric">去噪强度（0.55–0.75）<input class="input" id="h3-denoise" type="number" min="0.55" max="0.75" step="0.01" value="0.65"></label>
+            </div>
+            <div id="h3-custom-size" hidden>
+              <label>原生宽度（正偶数）<input class="input" id="h3-width" type="number" min="2" step="2" value="640" aria-describedby="h3-custom-note"></label>
+              <label>原生高度（正偶数）<input class="input" id="h3-height" type="number" min="2" step="2" value="384" aria-describedby="h3-custom-note"></label>
+              <p class="u-line" id="h3-custom-note">自定义尺寸是用户明确手动选择，不是自动降分辨率，也不是预览快速模式；采样步数、种子与质量约束保持不变。</p>
+            </div>
+            <p class="u-line">现有模型权重可能已量化，实际精度以后端记录为准，不作全精度承诺；不自动量化、不启用加速节点。8GB 显存不保证所有高分辨率档位可运行。</p>
+            <div class="u-line" id="h3-runtime" role="status" style="white-space:pre-wrap">运行环境：runtime 未核验（不代表模型文件缺失）。</div>
+            <label><input type="radio" name="h3-quality" value="quality_first" checked>质量优先（当前默认）</label>
+            <div class="u-line">H3 原生 24fps（模型约束），输出 60fps 由插帧生成，不是原生 60fps。原生 30fps 请选 Wan。</div>
+            <div class="u-line" id="h3-risk" style="margin-top:var(--sp2)">—</div>
+            <div class="u-line" style="margin-top:var(--sp2)">高分辨率和高帧率会显著增加生成时长。显存不足时明确拒绝，不自动降低分辨率或减少步数；所有档位均可选择。</div>
+            <button class="btn acc" id="h3-go" style="margin-top:var(--sp2);height:30px">排队生成（本地 ComfyUI）</button>
+            <div class="u-line" id="h3-msg" style="margin-top:var(--sp2)">—</div>
+            <video id="h3-video" controls style="width:100%;margin-top:var(--sp2);display:none;border-radius:var(--r2);border:1px solid var(--line)"></video>
+            <div class="u-line" id="h3-submit-error" role="alert"></div>
+            <div class="u-line" id="h3-versions"></div>
+            <button class="btn mini" id="h3-enhance" style="display:none">生成 / 重试增强（保留原生版）</button>
+            <div class="u-line" id="h3-enhance-msg" role="status"></div>
+            <button class="btn mini" id="h3-retry" style="display:none">重试原任务</button>
+            <div class="u-line" id="h3-background" role="status" style="position:fixed;bottom:8px;left:16px;right:16px;z-index:70;padding:8px;background:var(--panel);border:1px solid var(--line)"></div>
+            <div class="u-line">后端任务历史 <button class="btn mini" id="h3-refresh">刷新</button></div>
+            <div id="h3-history" style="max-height:320px;overflow:auto"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">成片作品库 <span class="spacer"></span><span class="u-pill" id="works-count">0</span></div>
+          <div class="panel-b" id="works"><div class="u-line">加载中…</div></div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">原生视频评分 <span class="spacer"></span><span class="u-mono" id="score-file"></span></div>
+          <div class="panel-b">
+            <label>只选择原生版 <select class="input" id="score-source"><option value="">暂无原生视频</option></select></label>
+            <button class="btn" id="score-run" disabled>评分原生版</button>
+            <div class="u-line" id="score-msg" role="status"></div>
+            <div class="u-line">细节分为 rule-proxy 规则代理，不代表模型保真度；增强版不参与原生质量评分。输出帧率仅展示已生成结果。</div>
+            <div class="u-grid" id="score-grid"></div>
+            <div class="u-mono" id="score-detail" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">双版本后处理 <span class="spacer"></span><span class="u-pill" id="pill-post" data-tone="warn">—</span></div>
+          <div class="panel-b">
+            <div class="u-line" id="post-line"></div>
+            <div class="u-mono" id="post-sub" style="margin-top:var(--sp2)"></div>
+          </div>
+        </div>
+
+        <div class="panel">
+          <div class="panel-h">五关卡自检 <span class="spacer"></span><span class="u-pill" id="pill-g2" data-tone="warn">—</span></div>
+          <div class="panel-b" id="gates"></div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="st">就绪</span>
+    <div class="spacer"></div>
+    <span class="num" id="st-num"></span>
+  </footer>
+</div>
+
+<script>
+window.__SNAP = {
+  "generatedAt": "2026-11-19T15:15:55.287Z",
+  "engines": [
+    {
+      "id": "wan22",
+      "name": "Wan2.2",
+      "label": "Wan2.2（本地开源 · 现有底座）",
+      "vae": {
+        "video": "wan2.2_vae",
+        "audio": null
+      },
+      "features": [
+        "ipadapter",
+        "facedetailer",
+        "reference_lock",
+        "controlnet"
+      ],
+      "quant": {
+        "8g": "preserve",
+        "12g": "preserve",
+        "automatic": false
+      },
+      "selfcheck": {
+        "status": "inferred",
+        "at": null
+      }
+    },
+    {
+      "id": "minimax_h3",
+      "name": "MiniMax H3",
+      "label": "MiniMax H3（本地开源 · 第二底座）",
+      "vae": {
+        "video": "minimax_h3_video_vae_int8_convrot.safetensors",
+        "audio": "minimax_h3_audio_vae_fp32.safetensors"
+      },
+      "features": [
+        "reference_lock_native",
+        "audio_vae",
+        "video_audio_joint"
+      ],
+      "quant": {
+        "8g": "preserve",
+        "12g": "preserve",
+        "automatic": false
+      },
+      "selfcheck": {
+        "status": "inferred",
+        "at": null
+      }
+    }
+  ],
+  "isolation": {
+    "ok": null,
+    "note": "构建不修改引擎数据；隔离验证请运行自检",
+    "probe": {}
+  },
+  "vram": {
+    "plan": {
+      "tier": "unknown",
+      "quant": "preserve",
+      "fp16": null,
+      "auto_quantization": false,
+      "split_load": true,
+      "offload": "on_demand",
+      "reason": "显存未知 → 保持已安装权重精度 + 按需卸载；仍须质量准入检查"
+    },
+    "fp16": {
+      "max_mib": null,
+      "quant": "preserve",
+      "split_load": false,
+      "offload": "none",
+      "fp16": null,
+      "auto_quantization": false,
+      "reason": "可用 24000MiB → 保持已安装权重精度；不保证显存足够"
+    }
+  },
+  "plan": {
+    "engine": "wan22",
+    "task_id": "task_mwnozyfl_8497",
+    "stats": {
+      "nodes": 130,
+      "edges": 131,
+      "per_module": {
+        "input_precheck": 20,
+        "text_encode": 15,
+        "latent_init": 15,
+        "sampler_core": 25,
+        "vae_decode": 20,
+        "scoring": 20,
+        "archive_split": 15
+      },
+      "missing_modules": [],
+      "min_nodes_ok": true,
+      "packing_violations": 0,
+      "engine": "wan22",
+      "mapped_executable_nodes": 12
+    },
+    "vram": {
+      "tier": "unknown",
+      "quant": "preserve",
+      "fp16": null,
+      "auto_quantization": false,
+      "split_load": true,
+      "offload": "on_demand",
+      "reason": "显存未知 → 保持已安装权重精度 + 按需卸载；仍须质量准入检查"
+    },
+    "execution": {
+      "comfy_ready": true,
+      "mapped_nodes": 12,
+      "planned_nodes": 130,
+      "save_latent": true,
+      "quality_errors": []
+    },
+    "params_digest": "a1482dd2c614bee1",
+    "dir": "D:\\缓存\\avp\\repair-check-yG4Ukf\\avp\\experiments\\exp_2026-11-19T15-15-55-284Z"
+  },
+  "bayes": {
+    "engine": "wan22",
+    "iters": 0,
+    "converged": false,
+    "best": {
+      "F": null,
+      "params": {}
+    },
+    "weights": {
+      "w1": 0.35,
+      "w2": 0.35,
+      "w3": 0.2,
+      "w4": 0.1
+    },
+    "evaluator": "pending",
+    "curve": []
+  },
+  "abc": {
+    "csv": "",
+    "only_variable": "质量采样参数组",
+    "variables_locked": [
+      "分辨率",
+      "原生帧率",
+      "帧数",
+      "种子",
+      "拓扑"
+    ],
+    "rows": [
+      {
+        "id": "A",
+        "label": "等待质量模式原生对照样片",
+        "F": null,
+        "digest": ""
+      },
+      {
+        "id": "B",
+        "label": "等待质量模式原生对照样片",
+        "F": null,
+        "digest": ""
+      },
+      {
+        "id": "C",
+        "label": "等待质量模式原生对照样片",
+        "F": null,
+        "digest": ""
+      }
+    ]
+  },
+  "ablation": {
+    "param": "kf.steps",
+    "rows": [
+      {
+        "value": 16,
+        "F": null
+      },
+      {
+        "value": 20,
+        "F": null
+      },
+      {
+        "value": 25,
+        "F": null
+      }
+    ],
+    "bars": "未执行；不读取旧极速实验作为当前质量证据"
+  },
+  "score": null,
+  "post": null,
+  "gates": {
+    "gates": [
+      {
+        "id": "link",
+        "label": "基准链路连通自检",
+        "pass": true,
+        "fatal": true,
+        "detail": {
+          "nodes": 130,
+          "modules": [
+            "input_precheck",
+            "text_encode",
+            "latent_init",
+            "sampler_core",
+            "vae_decode",
+            "scoring",
+            "archive_split"
+          ],
+          "packing": 0
+        }
+      },
+      {
+        "id": "scorer",
+        "label": "打分器相关性预校验",
+        "pass": false,
+        "fatal": true,
+        "detail": "未提供打分结果"
+      },
+      {
+        "id": "dim",
+        "label": "参数降维校验",
+        "pass": true,
+        "fatal": false,
+        "detail": {
+          "optimizable": 3,
+          "total": 258
+        }
+      },
+      {
+        "id": "converge",
+        "label": "贝叶斯收敛校验",
+        "pass": false,
+        "fatal": false,
+        "detail": "无寻优结果"
+      },
+      {
+        "id": "separation",
+        "label": "双层收益分离校验",
+        "pass": false,
+        "fatal": true,
+        "detail": "未提供双版本路径"
+      }
+    ],
+    "all_pass": false,
+    "fatal_failed": [
+      "scorer",
+      "separation"
+    ]
+  },
+  "note": "构建仅展示已有质量策略数据，不运行代理寻优、不生成或评分视频；旧极速实验文件原样保留，但不作为本次质量验收证据。原生评分与增强状态从任务API读取。"
+};
+</script>
+<script>
+(function () {
+  'use strict';
+  var S = window.__SNAP || null;
+  function el(id) { return document.getElementById(id); }
+  function esc(s) { return String(s == null ? '' : s).replace(/[&<>"]/g, function (c) { return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' })[c]; }); }
+  function pct(v) { return Math.max(0, Math.min(100, v * 100)); }
+
+  if (!S) { el('st').textContent = '缺 window.__SNAP：先跑 node tools/snap_ultimate.mjs 与 node tools/build_module.mjs ultimate'; return; }
+
+  /* 引擎切换：只切展示，不改数据（改参数请去参数面板，那里按引擎隔离存储） */
+  var active = (S.engines[0] || {}).id || 'wan22';
+  function renderEngines() {
+    var box = el('engines');
+    box.innerHTML = '';
+    S.engines.forEach(function (e) {
+      var b = document.createElement('button');
+      b.className = 'btn';
+      b.textContent = e.name;
+      b.setAttribute('aria-pressed', String(e.id === active));
+      b.addEventListener('click', function () { active = e.id; renderEngines(); });
+      box.appendChild(b);
+    });
+    var e = S.engines.filter(function (x) { return x.id === active; })[0] || {};
+    el('engine-note').innerHTML = 'VAE：' + esc(e.vae && e.vae.video ? e.vae.video : '—') + (e.vae && e.vae.audio ? ' + ' + esc(e.vae.audio) : '')
+      + '<br>特性：' + esc((e.features || []).join(' / '))
+      + '<br>自检：<b>' + esc(e.selfcheck ? e.selfcheck.status : 'inferred') + '</b>（' + esc(e.selfcheck && e.selfcheck.reason ? e.selfcheck.reason : '未跑') + '）';
+    el('pill-paid').textContent = '免费本地 · ' + S.engines.length + ' 引擎';
+    el('st-num').textContent = '节点 ' + S.plan.stats.nodes + ' · 关卡 ' + (S.gates.all_pass ? 'PASS' : 'FAIL');
+  }
+
+  function renderVram() {
+    var p = S.vram.plan, f = S.vram.fp16;
+    el('vram').innerHTML = '<div class="u-line">8G 档：<b>' + esc(p.quant) + '</b> · 分片 ' + (p.split_load ? '开' : '关') + ' · 卸载 ' + esc(p.offload) + '</div>'
+      + '<div class="u-line">高显存档：<b>' + esc(f.quant) + '</b> · 卸载 ' + esc(f.offload) + '</div>'
+      + '<div class="u-mono">' + esc(p.reason) + '</div>';
+  }
+
+  function renderIsolation() {
+    var iso = S.isolation;
+    el('isolation').innerHTML = '<div class="u-line">写 A 不动 B：<b>' + (iso.ok == null ? '未验证' : iso.ok ? '通过' : '失败') + '</b></div><div class="u-mono">' + esc(iso.note) + ' · A=' + esc(iso.probe.a == null ? '—' : String(iso.probe.a)) + ' B=' + esc(iso.probe.b == null ? '—' : String(iso.probe.b)) + '</div>';
+  }
+
+  function renderPlan() {
+    var st = S.plan.stats;
+    el('sub-plan').textContent = 'engine=' + S.plan.engine + ' · task=' + S.plan.task_id;
+    el('topo-digest').textContent = 'digest ' + S.plan.params_digest;
+    var maxQ = Math.max.apply(null, Object.keys(st.per_module).map(function (k) { return st.per_module[k]; }));
+    el('modules').innerHTML = Object.keys(st.per_module).map(function (k) {
+      var n = st.per_module[k];
+      return '<div class="u-row"><span class="k">' + esc(k) + '</span><div class="u-bar"><i style="width:' + Math.round((n / maxQ) * 100) + '%"></i></div><span class="n">' + n + '</span></div>';
+    }).join('') + '<div class="u-line" style="margin-top:var(--sp2)">节点 <b>' + st.nodes + '</b> · 连线 <b>' + st.edges + '</b> · 打包违规 <b>' + st.packing_violations + '</b></div>';
+    el('pill-exec').textContent = S.plan.execution.comfy_ready ? '可执行' : '规划态';
+    el('pill-exec').setAttribute('data-tone', S.plan.execution.comfy_ready ? 'ok' : 'warn');
+  }
+
+  function renderBayes() {
+    var b = S.bayes;
+    el('pill-bayes').textContent = b.evaluator === 'measured' ? 'measured' : b.evaluator === 'proxy' ? 'proxy 代理' : '未执行';
+    el('pill-bayes').setAttribute('data-tone', b.evaluator === 'measured' ? 'ok' : 'warn');
+    el('bayes-line').innerHTML = '评估 <b>' + b.iters + '</b> 轮 · 收敛 <b>' + (b.converged ? '是' : '否') + '</b> · 最优 F <b>' + (b.best.F == null ? '未评分' : b.best.F.toFixed(4)) + '</b>'
+      + '<br><span class="u-mono">F(x) = ' + Object.keys(b.weights).map(function (k) { return k + '×' + b.weights[k]; }).join(' + ').replace('+ w4', '− w4') + '</span>';
+    var maxF = Math.max.apply(null, b.curve.map(function (c) { return c.F; }).concat([1e-6]));
+    var best = Math.max.apply(null, b.curve.map(function (c) { return c.F; }));
+    el('curve').innerHTML = b.curve.map(function (c) {
+      return '<div data-best="' + (c.F === best ? '1' : '0') + '" title="' + esc(c.source + ' F=' + c.F) + '" style="height:' + Math.max(2, Math.round((c.F / maxF) * 96)) + 'px"></div>';
+    }).join('');
+    el('bayes-best').textContent = 'best params: ' + JSON.stringify(b.best.params);
+  }
+
+  function renderAbc() {
+    el('abc-csv').textContent = S.abc.csv;
+    el('abc').innerHTML = S.abc.rows.map(function (r) {
+      return '<div class="u-row"><span class="k">' + esc(r.id) + '</span><div class="u-line">' + esc(r.label) + ' <span class="u-mono">digest ' + esc(r.digest) + '</span></div><span class="n">' + (r.F == null ? '未生成' : r.F.toFixed(4)) + '</span></div>';
+    }).join('') + '<div class="u-mono" style="margin-top:var(--sp2)">锁定：' + esc(S.abc.variables_locked.join(' / ')) + ' · 唯一变量：' + esc(S.abc.only_variable) + '</div>';
+  }
+
+  function renderAblation() {
+    el('abl-param').textContent = S.ablation.param;
+    el('abl-grid').innerHTML = S.ablation.rows.map(function (r) {
+      return '<div class="u-metric"><div class="lab">' + esc(String(r.value)) + '</div><div class="num">' + (r.F == null ? '—' : r.F.toFixed(3)) + '</div><div class="sub">F</div></div>';
+    }).join('');
+    el('abl-bars').textContent = S.ablation.bars;
+  }
+
+  var scoreJobs = [], scoreFiles = [], scoreChoices = [], scoreBusy = false;
+  function rawVideo(file, engine) {
+    return /\.mp4$/i.test(String(file || '')) && !/enhanced|postprocess|upscaled|step_/i.test(String(file) + ' ' + (engine || ''));
+  }
+  function refreshScoreChoices() {
+    var previous = el('score-source').value, selected = previous === '' ? null : scoreChoices[Number(previous)];
+    scoreChoices = scoreJobs.concat(scoreFiles);
+    el('score-source').innerHTML = scoreChoices.length ? scoreChoices.map(function (item, i) {
+      return '<option value="' + i + '">' + esc(item.label) + '</option>';
+    }).join('') : '<option value="">暂无原生视频</option>';
+    var index = selected ? scoreChoices.findIndex(function (item) { return selected.job_id ? item.job_id === selected.job_id : item.file === selected.file; }) : -1;
+    el('score-source').value = index >= 0 ? String(index) : scoreChoices.length ? '0' : '';
+    el('score-run').disabled = scoreBusy || !scoreChoices.length;
+  }
+  function paintScore(s) {
+    if (!s) { el('score-grid').textContent = '没有原生样片，未评分。'; return; }
+    var r = s.resolution, resolution = typeof r === 'string' ? r : r && (r.width || r.w) && (r.height || r.h) ? (r.width || r.w) + '×' + (r.height || r.h) : '未知';
+    var fields = [
+      ['分辨率', resolution], ['native_fps（实际原生）', s.native_fps == null ? '未知' : s.native_fps],
+      ['output_fps（已生成）', s.output_fps == null ? '未生成' : s.output_fps],
+      ['detail_score（rule-proxy，非模型保真度）', s.detail_score == null ? '未评分' : s.detail_score],
+      ['temporal_stability_score', s.temporal_stability_score == null ? '未评分' : s.temporal_stability_score]
+    ];
+    ['Sface', 'Sflow', 'Sstyle', 'Sbad'].forEach(function (key) {
+      if (s.scores && s.scores[key] != null) fields.push([key + ' · ' + ((s.provenance || {})[key] || '来源未标注'), s.scores[key]]);
+    });
+    if (s.F != null) fields.push(['综合 F', s.F]);
+    el('score-file').textContent = s.file || '';
+    el('score-grid').innerHTML = fields.map(function (field) { return '<div class="u-metric"><div class="lab">' + esc(field[0]) + '</div><div class="num">' + esc(field[1]) + '</div></div>'; }).join('');
+    el('score-detail').textContent = JSON.stringify(s.detail || {});
+    el('provenance').textContent = JSON.stringify(s.provenance || {});
+  }
+  function renderScore() { paintScore(null); }
+  el('score-run').addEventListener('click', function () {
+    var item = scoreChoices[Number(el('score-source').value)];
+    if (scoreBusy || el('score-source').value === '' || !item) return;
+    scoreBusy = true; el('score-run').disabled = true; el('score-msg').textContent = '正在评分原生版…';
+    el('score-file').textContent = item.label; el('score-grid').textContent = '评分中…'; el('score-detail').textContent = '';
+    h3request('/api/ultimate/score', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(item.job_id ? { job_id: item.job_id } : { file: item.file }) })
+      .then(function (result) { paintScore(result); el('score-msg').textContent = '原生版评分完成；细节分为规则代理。'; })
+      .catch(function (e) { el('score-grid').textContent = '未评分'; el('score-msg').textContent = '评分失败：' + e.message; })
+      .finally(function () { scoreBusy = false; refreshScoreChoices(); });
+  });
+
+  function renderPost(j) {
+    var enhancement = j && j.enhancement || {}, enhanced = j && j.enhanced || {};
+    el('pill-post').textContent = enhancement.state || '未执行';
+    el('pill-post').setAttribute('data-tone', enhancement.state === 'done' ? 'ok' : 'warn');
+    el('post-line').textContent = j ? '原生版：' + (j.pure_output || '尚未归档') + '；增强版：' + (enhanced.file || '尚未生成') : '选择原生任务后查看独立增强状态。';
+    el('post-sub').textContent = 'RIFE插帧 → Real-ESRGAN超分 → 调色 → 颗粒；增强版不参与评分和消融，缺少程序/模型时明确失败。';
+  }
+
+  function renderGates() {
+    var tone = S.gates.all_pass ? 'ok' : 'bad';
+    ['pill-gates', 'pill-g2'].forEach(function (id) { el(id).textContent = S.gates.all_pass ? '五关卡通过' : '五关卡失败'; el(id).setAttribute('data-tone', tone); });
+    el('gates').innerHTML = S.gates.gates.map(function (g) {
+      return '<div class="u-row"><span class="k">' + esc(g.id) + '</span><div class="u-line">' + esc(g.label) + '</div><span class="n">' + (g.pass ? 'PASS' : 'FAIL') + '</span></div>';
+    }).join('') + (S.gates.fatal_failed.length ? '<div class="u-line" style="margin-top:var(--sp2)">致命项：' + esc(S.gates.fatal_failed.join(',')) + '</div>' : '');
+  }
+
+
+  /* ── 本地 H3 生成：排队 → 轮询任务 → 预览成片 ── */
+  var H3 = { jobId: null, selected: null, detail: null, jobs: [], timer: 0, loading: false, ready: false, submitting: false, videoId: null };
+  var JOB_API = location.protocol === 'file:' ? 'http://127.0.0.1:8388' : '';
+  var JOB_STATES = { queued: '排队中', running: '生成中', succeeded: '已完成', failed: '失败', canceled: '已取消' };
+  var JOB_BACKGROUND = '任务在后台继续生成，可稍后回来看（需后端服务保持运行；关机后待重启续接）。';
+  function h3say(t) { var e = el('h3-msg'); if (e) e.textContent = t; }
+  function h3pill(state, tone) { var p = el('h3-state'); if (p) { p.textContent = state; p.setAttribute('data-tone', tone); } }
+  function h3live(j) { return j.state === 'queued' || j.state === 'running'; }
+  function h3busy() { return !H3.ready || H3.loading || H3.submitting || !!H3.jobId; }
+  function h3sync() {
+    el('h3-go').disabled = h3busy(); el('h3-retry').disabled = h3busy();
+    el('h3-enhance').disabled = h3enhancing || H3.loading || !H3.ready || h3enhancementLive(H3.detail);
+    el('h3-go').textContent = H3.submitting ? '提交中…' : !H3.ready ? '同步任务中…' : H3.jobId ? '生成中…' : '铸造画面';
+    el('h3-background').textContent = !H3.ready ? '正在同步后端任务；查询成功前不重复提交。' : H3.jobId ? JOB_BACKGROUND : '历史以服务端记录为准，刷新页面不会丢失任务。';
+  }
+  function h3request(path, options) {
+    var opt = Object.assign({}, options || {});
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) opt.signal = AbortSignal.timeout(path === '/api/ultimate/score' ? 180000 : 15000);
+    return fetch(JOB_API + path, opt).then(function (r) { return r.json().then(function (d) {
+      if (!r.ok) throw new Error((d.error && (d.error.code + ' ' + d.error.message)) || ('HTTP ' + r.status));
+      return d;
+    }); });
+  }
+  var runtimeLoading = false;
+  function refreshQualityRuntime() {
+    if (runtimeLoading) return;
+    runtimeLoading = true;
+    h3request('/api/quality').then(function (data) {
+      var runtime = data && data.runtime;
+      if (!runtime || typeof runtime !== 'object') throw new Error('接口未提供 runtime');
+      var list = function (items) { return Array.isArray(items) ? items.filter(Boolean) : []; };
+      var state = function (ready) { return ready === true ? '依赖就绪' : ready === false ? '未就绪（见详情）' : 'runtime 未核验'; };
+      var message = function (item) { return typeof item === 'string' ? item : [item.code, item.message, item.hint].filter(Boolean).join(' '); };
+      var lines = ['运行环境（后端核验；依赖就绪不保证显存足够）', 'ComfyUI：' + (runtime.comfy_reachable === true ? '可达' : runtime.comfy_reachable === false ? '不可达' : 'runtime 未核验')];
+      var models = list(runtime.models);
+      if (!models.length) lines.push('模型：runtime 未核验');
+      models.forEach(function (model) {
+        lines.push(String(model.engine || '模型') + '：' + state(model.ready));
+        list(model.requirements).forEach(function (req) {
+          lines.push('  ' + [req.node, req.field, req.name].filter(Boolean).join(' / ') + '：' + (req.state === 'installed' ? '已安装' : req.state === 'missing' ? '缺失（后端核验）' : '未核验'));
+        });
+        list(model.warnings).forEach(function (warning) { lines.push('  警告：' + message(warning)); });
+        list(model.errors).forEach(function (error) { lines.push('  错误：' + message(error)); });
+      });
+      var postprocess = list(runtime.postprocess);
+      if (!postprocess.length) lines.push('后处理：runtime 未核验');
+      postprocess.forEach(function (item) { lines.push('后处理 ' + (item.id || '') + '：' + state(item.ready) + ' ' + (item.message || '')); });
+      el('h3-runtime').textContent = lines.join('\n');
+    }).catch(function (e) {
+      el('h3-runtime').textContent = '运行环境：runtime 未核验（不代表模型文件缺失）。' + e.message;
+    }).finally(function () { runtimeLoading = false; });
+  }
+  function h3remember(id) { H3.selected = id; try { localStorage.setItem('avp.h3.lastJob', id); } catch (e) {} }
+  var h3enhancing = false;
+  function h3enhancementLive(j) { return !!j && ['pending', 'queued', 'running'].indexOf((j.enhancement || {}).state) >= 0; }
+  function h3versions(j) {
+    var native = ((j.quality || {}).fps || {}).native_fps, en = j.enhanced || {}, err = j.enhancedError;
+    var state = (j.enhancement || {}).state || (err ? 'failed' : en.file ? 'succeeded' : '未生成');
+    var text = j.state === 'succeeded' && j.output && !j.mock ? '<a target="_blank" rel="noopener" href="' + JOB_API + '/api/jobs/' + encodeURIComponent(j.id) + '/output">原生版</a> · 原生 ' + esc(native == null ? '未知' : native + 'fps') : '';
+    if (en.file) text += ' · <a target="_blank" rel="noopener" href="' + JOB_API + '/api/works/preview?file=' + encodeURIComponent(String(en.file).split(/[\\/]/).pop()) + '">增强版</a> · 原生 ' + esc(en.native_fps == null ? '未知' : en.native_fps + 'fps') + ' → 输出 ' + esc(en.output_fps == null ? '未生成' : en.output_fps + 'fps');
+    return text + ' · 增强状态：' + esc(state) + (err ? ' · 增强失败：' + esc((err.code || '') + ' ' + (err.message || '') + ' ' + (err.hint || '')) : '');
+  }
+  function h3retryEnhance() {
+    var j = H3.detail;
+    if (h3enhancing || H3.loading || !H3.ready || !j || j.state !== 'succeeded' || !j.output || j.mock || h3enhancementLive(j) || !(!j.enhanced || !j.enhanced.file)) return;
+    h3enhancing = true; el('h3-enhance').disabled = true; el('h3-enhance-msg').textContent = '提交增强重试中…';
+    h3request('/api/jobs/' + encodeURIComponent(j.id) + '/enhance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' })
+      .then(function () { el('h3-enhance-msg').textContent = '增强重试已受理，原生版保留。'; })
+      .catch(function (e) { el('h3-enhance-msg').textContent = '增强重试失败或受理结果未知：' + e.message + '；请刷新确认，不自动重发。'; })
+      .finally(function () { h3enhancing = false; el('h3-enhance').disabled = false; h3poll(); });
+  }
+  el('h3-enhance').addEventListener('click', h3retryEnhance);
+  function h3render(j) {
+    var p = j.progress || {}, e = j.error || {};
+    h3pill(JOB_STATES[j.state] || j.state, j.state === 'succeeded' ? 'ok' : j.state === 'failed' ? 'bad' : 'warn');
+    h3say((JOB_STATES[j.state] || j.state) + ' · ' + j.id + ' · ' + (j.engine || j.model || '') + ' · ' + (j.createdAt || '')
+      + ' · ' + (p.percent == null ? '—' : p.percent) + '% · ' + (p.stage || '') + ' ' + (p.text || '')
+      + (j.error ? ' · ' + (e.code || '') + ' ' + (e.message || '') + ' ' + (e.hint || '') : ''));
+    el('h3-versions').innerHTML = h3versions(j);
+    renderPost(j);
+    el('h3-enhance').style.display = j.state === 'succeeded' && j.output && !j.mock && (!j.enhanced || !j.enhanced.file) ? '' : 'none';
+    el('h3-enhance').disabled = h3enhancing || h3enhancementLive(j);
+    el('h3-retry').style.display = j.state === 'failed' && j.canRetry ? '' : 'none';
+    var playable = j.state === 'succeeded' && j.output && j.mock !== true;
+    if (playable && H3.videoId !== j.id) { el('h3-video').src = JOB_API + '/api/jobs/' + encodeURIComponent(j.id) + '/output'; H3.videoId = j.id; }
+    el('h3-video').style.display = playable ? 'block' : 'none';
+    if (!playable) H3.videoId = null;
+  }
+  function h3history() {
+    H3.jobId = (H3.jobs.find(h3live) || {}).id || null;
+    el('h3-history').innerHTML = H3.jobs.map(function (j) {
+      return '<div class="u-line"><button class="btn mini" data-job="' + esc(j.id) + '">' + (j.state === 'succeeded' ? '播放 / 查看' : '查看') + '</button> '
+        + esc((JOB_STATES[j.state] || j.state) + ' · ' + ((j.progress || {}).percent == null ? '—' : j.progress.percent) + '% · ' + (j.engine || j.model || '') + ' · ' + (j.createdAt || '') + ' · ' + (j.prompt || j.id)) + '<div>' + h3versions(j) + '</div></div>';
+    }).join('') || '<div class="u-line">后端暂无任务，提交后会在此保留进度和成片。</div>';
+    scoreJobs = H3.jobs.filter(function (j) { return j.state === 'succeeded' && !j.mock && rawVideo(j.output && (j.output.file || j.output), j.engine); }).map(function (j) { return { job_id: j.id, label: '原生版 · ' + j.id + ' · ' + (j.prompt || '') }; });
+    refreshScoreChoices();
+    h3sync();
+  }
+  function h3poll() {
+    if (H3.loading || H3.submitting) return;
+    refreshQualityRuntime();
+    clearTimeout(H3.timer); H3.loading = true; h3sync();
+    return h3request('/api/jobs?limit=500').then(function (d) {
+      if (!Array.isArray(d.jobs)) throw new Error('任务列表响应不完整');
+      H3.jobs = d.jobs; H3.ready = true;
+      if (!H3.selected || !H3.jobs.some(function (j) { return j.id === H3.selected; })) {
+        var saved; try { saved = localStorage.getItem('avp.h3.lastJob'); } catch (e) {}
+        var selected = H3.jobs.find(h3live) || H3.jobs.find(function (j) { return j.id === saved; }) || H3.jobs[0];
+        if (selected) h3remember(selected.id);
+      }
+      h3history();
+      if (!H3.selected) return;
+      var id = H3.selected;
+      return h3request('/api/jobs/' + encodeURIComponent(id)).then(function (j) {
+        if (H3.selected === id) {
+          H3.detail = j; H3.jobs = H3.jobs.map(function (x) { return x.id === id ? j : x; }); h3history(); h3render(j);
+        } else H3.again = true;
+      });
+    }).catch(function (e) {
+      H3.ready = false; h3say('任务查询失败，将自动重试；请勿重复提交。' + e.message);
+    }).finally(function () {
+      H3.loading = false; h3sync();
+      if (H3.again) { H3.again = false; h3poll(); return; }
+      if (!H3.ready || H3.jobId || H3.jobs.some(h3enhancementLive)) H3.timer = setTimeout(h3poll, H3.ready ? 4000 : 6000);
+    });
+  }
+  function h3syncCustomSize() { el('h3-custom-size').hidden = el('h3-tier').value !== 'custom'; }
+  el('h3-tier').addEventListener('change', h3syncCustomSize);
+  h3syncCustomSize();
+  function h3submit(retryId) {
+    if (h3busy()) return;
+    var body = {
+      prompt: el('h3-prompt').value, tier: el('h3-tier').value,
+      native_fps: 24, output_fps: Number(el('h3-output-fps').value), mode: 'quality_first',
+      seconds: Number(el('h3-sec').value), steps: Number(el('h3-steps').value),
+      cfg: Number(el('h3-cfg').value), denoise: Number(el('h3-denoise').value)
+    };
+    if (!retryId && !body.prompt.trim()) { h3say('先写提示词'); return; }
+    if (!retryId && body.tier === 'custom') {
+      body.width = Number(el('h3-width').value); body.height = Number(el('h3-height').value);
+      if (![body.width, body.height].every(function (n) { return Number.isSafeInteger(n) && n > 0 && n % 2 === 0; })) {
+        el('h3-submit-error').textContent = '自定义原生宽高必须为正偶数；请手动修正，不自动调整尺寸。';
+        h3say(el('h3-submit-error').textContent); return;
+      }
+      delete body.tier;
+    }
+    if (!retryId && (!Number.isInteger(body.steps) || body.steps < 16 || body.steps > 25 || !Number.isFinite(body.cfg) || body.cfg < 7 || body.cfg > 10 || !Number.isFinite(body.denoise) || body.denoise < 0.55 || body.denoise > 0.75 || !Number.isFinite(body.seconds) || body.seconds < 5 || body.seconds > 15)) {
+      h3say('参数超出质量区间：步数 16–25、CFG 7–10、去噪 0.55–0.75、时长 5–15 秒。请手动修正，不自动减步数。'); return;
+    }
+    el('h3-submit-error').textContent = '';
+    H3.submitting = true; clearTimeout(H3.timer); h3sync(); h3say('提交中…');
+    el('h3-video').style.display = 'none'; H3.videoId = null;
+    h3request(retryId ? '/api/jobs/' + encodeURIComponent(retryId) + '/retry' : '/api/h3/run', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(retryId ? {} : body)
+    }).then(function (j) {
+      if (typeof j.id !== 'string' || !j.id) throw new Error('接口未返回任务编号');
+      H3.jobs = [j].concat(H3.jobs.filter(function (x) { return x.id !== j.id; }));
+      H3.jobId = j.id; h3remember(j.id); H3.detail = j; h3render(j);
+    }).catch(function (e) {
+      el('h3-submit-error').textContent = '提交响应错误，请核对任务历史：' + e.message + '。未降低分辨率或减少步数。';
+      H3.ready = false; h3say('提交失败或受理结果未知：' + e.message + '；正在核对后端任务，请勿重复提交。');
+    }).finally(function () { H3.submitting = false; h3sync(); h3poll(); });
+  }
+  el('h3-go').addEventListener('click', function () { h3submit(); });
+  el('h3-refresh').addEventListener('click', h3poll);
+  el('h3-retry').addEventListener('click', function () { if (H3.detail && H3.detail.state === 'failed' && H3.detail.canRetry) h3submit(H3.detail.id); });
+  el('h3-history').addEventListener('click', function (ev) {
+    var id = ev.target.getAttribute('data-job');
+    if (!id) return;
+    h3remember(id); H3.detail = null; h3render(H3.jobs.find(function (j) { return j.id === id; })); h3poll();
+  });
+  function h3leave() { if (H3.jobId || H3.submitting) el('h3-background').textContent = JOB_BACKGROUND; }
+  document.addEventListener('click', function (ev) { if (ev.target.closest('a[href]')) h3leave(); });
+  document.addEventListener('visibilitychange', function () { if (!document.hidden) h3poll(); else h3leave(); });
+  window.addEventListener('pageshow', h3poll); window.addEventListener('pagehide', h3leave);
+  h3poll();
+  h3request('/api/h3/status').then(function (d) {
+    if (d.vram_budget) VRAM.budget = d.vram_budget;
+    updateRisk();
+    if (d.concurrency) el('h3-conc').textContent = '并发 ' + d.concurrency.current + '（建议 ' + d.concurrency.recommend + '）';
+  }).catch(function () { el('h3-conc').textContent = '服务状态不可达'; });
+
+
+  /* ── 风险提示（按宽高与显存预算，本地估算，只提示不拦截） ── */
+  var VRAM = { budget: { safe_mp: 0.25, warn_mp: 0.42 } };
+  function updateRisk() {
+    var dims = { '720p': [1280, 720], '864p': [1536, 864], '1080p': [1920, 1080], 'cinema_2176': [2176, 912] }[el('h3-tier').value] || [1280, 720];
+    if (el('h3-tier').value === 'custom') dims = [Number(el('h3-width').value), Number(el('h3-height').value)];
+    if (!dims.every(function (n) { return Number.isSafeInteger(n) && n > 0 && n % 2 === 0; })) {
+      el('h3-risk').textContent = '自定义原生宽高必须为正偶数；尚未估算。';
+      el('h3-risk').setAttribute('data-tone', 'warn'); return;
+    }
+    var w = dims[0], h = dims[1];
+    var mp = (w * h) / 1e6;
+    var lv = mp <= VRAM.budget.safe_mp ? '低' : mp <= VRAM.budget.warn_mp ? '偏高' : '高（可能 OOM）';
+    var tone = mp <= VRAM.budget.safe_mp ? 'ok' : mp <= VRAM.budget.warn_mp ? 'warn' : 'bad';
+    var e = el('h3-risk');
+    e.textContent = '分辨率风险（estimate）：' + lv + ' · ' + mp.toFixed(2) + 'MP · 后端按质量要求校验，显存不足将拒绝，不自动降档。';
+    e.setAttribute('data-tone', tone);
+  }
+  el('h3-tier').addEventListener('change', updateRisk);
+  el('h3-width').addEventListener('input', updateRisk);
+  el('h3-height').addEventListener('input', updateRisk);
+  updateRisk();
+
+  /* ── 作品库：最近归档成片（%CLOUD_ROOT%\02-视频\成片） ── */
+  function fmtGB(b) { return (b / 1e6).toFixed(1) + 'MB'; }
+  function loadWorks() {
+    h3request('/api/works?limit=14').then(function (d) {
+      var box = el('works'), list = d.works || [];
+      el('works-count').textContent = list.length + ' 条';
+      scoreFiles = list.filter(function (w) { return rawVideo(w.file || w.name, w.engine) && (/(?:_pure|_raw)\.mp4$/i.test(w.file || w.name) || ['raw', 'pure', 'native'].indexOf(w.variant) >= 0); }).map(function (w) { return { file: w.file || w.name, label: '原生归档 · ' + (w.name || w.file) }; });
+      refreshScoreChoices();
+      if (!list.length) { box.textContent = '还没有归档成片。生成一条后会自动落到成片目录并登记索引。'; return; }
+      box.innerHTML = list.map(function (w) {
+        var name = String(w.name || w.file || '').split(/[\\/]/).pop();
+        var enhanced = /enhanced|postprocess|upscaled|step_/i.test(name + ' ' + (w.engine || ''));
+        var label = enhanced ? '增强版' : rawVideo(name, w.engine) && (/(?:_pure|_raw)\.mp4$/i.test(name) || ['raw', 'pure', 'native'].indexOf(w.variant) >= 0) ? '原生版' : '归档视频（版本未确认）';
+        return '<div class="u-row" style="grid-template-columns:150px minmax(0,1fr) auto">'
+          + '<span class="k">' + esc(w.engine || '') + ' ' + fmtGB(w.bytes || 0) + '</span>'
+          + '<div class="u-line">' + esc(String(w.prompt || '(无提示词)').slice(0, 60)) + ' <span class="u-mono">' + esc(name) + '</span></div>'
+          + '<a class="btn mini" target="_blank" rel="noopener" href="' + JOB_API + '/api/works/preview?file=' + encodeURIComponent(name) + '">' + label + '</a></div>';
+      }).join('');
+    }).catch(function (e) { el('works').textContent = '作品库查询失败：' + e.message; });
+  }
+  loadWorks();
+
+  renderEngines(); renderVram(); renderIsolation(); renderPlan(); renderBayes(); renderAbc(); renderAblation(); renderScore(); renderPost(); renderGates();
+  el('st').textContent = '数据生成于 ' + S.generatedAt + ' · ' + S.note;
+})();
+</script>
+</body>
+</html>

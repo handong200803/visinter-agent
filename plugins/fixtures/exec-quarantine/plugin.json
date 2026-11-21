@@ -1,0 +1,51 @@
+{
+  "schema": "ai-video-platform/plugin",
+  "id": "fixture-exec-quarantine",
+  "name": "声明 exec 的插件（selftest 用）",
+  "version": "1.0.0",
+  "type": "node",
+  "description": "manifest 合法但声明了 exec：只登记为 needs-review，不注入运行时。",
+  "engines": {
+    "platform": ">=0.1.0"
+  },
+  "permissions": [
+    "fs:read",
+    "exec"
+  ],
+  "contributes": {
+    "node": {
+      "id": "exec-node",
+      "title": "需要外部进程的节点",
+      "stage": "motion"
+    },
+    "params": [
+      {
+        "key": "mo.exec_marker",
+        "stage": "motion",
+        "type": "enum",
+        "default": "关",
+        "options": [
+          "关",
+          "开"
+        ],
+        "label": "外部工具开关",
+        "hint": "示例：声明 exec 后本参数不会进运行时，直到人工审核放行。",
+        "tier": "L4",
+        "impact": {
+          "vram": 0,
+          "time": 0.05,
+          "quality": 0
+        },
+        "bind": {
+          "target": "External Tool",
+          "widget": "toggle"
+        }
+      }
+    ]
+  },
+  "signature": {
+    "key_id": "avp-dev-local",
+    "alg": "ed25519",
+    "sig": "yoTI/2trxCMd05O7euMTKmT9EB8cVxa4dx+eNfHngdo3GHoM0Ouwj9407pzE8PJOHwoL5BAcbiL5RbR50PuxAA=="
+  }
+}

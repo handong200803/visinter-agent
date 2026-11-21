@@ -1,0 +1,3283 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>参数工作台 · VisInter-Agent v0.1</title>
+<style>
+/*__TOKENS__*/
+/* 碑铭衬线：Cinzel（SIL OFL，本地 woff2，见 assets/fonts/LICENSE-Cinzel.txt）。
+   中文无 Cinzel 字形，自然落到宋体/思源宋体——碑铭感靠字距与字重，不靠假字体。 */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-700.woff2") format("woff2");
+}
+
+/* :root 已收口到 ui/tokens.css（构建期内联） */
+
+/* ── 基础层：七个界面共用的最小复位与排版基调 ───────────────────── */
+/* 底：深黑 + 双冷色光晕（左上蓝灰 / 右下紫灰），玻璃的「景」；fixed 不随滚动漂移 */
+html {
+  background:
+    radial-gradient(56% 46% at 10% 4%, var(--amb-blue) 0%, rgba(98, 118, 158, 0) 72%),
+    radial-gradient(52% 44% at 92% 98%, var(--amb-purple) 0%, rgba(126, 106, 160, 0) 72%),
+    var(--bg);
+  background-attachment: fixed;
+}
+body {
+  background: transparent;
+  color: var(--text);
+  font: var(--fz)/var(--lh) var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* 胶片颗粒：极细噪点铺满视口，不拦截指针；4% 透明度只够"感觉到"不够"看到" */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background: url("../assets/grain.png") repeat;
+  background-size: 160px 160px;
+}
+
+/* 碑铭体：平台名、卡片标题、章节题字共用 */
+.serif {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+/* 数字等宽：所有数值读数都用它 */
+.num, kbd, code, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点环：冷银描边 + 一圈极淡银光，键盘可达 */
+:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(200, 205, 212, 0.12);
+}
+
+/* 滚动条：细、暗、银灰thumb，hover 提亮；不用系统默认蓝条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+*::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* 选区：银的低透明填充，不用系统蓝 */
+::selection { background: var(--acc-fill); color: var(--acc-hover); }
+
+/* ── 通用玻璃类：与 ui/tokens.css 同一配方 ─────────────────────── */
+.glass-card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.glass-card.hoverable {
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.glass-card.hoverable:hover {
+  background: var(--glass-hover); border-color: var(--glass-line-hover); transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.glass-btn {
+  background: rgba(255, 255, 255, 0.10); border: 1px solid var(--line); border-radius: var(--r2); color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+}
+.glass-btn:hover { background: rgba(255, 255, 255, 0.14); border-color: var(--glass-line-hover); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+.glass-input {
+  background: var(--panel2); border: 1px solid var(--line); border-radius: var(--r2); color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease), background var(--t) var(--ease);
+}
+.glass-input:focus { outline: none; border-color: var(--glass-line-hover); background: rgba(255, 255, 255, 0.07); box-shadow: var(--glow); }
+.glass-input::placeholder { color: var(--text-dim2); }
+@media (max-width: 900px) { /* :root 已收口到 ui/tokens.css（构建期内联） */ }
+
+/* ── 页面骨架 ─────────────────────────────────────────────────── */
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body { overflow: hidden; }
+#app { display: grid; grid-template-rows: auto minmax(0, 1fr) 28px; height: 100vh; }
+
+header {
+  display: flex; align-items: center; gap: 10px; padding: 0 12px;
+  margin: var(--sp4) var(--sp4) 0; min-height: 42px;
+  border: 1px solid var(--line); border-radius: var(--r3); background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  position: relative; z-index: 5;
+}
+.brand { display: flex; align-items: center; gap: 8px; font-weight: 700; font-size: var(--fz-l); letter-spacing: .12em; font-family: var(--serif); color: var(--acc); white-space: nowrap; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--acc); flex: none; }
+.brand small { color: var(--text-dim2); font: var(--fz-xs)/1 var(--mono); font-weight: 400; letter-spacing: 0; }
+.spacer { flex: 1; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: var(--r2); overflow: hidden; background: var(--panel2); flex: none; -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite); }
+.seg button {
+  background: transparent; color: var(--text-dim); border: 0; padding: 0 10px; height: 26px;
+  cursor: pointer; font: var(--fz-s)/1 var(--sans); white-space: nowrap;
+}
+.seg button:hover { background: var(--panel3); color: var(--text); }
+.seg button.on { background: var(--panel4); color: var(--acc-hover); box-shadow: inset 0 -1px 0 var(--acc); }
+select, input[type=number], input[type=text], input[type=search], textarea {
+  background: var(--panel2); color: var(--text); border: 1px solid var(--line); border-radius: var(--r2);
+  padding: 0 7px; height: 26px; font: var(--fz-s)/1 var(--mono); outline: none; width: 100%;
+  font-variant-numeric: tabular-nums;
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+textarea { height: auto; padding: 5px 7px; line-height: 1.45; }
+select:hover, input:hover { border-color: var(--line3); }
+select:focus, input:focus, textarea:focus { border-color: var(--glass-line-hover); box-shadow: var(--glow); }
+.btn {
+  border: 1px solid var(--line); background: rgba(255, 255, 255, 0.10); color: var(--text); border-radius: var(--r2);
+  height: 26px; padding: 0 10px; font-size: var(--fz-s); cursor: pointer; white-space: nowrap;
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.btn:hover { border-color: var(--glass-line-hover); background: rgba(255, 255, 255, 0.14); color: var(--acc-hover); box-shadow: 0 0 20px var(--glow-cool); }
+.btn.acc { border-color: var(--acc-dim); color: var(--acc-hover); background: var(--panel3); }
+.btn.acc:hover { border-color: var(--acc-hover); box-shadow: var(--glow); }
+.btn.on { background: var(--acc-fill); border-color: var(--acc); color: var(--acc-hover); }
+.btn:disabled { opacity: .5; cursor: wait; box-shadow: none; }
+.btn svg { vertical-align: -1px; margin-right: 5px; }
+#search { width: 190px; flex: none; font-family: var(--sans); }
+
+main { display: grid; grid-template-columns: 208px minmax(0, 1fr) clamp(300px, 25vw, 380px); min-height: 0; }
+
+nav {
+  border-right: 1px solid var(--line); overflow-y: auto; padding: 8px 6px;
+  background: var(--glass); -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.rail-item {
+  display: flex; align-items: center; gap: 8px; padding: 0 8px; height: 30px; border-radius: var(--r);
+  cursor: pointer; color: var(--text-dim); border: 1px solid transparent; margin-bottom: 2px;
+}
+.rail-item:hover { background: var(--panel); color: var(--text); }
+.rail-item.on { background: var(--panel2); border-color: var(--line2); color: var(--text); }
+.rail-code {
+  width: 18px; height: 18px; border-radius: var(--r); display: grid; place-items: center; flex: none;
+  font: 700 10px var(--mono); background: var(--panel3); color: var(--text-dim);
+}
+.rail-item.on .rail-code { background: var(--acc); color: var(--bg-deep); }
+.rail-name { flex: 1; font-size: var(--fz); }
+.rail-n { font: var(--fz-xs) var(--mono); color: var(--text-dim2); font-variant-numeric: tabular-nums; }
+.rail-note { font: var(--fz-xs)/1.5 var(--sans); color: var(--text-dim2); padding: 8px 8px 0; border-top: 1px solid var(--line); margin-top: 8px; }
+
+section { overflow-y: auto; padding: 12px 16px 32px; }
+#paramList, .board-head, .preset-bar, .ai-card, .gen-card, #myPresets, .override-banner { max-width: 1160px; }
+.board-head { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 10px; flex-wrap: wrap; }
+.bh-left { min-width: 240px; flex: 1; }
+.board-head h1 { font: 700 var(--fz-xl)/1.35 var(--serif); margin: 0; letter-spacing: .1em; color: var(--acc); }
+.board-head p { margin: 2px 0 0; color: var(--text-dim); font-size: var(--fz-s); }
+.toolbar { display: flex; gap: 10px; align-items: center; margin-left: auto; font-size: var(--fz-s); color: var(--text-dim); white-space: nowrap; }
+.toolbar select { width: 130px; }
+
+/* ── 风格标签：7 个市面口径风格，横向滑动，一点配齐 258 参数 ────── */
+.preset-bar, .style-strip { display: flex; gap: 8px; overflow-x: auto; overflow-y: hidden; padding-bottom: 4px; margin-bottom: 10px; scrollbar-width: thin; }
+.style-card {
+  flex: none; width: 128px; text-align: center; border: 1px solid var(--line); background: var(--panel);
+  border-radius: var(--r2); padding: 10px 8px 9px; cursor: pointer; color: var(--text-dim);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  box-shadow: var(--shadow-inset);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), transform var(--t-fast) var(--ease), box-shadow var(--t-fast) var(--ease);
+}
+.style-card:hover { border-color: var(--glass-line-hover); background: var(--glass-hover); transform: translateY(-3px); box-shadow: var(--shadow-inset), 0 0 20px var(--glow-cool); }
+.style-card.on { border-color: var(--acc); background: var(--acc-fill); box-shadow: var(--glow); color: var(--text); }
+.style-card .sc-emoji { display: block; font-size: 26px; line-height: 1.2; margin-bottom: 5px; font-style: normal; }
+.style-card b { display: block; font: 700 var(--fz-s)/1.3 var(--serif); letter-spacing: .08em; color: var(--acc-hover); }
+.style-card span { display: block; font: var(--fz-xs)/1.4 var(--sans); color: var(--text-dim2); margin-top: 2px; }
+
+/* ── 小白五步向导 ─────────────────────────────────────────────── */
+main[hidden], #wizard[hidden] { display: none; }
+#wizard { display: grid; grid-template-columns: 208px minmax(0, 1fr); min-height: 0; }
+#wizRail { display: flex; flex-direction: column; gap: 4px; }
+.wiz-grip { display: none; }
+.wiz-steps { display: flex; flex-direction: column; gap: 4px; margin-bottom: 10px; }
+.wiz-step-btn {
+  display: flex; align-items: center; gap: 8px; text-align: left; border: 1px solid transparent;
+  background: transparent; border-radius: var(--r2); padding: 8px 10px; cursor: pointer;
+  color: var(--text-dim); font-size: var(--fz-s);
+}
+.wiz-step-btn i { font: var(--fz-xs) var(--mono); font-style: normal; width: 18px; height: 18px; display: inline-flex; align-items: center; justify-content: center; border: 1px solid var(--line2); border-radius: var(--r-pill); color: var(--text-dim2); flex: none; }
+.wiz-step-btn.on { background: var(--panel2); border-color: var(--line2); color: var(--text); }
+.wiz-step-btn.on i { background: var(--acc); border-color: var(--acc); color: var(--bg-deep); }
+.wiz-step-btn.done i { border-color: var(--acc-dim); color: var(--acc); }
+#wizLibBtn { margin-top: 2px; }
+.wiz-note { font-size: var(--fz-xs); color: var(--text-dim2); line-height: 1.6; padding: 8px 10px; }
+#wizSkip { margin-top: auto; font-size: var(--fz-xs); color: var(--text-dim2); }
+#wizBody { overflow-y: auto; padding: 26px 30px 40px; min-width: 0; }
+.wstep { max-width: 860px; margin: 0 auto; }
+.wstep h2 { margin: 0 0 4px; font: 700 22px/1.35 var(--serif); letter-spacing: .1em; color: var(--acc-hover); }
+.wstep .wsub { margin: 0 0 18px; color: var(--text-dim); font-size: var(--fz-s); }
+#wizPrompt {
+  width: 100%; min-height: 96px; resize: vertical; font-family: var(--sans); font-size: 15px; line-height: 1.6;
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r3); color: var(--text); padding: 14px 16px;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+#wizPrompt:focus { border-color: var(--glass-line-hover); outline: none; box-shadow: var(--shadow-pop), var(--shadow-inset), var(--glow); }
+.wiz-prompt-wrap { position: relative; }
+.wiz-prompt-wrap #wizPrompt { padding-bottom: 46px; }
+.wiz-paste {
+  position: absolute; right: 10px; bottom: 10px; display: inline-flex; align-items: center; gap: 5px;
+  border: 1px solid var(--line); background: var(--panel); color: var(--text-dim);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  border-radius: var(--r2); padding: 5px 11px; cursor: pointer; font-size: var(--fz-xs);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), color var(--t-fast) var(--ease), opacity var(--t-fast) var(--ease);
+}
+.wiz-paste:hover:not(:disabled) { border-color: var(--acc-dim); color: var(--text); background: var(--acc-fill); }
+.wiz-paste:disabled { opacity: .38; cursor: not-allowed; }
+.wiz-paste:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.wiz-paste-hint { margin-top: 6px; color: var(--bad-ink); font-size: var(--fz-xs); line-height: 1.5; }
+#libPanel { padding: 22px 26px 40px; overflow-y: auto; }
+.lib-head { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; margin-bottom: 6px; }
+.lib-head h1 { margin: 0; font: 700 22px/1.3 var(--serif); letter-spacing: .1em; color: var(--acc-hover); }
+.lib-sub { color: var(--text-dim); font-size: var(--fz-s); margin: 0 0 14px; }
+#libList { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 12px; }
+#libPreview { margin-top: 16px; }
+#libPreview video { width: 100%; max-height: 480px; border: 1px solid var(--line2); border-radius: var(--r2); background: var(--bg-deep); display: block; }
+.wiz-prompt-tools { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.wtool {
+  display: inline-flex; align-items: center; gap: 5px; border: 1px solid var(--line); background: var(--panel);
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  border-radius: var(--r2); padding: 6px 12px; cursor: pointer; color: var(--text-dim); font-size: var(--fz-s);
+  transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), color var(--t-fast) var(--ease);
+}
+.wtool:hover { border-color: var(--acc-dim); color: var(--text); background: var(--acc-fill); }
+.wtool:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.wiz-go { display: block; width: 100%; height: 46px; margin-top: 16px; font: 700 15px/1 var(--serif); letter-spacing: .2em; }
+.wiz-style-chip { margin-top: 12px; font-size: var(--fz-xs); color: var(--text-dim2); }
+.wiz-style-chip button { border: 0; background: transparent; color: var(--acc); cursor: pointer; font-size: var(--fz-xs); padding: 0; text-decoration: underline; }
+.wiz-phases { display: flex; flex-direction: column; gap: 9px; margin: 14px 0 16px; }
+.wphase { display: flex; align-items: center; gap: 9px; color: var(--text-dim2); font-size: var(--fz-l); }
+.wphase i { font-style: normal; font: var(--fz-s) var(--mono); width: 16px; flex: none; }
+.wphase.active { color: var(--acc-hover); }
+.wphase.done { color: var(--text-dim); }
+.wphase.done i { color: var(--ok); }
+.wiz-eta { font: var(--fz-xs) var(--mono); color: var(--text-dim2); margin-top: 8px; }
+.wiz-tip { margin-top: 14px; font-size: var(--fz-s); color: var(--text-dim); border: 1px solid var(--line); border-radius: var(--r2); padding: 8px 12px; background: var(--panel2); -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite); }
+.wiz-err { color: var(--bad-ink); margin-top: 12px; font-size: var(--fz-s); line-height: 1.6; }
+#wizPreview { margin: 14px 0; }
+#wizPreview video { width: 100%; max-height: 480px; border: 1px solid var(--line2); border-radius: var(--r2); background: var(--bg-deep); display: block; }
+.wiz-mock-tag { color: var(--text-dim2); font-size: var(--fz-xs); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 1px 8px; }
+.wiz-mode { display: flex; gap: 8px; margin: 14px 0 12px; }
+.wiz-mode button { flex: 1; border: 1px solid var(--line); background: var(--panel); color: var(--text-dim); border-radius: var(--r2); padding: 9px 10px; cursor: pointer; font-size: var(--fz-s); -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite); transition: border-color var(--t-fast) var(--ease), background var(--t-fast) var(--ease), color var(--t-fast) var(--ease); }
+.wiz-mode button.on { border-color: var(--acc); color: var(--text); background: var(--acc-fill); }
+.wiz-mode button:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.wiz-shotmode, .wiz-ratio { margin: 0 0 10px; }
+.wiz-ratio button { flex: 1; padding: 7px 6px; font-size: var(--fz-xs); font-family: var(--mono); }
+.wiz-theme-row { display: flex; align-items: center; gap: 8px; margin: 0 0 6px; }
+.wiz-theme-label { font-size: var(--fz-xs); color: var(--text-dim); flex: none; }
+.wiz-theme-row select { flex: 1; min-width: 0; height: 34px; font-size: var(--fz-s); }
+.wiz-theme-note { font-size: var(--fz-xs); color: var(--text-dim2); line-height: 1.6; margin: 0 0 10px; }
+.cine-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8px; margin: 4px 0 14px; }
+.cine-cand { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r2); overflow: hidden; cursor: pointer; padding: 0; text-align: left; color: var(--text-dim); -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite); transition: border-color var(--t-fast) var(--ease), transform var(--t-fast) var(--ease); }
+.cine-cand img { display: block; width: 100%; aspect-ratio: 2 / 3; object-fit: cover; background: var(--panel2); }
+.cine-cand .cc-meta { display: flex; justify-content: space-between; gap: 6px; padding: 6px 8px; font-size: var(--fz-xs); font-variant-numeric: tabular-nums; }
+.cine-cand .cc-score { color: var(--acc); font-family: var(--mono); }
+.cine-cand { position: relative; }
+.cine-cand .cc-qa { position: absolute; top: 6px; left: 6px; font: var(--fz-xs) var(--mono); padding: 1px 7px; border-radius: var(--r-pill); border: 1px solid; -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite); }
+.cc-qa-PASS { color: var(--ok); border-color: var(--ok); background: var(--panel); }
+.cc-qa-REVIEW { color: var(--warn); border-color: var(--warn); background: var(--panel); }
+.cc-qa-REJECT { color: var(--bad-ink); border-color: var(--bad-ink); background: var(--panel); }
+.cine-cand .cc-tags { display: flex; flex-wrap: wrap; gap: 4px; padding: 0 8px 6px; }
+.cine-cand .cc-tags i { font-style: normal; font-size: var(--fz-xs); color: var(--text-dim2); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 0 6px; }
+.audit-row { border: 1px solid var(--line); border-radius: var(--r2); padding: 8px 10px; margin: 6px 0; background: var(--panel2); }
+.audit-row .ar-head { display: flex; align-items: center; gap: 8px; font-size: var(--fz-s); }
+.audit-row .ar-dec { font: var(--fz-xs) var(--mono); padding: 1px 8px; border-radius: var(--r-pill); border: 1px solid; }
+.audit-row .ar-tags { display: flex; flex-wrap: wrap; gap: 4px; margin-top: 4px; }
+.audit-row .ar-tags i { font-style: normal; font-size: var(--fz-xs); color: var(--text-dim2); border: 1px solid var(--line); border-radius: var(--r-pill); padding: 0 6px; }
+.audit-row .ar-reason { font-size: var(--fz-xs); color: var(--text-dim); margin-top: 4px; line-height: 1.5; }
+.audit-row .ar-btns { margin-top: 6px; display: flex; gap: 6px; }
+.audit-row .ar-btns button { font-size: var(--fz-xs); padding: 3px 10px; }
+.cine-cand.picked { border-color: var(--acc); box-shadow: var(--shadow-inset); }
+.cine-cand.pending img { opacity: .35; }
+.cine-cand:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+.cine-pick { border: 1px solid var(--acc); background: var(--acc-fill); border-radius: var(--r2); padding: 10px 12px; margin: 0 0 12px; font-size: var(--fz-s); color: var(--text); }
+.cine-pick b { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+.cine-sub { border: 1px solid var(--line); background: var(--panel); border-radius: var(--r2); padding: 10px 12px; margin: 10px 0 0; font-size: var(--fz-xs); color: var(--text-dim2); }
+.cine-sub h4 { margin: 0 0 6px; font-size: var(--fz-s); color: var(--text-dim); font-weight: 600; }
+.cine-sub li { margin: 2px 0; }
+.cine-sub .mono { font-family: var(--mono); }
+@media (max-width: 900px) { .cine-grid { grid-template-columns: repeat(2, 1fr); } }
+.wiz-actions { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; }
+.wiz-actions .btn { height: 38px; font-size: var(--fz-s); }
+.wiz-saved { margin-top: 10px; font-size: var(--fz-xs); color: var(--ok); }
+.wiz-meta { margin-top: 12px; font: var(--fz-xs) var(--mono); color: var(--text-dim2); line-height: 1.7; }
+#wizLibList { display: grid; grid-template-columns: repeat(auto-fill, minmax(248px, 1fr)); gap: 12px; margin-top: 14px; }
+.work-item {
+  border: 1px solid var(--line); background: var(--panel); border-radius: var(--r3); padding: 12px 14px;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease), transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.work-item:hover { background: var(--glass-hover); border-color: var(--glass-line-hover); transform: translateY(-3px); box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool); }
+.work-item .wi-h { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+.work-item .wi-emoji { font-size: 18px; font-style: normal; }
+.work-item .wi-style { font: 700 var(--fz-s) var(--serif); letter-spacing: .06em; color: var(--acc-hover); }
+.work-item .wi-time { font: var(--fz-xs) var(--mono); color: var(--text-dim2); margin-left: auto; }
+.work-item .wi-prompt { margin: 6px 0 9px; font-size: var(--fz-s); color: var(--text-dim); line-height: 1.55; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.work-item .wi-btns { display: flex; gap: 6px; flex-wrap: wrap; opacity: 0; transform: translateY(4px); transition: opacity var(--t) var(--ease), transform var(--t) var(--ease); }
+.work-item:hover .wi-btns, .work-item:focus-within .wi-btns { opacity: 1; transform: none; }
+@media (hover: none) { .work-item .wi-btns { opacity: 1; transform: none; } }
+.work-item .wi-btns .btn { height: 24px; font-size: var(--fz-xs); }
+.work-item .wi-mock { font: var(--fz-xs) var(--mono); color: var(--warn); border: 1px solid var(--warn); border-radius: var(--r); padding: 0 5px; }
+.wiz-empty { color: var(--text-dim2); font-size: var(--fz-s); padding: 20px 0; }
+
+/* ── 首次访问引导遮罩 ─────────────────────────────────────────── */
+#guideMask { position: fixed; inset: 0; z-index: 9000; }
+#guideSpot { position: absolute; border: 1px solid var(--acc); border-radius: var(--r2); box-shadow: 0 0 0 9999px rgba(0, 0, 0, 0.68), var(--glow); transition: all var(--t) var(--ease); pointer-events: none; }
+#guideCard {
+  position: absolute; max-width: 320px; border: 1px solid var(--line2); background: var(--glass);
+  border-radius: var(--r3); padding: 13px 15px;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+#guideCard h4 { margin: 0 0 5px; font: 700 var(--fz-l)/1.4 var(--serif); letter-spacing: .08em; color: var(--acc-hover); }
+#guideCard p { margin: 0 0 10px; font-size: var(--fz-s); color: var(--text-dim); line-height: 1.6; }
+#guideCard .gbtns { display: flex; gap: 8px; justify-content: flex-end; }
+
+/* ── AI 推荐卡 ────────────────────────────────────────────────── */
+.ai-card {
+  border: 1px solid var(--line); background: var(--panel); border-radius: var(--r3); padding: 11px 13px; margin-bottom: 12px;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.ai-card h3 { margin: 0 0 6px; font: 700 var(--fz-s)/1.4 var(--serif); letter-spacing: .1em; color: var(--acc); display: flex; align-items: center; gap: 8px; }
+.ai-card h3 small { font: var(--fz-xs) var(--sans); color: var(--text-dim2); letter-spacing: 0; font-weight: 400; }
+.ai-row { display: flex; gap: 8px; align-items: flex-start; }
+.ai-row textarea { flex: 1; min-height: 40px; resize: vertical; font-family: var(--sans); font-size: var(--fz-s); }
+.ai-row .btn { height: 40px; flex: none; }
+.ai-result { margin-top: 7px; font-size: var(--fz-s); color: var(--text-dim); display: none; }
+.ai-result.on { display: block; }
+.ai-result .src { font: var(--fz-xs) var(--mono); padding: 1px 6px; border-radius: var(--r); border: 1px solid var(--line2); margin-right: 6px; }
+.ai-result .src.qwen { color: var(--acc-hover); background: var(--acc-fill); }
+.ai-result .src.rules { color: var(--warn); background: var(--warn-fill); }
+.ai-result .reason { color: var(--text); }
+.ai-result .meta { font: var(--fz-xs) var(--mono); color: var(--text-dim2); margin-top: 3px; }
+.model-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.model-row select { flex: none; min-width: 280px; }
+.model-feat { font: var(--fz-xs) var(--mono); color: var(--text-dim); letter-spacing: .02em; }
+.model-tips { margin-top: 6px; font-size: var(--fz-xs); color: var(--text-dim); line-height: 1.6; }
+.model-tips .warn { color: var(--warn); }
+.model-tips .note { display: block; color: var(--text-dim2); margin-top: 2px; }
+
+/* ── 一键生成 ─────────────────────────────────────────────────── */
+.gen-card {
+  border: 1px solid var(--line); background: var(--panel); border-radius: var(--r3); padding: 11px 13px; margin-bottom: 12px;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.gen-row { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+.gen-btn { height: 34px; flex: none; font: 700 var(--fz-s)/1 var(--serif); letter-spacing: .12em; }
+.gen-meta { flex: 1; min-width: 0; font-size: var(--fz-xs); color: var(--text-dim); line-height: 1.6; }
+/* 引擎下拉：.input 默认 width:100%，在 flex 行里会把 gen-meta 挤成 0 宽（文字竖排） */
+#genEngine { flex: 0 0 auto; width: auto; min-width: 140px; }
+.gen-meta b { color: var(--text); font-variant-numeric: tabular-nums; }
+.gen-status { display: none; margin-top: 8px; font-size: var(--fz-s); }
+.gen-status.on { display: block; }
+.gen-status .bar { margin: 6px 0 4px; }
+.gen-status .gline { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.gen-status .gstate { font: var(--fz-xs) var(--mono); border: 1px solid var(--line2); border-radius: var(--r); padding: 1px 6px; color: var(--text-dim); }
+.gen-status .gstate.ok { color: var(--ok); border-color: var(--ok); }
+.gen-status .gstate.warn { color: var(--warn); border-color: var(--warn); }
+.gen-status .gstate.bad { color: var(--bad-ink); border-color: var(--bad); }
+.gen-status .gmock { font: var(--fz-xs) var(--mono); color: var(--warn); border: 1px solid var(--warn); border-radius: var(--r); padding: 1px 6px; }
+.gen-status .gout { font: var(--fz-xs) var(--mono); color: var(--text-dim); margin-top: 4px; word-break: break-all; }
+.gen-status .gerr { color: var(--bad-ink); margin-top: 4px; }
+.gen-status .ghint { color: var(--text-dim2); font-size: var(--fz-xs); margin-top: 3px; line-height: 1.6; }
+
+/* ── 手动覆盖提示条 ───────────────────────────────────────────── */
+.override-banner {
+  display: none; align-items: center; gap: 10px; margin-bottom: 10px; padding: 7px 11px;
+  border: 1px solid var(--warn); background: var(--warn-fill); border-radius: var(--r2); font-size: var(--fz-s);
+}
+.override-banner.on { display: flex; }
+.override-banner .txt { flex: 1; color: var(--text); }
+.override-banner .txt b { color: var(--warn); }
+
+/* ── 我的预设 ─────────────────────────────────────────────────── */
+#myPresets { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 10px; }
+#myPresets:empty { display: none; }
+.my-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--line2); background: var(--panel); border-radius: var(--r-pill); padding: 2px 9px; font-size: var(--fz-xs); cursor: pointer; color: var(--text-dim); }
+.my-chip:hover { border-color: var(--acc-dim); color: var(--text); }
+.my-chip i { font-style: normal; color: var(--text-dim2); cursor: pointer; padding: 0 2px; }
+.my-chip i:hover { color: var(--bad-ink); }
+
+/* ── 三层折叠：每板块一张玻璃小卡，展开有入场动画 ───────────────── */
+.tier {
+  border: 1px solid var(--line); border-radius: var(--r3); margin-bottom: 12px; background: var(--panel); overflow: hidden;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.tier-head { display: flex; align-items: center; gap: 9px; padding: 10px 13px; cursor: pointer; user-select: none; transition: background var(--t-fast) var(--ease); }
+.tier-head:hover { background: var(--panel2); }
+.tier-arrow { font: var(--fz-s) var(--mono); color: var(--text-dim2); width: 12px; flex: none; transition: transform var(--t) var(--ease); }
+.tier.open .tier-arrow { transform: rotate(90deg); }
+.tier-name { font: 700 var(--fz-l)/1.3 var(--serif); letter-spacing: .08em; color: var(--acc); flex: none; }
+.tier-desc { font-size: var(--fz-xs); color: var(--text-dim); flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tier-n { font: var(--fz-xs) var(--mono); color: var(--text-dim2); border: 1px solid var(--line2); border-radius: var(--r-pill); padding: 1px 7px; flex: none; }
+.tier-caution { font: var(--fz-xs) var(--mono); color: var(--warn); border: 1px solid var(--warn); border-radius: var(--r); padding: 1px 6px; flex: none; }
+.tier-body { display: none; border-top: 1px solid var(--line); padding: 4px 8px 10px; }
+/* 展开动画只走 opacity + transform。折叠本身是 display 开关（JS 不动），
+   若用 max-height，全参数层可达上万 px：动画中点会截断、结束一瞬跳到实际高度，
+   反而制造闪跳，所以不引入高度过渡。 */
+.tier.open .tier-body { display: block; animation: tierOpen var(--t-slow) var(--ease-out); }
+@keyframes tierOpen {
+  from { opacity: 0; transform: translateY(-4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+@media (prefers-reduced-motion: reduce) { .tier.open .tier-body { animation: none; } }
+.tier-empty { color: var(--text-dim2); font-size: var(--fz-xs); padding: 8px 6px; }
+
+.group-title {
+  display: flex; align-items: center; gap: 8px; margin: 12px 0 6px; color: var(--text-dim);
+  font: var(--fz-s) var(--mono); letter-spacing: .6px;
+}
+.group-title::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+
+/* ── 参数行 ───────────────────────────────────────────────────── */
+.row {
+  display: grid; grid-template-columns: minmax(0, 1fr) 248px; gap: 4px 14px; align-items: center;
+  padding: 6px 10px; border-bottom: 1px solid var(--line); background: transparent;
+}
+.row:hover { background: var(--panel2); }
+.row.custom { box-shadow: inset 2px 0 0 var(--acc-dim); }
+.row.overridden { box-shadow: inset 2px 0 0 var(--warn); }
+.row.auto-row { background: var(--panel2); }
+.row-meta { min-width: 0; }
+.row-top { display: flex; align-items: center; gap: 7px; flex-wrap: wrap; }
+.lbl { font-size: var(--fz); }
+.key { font: var(--fz-xs) var(--mono); color: var(--text-dim2); }
+.hint { color: var(--text-dim); font-size: var(--fz-xs); margin-top: 1px; overflow: hidden; text-overflow: ellipsis; }
+.imp { color: var(--text-dim2); font: var(--fz-xs) var(--mono); margin-top: 1px; }
+.badge { font: var(--fz-xs) var(--mono); padding: 0 4px; height: 15px; line-height: 14px; border-radius: var(--r); border: 1px solid var(--line2); white-space: nowrap; }
+.badge.auto { color: var(--acc-dim); background: var(--panel2); }
+.badge.diff { color: var(--acc-hover); background: var(--bg-deep); }
+.badge.core { color: var(--text-dim); background: var(--panel2); }
+.badge.guard { color: var(--text-dim2); background: var(--panel2); }
+.badge.guard-hit { color: var(--warn); background: var(--warn-fill); border-color: var(--warn); }
+.badge.combo { color: var(--acc); background: var(--panel2); }
+.ctrl { display: flex; align-items: center; gap: 8px; }
+.num { width: 66px; text-align: right; flex: none; }
+.unit { font: var(--fz-xs) var(--mono); color: var(--text-dim2); min-width: 24px; flex: none; }
+
+.ctrl input[type=range] { flex: 1; min-width: 0; -webkit-appearance: none; appearance: none; height: 16px; background: transparent; cursor: pointer; }
+.ctrl input[type=range]::-webkit-slider-runnable-track { height: 4px; background: var(--panel4); border-radius: var(--r); }
+.ctrl input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none; width: 10px; height: 10px; margin-top: -3px;
+  background: var(--acc); border: 0; border-radius: var(--r);
+}
+.ctrl input[type=range]:hover::-webkit-slider-thumb { background: var(--acc-hover); }
+.ctrl input[type=range]::-moz-range-track { height: 4px; background: var(--panel4); border-radius: var(--r); }
+.ctrl input[type=range]::-moz-range-thumb { width: 10px; height: 10px; background: var(--acc); border: 0; border-radius: var(--r); }
+
+.switch {
+  width: 34px; height: 18px; border-radius: var(--r-pill); background: var(--panel4); border: 1px solid var(--line2);
+  position: relative; cursor: pointer; flex: none; transition: background var(--t-fast) var(--ease), border-color var(--t-fast) var(--ease);
+}
+.switch::after {
+  content: ""; position: absolute; top: 2px; left: 2px; width: 12px; height: 12px; border-radius: 50%;
+  background: var(--text-dim); transition: left var(--t-fast) var(--ease), background var(--t-fast) var(--ease);
+}
+.switch.on { background: var(--acc-dim); border-color: var(--acc); }
+.switch.on::after { left: 18px; background: var(--bg-deep); }
+.restore { color: var(--text-dim2); font-size: var(--fz-xs); cursor: pointer; text-decoration: underline dotted; white-space: nowrap; flex: none; }
+.restore:hover { color: var(--acc-hover); }
+.row-attach { grid-column: 1 / -1; }
+.row-attach textarea { min-height: 44px; resize: vertical; font-family: var(--sans); font-size: var(--fz-s); }
+.search-info { font: var(--fz-xs) var(--mono); color: var(--text-dim); margin: 0 0 8px; }
+.search-info b { color: var(--acc-hover); }
+
+/* ── 右栏：四向预估 ───────────────────────────────────────────── */
+aside {
+  border-left: 1px solid var(--line); background: var(--glass); overflow-y: auto; padding: 10px;
+  display: flex; flex-direction: column; gap: 8px;
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+}
+.card {
+  background: var(--panel); border: 1px solid var(--line); border-radius: var(--r2); padding: 9px 11px;
+  -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite);
+  box-shadow: var(--shadow-inset);
+}
+.card h3 {
+  margin: 0 0 7px; font: var(--fz-s) var(--mono); color: var(--text-dim); letter-spacing: .4px;
+  display: flex; align-items: center;
+}
+.card h3 span { margin-left: auto; font-size: var(--fz-xs); color: var(--text-dim2); letter-spacing: 0; }
+.meter-h { display: flex; align-items: baseline; gap: 8px; }
+.meter-h b { font: 600 20px/1.2 var(--mono); letter-spacing: -.3px; font-variant-numeric: tabular-nums; }
+.meter-h small { font-size: var(--fz-s); color: var(--text-dim); font-weight: 400; }
+.meter-h .st { font: var(--fz-xs) var(--mono); padding: 1px 5px; border-radius: var(--r); border: 1px solid var(--line2); }
+.st { color: var(--text-dim); }
+.st.ok { color: var(--ok); background: var(--bg-deep); }
+.st.warn { color: var(--warn); background: var(--bg-deep); }
+.st.block { color: var(--bad-ink); background: var(--bg-deep); }
+.bar { height: 6px; border-radius: var(--r); background: var(--panel2); overflow: hidden; margin: 6px 0 5px; position: relative; }
+.bar > i { display: block; height: 100%; border-radius: var(--r); transition: width var(--t) var(--ease); }
+.bar .tick { position: absolute; top: -1px; bottom: -1px; width: 1px; background: var(--line3); }
+.meter-sub { font: var(--fz-xs) var(--mono); color: var(--text-dim); display: flex; gap: 10px; flex-wrap: wrap; font-variant-numeric: tabular-nums; }
+.kv { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px 12px; margin-top: 7px; font: var(--fz-xs) var(--mono); }
+.kv div { display: flex; justify-content: space-between; gap: 8px; color: var(--text-dim); border-bottom: 1px solid var(--line); padding-bottom: 1px; }
+.kv div span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.kv div b { white-space: nowrap; font-variant-numeric: tabular-nums; }
+.kv b { color: var(--text); font-weight: 500; }
+.warn-item { display: flex; gap: 7px; font-size: var(--fz-s); padding: 4px 0; border-bottom: 1px solid var(--line); color: var(--text); }
+.warn-item:last-child { border-bottom: 0; }
+.warn-item i { font-style: normal; flex: none; font-size: var(--fz-xs); padding: 0 4px; border-radius: var(--r); height: 15px; line-height: 15px; border: 1px solid var(--line2); }
+.warn-item i.yellow { background: var(--bg-deep); color: var(--warn); }
+.warn-item i.gray { background: var(--panel2); color: var(--text-dim); }
+.trace { font: var(--fz-xs) var(--mono); color: var(--text-dim); padding: 3px 0; border-bottom: 1px solid var(--line); font-variant-numeric: tabular-nums; }
+.trace b { color: var(--text); font-weight: 500; }
+.opt { border: 1px solid var(--line); border-radius: var(--r2); padding: 7px 8px; margin-top: 6px; background: var(--panel2); -webkit-backdrop-filter: var(--glass-blur-lite); backdrop-filter: var(--glass-blur-lite); }
+.opt h4 { margin: 0 0 4px; font-size: var(--fz-s); display: flex; align-items: center; gap: 6px; }
+.opt p { margin: 0 0 6px; color: var(--text-dim); font-size: var(--fz-xs); }
+.opt .go { width: 100%; }
+.empty { color: var(--text-dim2); font-size: var(--fz-xs); padding: 3px 0; }
+
+footer {
+  border-top: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 12px;
+  font: var(--fz-xs) var(--mono); color: var(--text-dim2); background: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  font-variant-numeric: tabular-nums;
+}
+footer b { color: var(--text-dim); font-weight: 500; }
+footer .live { color: var(--acc); }
+footer span:last-child { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+#toast {
+  position: fixed; left: 50%; bottom: 40px; background: var(--glass); border: 1px solid var(--line2);
+  color: var(--text); padding: 8px 14px; border-radius: var(--r2); font: var(--fz-s) var(--mono);
+  -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset); opacity: 0; transform: translate(-50%, 8px);
+  transition: opacity var(--t) var(--ease), transform var(--t) var(--ease); pointer-events: none; max-width: min(460px, 92vw); z-index: 10000;
+}
+#toast.on { opacity: 1; transform: translate(-50%, 0); }
+
+@media (max-width: 1180px) {
+  main { grid-template-columns: 176px minmax(0, 1fr) 288px; }
+  .row { grid-template-columns: minmax(0, 1fr) 208px; }
+  .rail-n { display: none; }
+  .brand small { display: none; }
+  #search { width: 130px; }
+  #wizard { grid-template-columns: 176px minmax(0, 1fr); }
+}
+@media (max-width: 900px) {
+  #app { grid-template-rows: auto 1fr 28px; grid-template-columns: minmax(0, 1fr); }
+  header { flex-wrap: wrap; gap: 8px; padding: 8px 12px; min-width: 0; margin: 12px 12px 0; }
+  #search { width: 100%; order: 9; }
+  select#device { width: 100% !important; order: 8; }
+  main { display: block; overflow-y: auto; min-width: 0; }
+  nav {
+    display: flex; flex-wrap: nowrap; overflow-x: auto; overflow-y: hidden;
+    border-right: 0; border-bottom: 1px solid var(--line); padding: 7px 6px; gap: 4px;
+    position: sticky; top: 0; z-index: 3;
+  }
+  .rail-item { flex: none; width: auto; height: 28px; margin-bottom: 0; white-space: nowrap; }
+  .rail-name { flex: none; }
+  .rail-note { display: none; }
+  section { overflow: visible; padding: 12px 12px 24px; }
+  aside { border-left: 0; border-top: 1px solid var(--line); overflow: visible; }
+  .row { grid-template-columns: minmax(0, 1fr); }
+  .bh-left { min-width: 0; }
+  .toolbar { margin-left: 0; flex-wrap: wrap; }
+  #wizard { display: block; overflow-y: auto; }
+  #wizRail {
+    position: fixed; left: 12px; bottom: 12px; top: auto; z-index: 40;
+    flex-direction: row; flex-wrap: nowrap; overflow-x: auto; align-items: center; gap: 4px;
+    max-width: calc(100vw - 24px); padding: 6px 10px;
+    border: 1px solid var(--line2); border-radius: var(--r-pill);
+    background: linear-gradient(var(--panel), var(--panel)), var(--bg-deep);
+    -webkit-backdrop-filter: var(--glass-blur); backdrop-filter: var(--glass-blur);
+    box-shadow: var(--shadow-pop);
+  }
+  .wiz-grip { display: inline-flex; align-items: center; justify-content: center; flex: none; width: 26px; height: 26px; border: 0; background: transparent; color: var(--text-dim2); cursor: grab; touch-action: none; border-radius: var(--r-pill); }
+  .wiz-grip:active { cursor: grabbing; color: var(--text); }
+  .wiz-grip:focus-visible { outline: 2px solid var(--acc); outline-offset: 2px; }
+  .wiz-steps { flex-direction: row; margin-bottom: 0; }
+  .wiz-step-btn { white-space: nowrap; }
+  .wiz-note, #wizSkip { display: none; }
+  #wizBody { padding: 16px 12px 76px; overflow: visible; }
+}
+
+/* ═══════════════════════════════════════════════════════════════════
+   玻璃化补齐：参数分组 / 参数行 / 控件 / 侧栏高亮
+   ───────────────────────────────────────────────────────────────────
+   只做「映射到 ui/tokens.css」的增量：色值全部走 var()，不改栅格、不改
+   折叠逻辑。ui/glass-skin.css 在最后注入，同权重的 hover 提亮由它兜底；
+   这里补它没覆盖的部分：卡片迎光、16px 圆角、行级 hover 亮边、缩略件。
+   ═══════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 参数分组：每板块一张玻璃小卡，组间留白 16 ────────────────── */
+.tier {
+  margin: 0 0 var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--panel);
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+  overflow: hidden;
+}
+.tier.open { border-color: var(--line2); }
+.tier.open .tier-head { background-color: var(--panel2); }
+.tier-head:hover,
+.tier.open .tier-head:hover { background-color: var(--glass-hover); }
+.tier-desc { color: var(--text-dim); }
+.tier-n { color: var(--text-dim); border-color: var(--line2); background-color: var(--panel2); }
+.tier-body { border-top-color: var(--line); }
+
+/* ── 2. 参数行：膜内提亮 + 亮边，不上浮（258 行上浮会成对虾）──────── */
+.row {
+  border-bottom-color: var(--line);
+  outline: 1px solid transparent;
+  outline-offset: -1px;
+  transition: background-color var(--t) var(--ease), outline-color var(--t) var(--ease),
+              box-shadow var(--t) var(--ease);
+}
+.row:hover { background-color: var(--glass-hover); outline-color: var(--line3); }
+.row.custom { box-shadow: inset 2px 0 0 var(--acc-dim); }
+.row.overridden { box-shadow: inset 2px 0 0 var(--warn); }
+
+/* 层次：参数名最亮 → 说明次之 → 键名/影响最暗；数值一律等宽数字 */
+.lbl { color: var(--text); }
+.key { color: var(--text-dim2); }
+.hint { color: var(--text-dim); }
+.imp { color: var(--text-dim2); }
+.row .num,
+.unit {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+.row .num { color: var(--text); }
+
+/* ── 3. 控件：输入/下拉玻璃面 + 16px 圆角 + 冷银焦点环 ───────────── */
+select,
+input[type=number],
+input[type=text],
+input[type=search],
+textarea {
+  background-color: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  color: var(--text);
+  color-scheme: dark;
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease),
+              background-color var(--t) var(--ease);
+}
+select:hover,
+input[type=number]:hover,
+input[type=text]:hover,
+input[type=search]:hover,
+textarea:hover { border-color: var(--line2); }
+select:focus,
+input:focus,
+textarea:focus {
+  outline: none;
+  border-color: var(--line3);
+  background-color: var(--panel3);
+  box-shadow: var(--glow);
+}
+select:focus-visible,
+input:focus-visible,
+textarea:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 1px;
+  border-color: var(--line3);
+  box-shadow: var(--glow);
+}
+select option { background-color: var(--bg-deep); color: var(--text); }
+
+/* 滑块：轨道是膜内凹槽，拇指一颗冷银，聚焦有冷光 */
+.ctrl input[type=range] {
+  height: 18px;
+  border: 0;
+  background: transparent;
+}
+.ctrl input[type=range]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background-color: var(--panel2);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.35), inset 0 0 0 1px rgba(255, 255, 255, 0.06);
+}
+.ctrl input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -4px;
+  border-radius: 50%;
+  border: 1px solid var(--acc-hover);
+  background-color: var(--acc);
+  box-shadow: 0 0 10px var(--glow-cool);
+  transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.ctrl input[type=range]:hover::-webkit-slider-thumb { background-color: var(--acc-hover); }
+.ctrl input[type=range]:focus-visible::-webkit-slider-thumb {
+  background-color: var(--acc-hover);
+  box-shadow: 0 0 0 1px var(--acc-hover), 0 0 14px var(--glow-cool);
+}
+.ctrl input[type=range]::-moz-range-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background-color: var(--panel2);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+.ctrl input[type=range]::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  border: 1px solid var(--acc-hover);
+  background-color: var(--acc);
+  box-shadow: 0 0 10px var(--glow-cool);
+}
+.ctrl input[type=range]:hover::-moz-range-thumb { background-color: var(--acc-hover); }
+
+/* ── 4. 顶部条 / 侧栏：悬浮玻璃板；当前板块用冷银亮边 ───────────── */
+header {
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+}
+nav#rail {
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+}
+/* glass-skin.css 的 #sidenav/nav#rail 规则只保留膜、把 background-color 置为
+   transparent（会掉成「只有 blur 没有膜」的暗条）。侧栏要读成悬浮玻璃板，
+   这里用更高权重把它补回 var(--glass)；不动 skin 文件。 */
+main > nav#rail { background-color: var(--glass); }
+.rail-item { border-radius: var(--r2); }
+.rail-item:hover { background-color: var(--glass-hover); border-color: var(--line2); color: var(--text); }
+.rail-item.on {
+  background-color: var(--panel2);
+  border-color: var(--line3);
+  color: var(--acc-hover);
+  box-shadow: inset 2px 0 0 var(--acc), 0 0 12px var(--glow-cool);
+}
+.rail-item.on .rail-n { color: var(--acc-dim); }
+
+/* ── 5. 窄屏：blur 降到 12px，单列不横向溢出 ────────────────────── */
+@media (max-width: 900px) {
+  .tier {
+    margin: 0 0 var(--sp3);
+    -webkit-backdrop-filter: var(--glass-blur-lite);
+    backdrop-filter: var(--glass-blur-lite);
+  }
+  .tier-head { padding: 10px 11px; gap: 7px; }
+  .tier-body { padding: 2px 5px 8px; }
+  .row { padding: 7px 6px; }
+  .row .ctrl { min-width: 0; }
+  .row select,
+  .row .num { max-width: 100%; }
+}
+/* ── 6. 低置信阻断确认卡：规则轨兜底时，「继续」必须先确认 ────────── */
+#lcMask {
+  position: fixed; inset: 0; z-index: 9200; display: flex; align-items: center; justify-content: center;
+  padding: var(--sp4); background: rgba(0, 0, 0, 0.66);
+}
+#lcMask[hidden] { display: none; }
+#lcCard { width: min(560px, 100%); max-height: 86vh; overflow-y: auto; padding: 16px 18px 14px; }
+#lcCard h4 { margin: 0 0 6px; font: 700 var(--fz-l)/1.4 var(--serif); letter-spacing: .08em; color: var(--acc-hover); }
+#lcCard .lc-sub { margin: 0 0 3px; font-size: var(--fz-s); line-height: 1.65; color: var(--text-dim); }
+#lcCard h5 { margin: 12px 0 4px; font: 600 var(--fz-s)/1.4 var(--sans); letter-spacing: .04em; color: var(--text); }
+#lcCard ul { margin: 0; padding-left: 16px; }
+#lcCard li { font-size: var(--fz-s); line-height: 1.7; color: var(--text-dim); }
+#lcCard li b { color: var(--acc); font-weight: 600; }
+#lcCard .lc-btns { display: flex; gap: var(--sp2); justify-content: flex-end; margin-top: 14px; }
+#lcCard .lc-foot { margin-top: 9px; font: var(--fz-xs) var(--mono); color: var(--text-dim2); }
+  /* ── 6.1 角色主体冲突卡（只用既有令牌，不引入新配色/动画） ── */
+  .ch-mask { position: fixed; inset: 0; z-index: 92; display: none; place-items: center; background: var(--bg-deep); backdrop-filter: blur(2px); }
+  .ch-mask.on { display: grid; }
+  .ch-card { width: min(560px, calc(100vw - 48px)); padding: 18px 20px; display: grid; gap: 10px; border-radius: var(--r3); box-shadow: var(--shadow-pop); }
+  .ch-card h3 { margin: 0; font-size: 15px; }
+  .ch-sub { margin: 0; font-size: 12px; color: var(--line2); line-height: 1.6; }
+  .ch-opts { display: flex; flex-wrap: wrap; gap: 8px; }
+  .ch-foot { display: flex; justify-content: flex-end; }
+
+/*__SKIN__*/
+</style>
+</head>
+<body>
+
+<div id="app">
+  <header>
+    <a class="btn" data-backlink href="../app/index.html" title="返回平台工作台（各模块页共用的回程路）">← 工作台</a>
+    <div class="brand"><span class="dot"></span>参数工作台 <small>258 params · 3 layers</small></div>
+    <div class="seg" id="modeSeg" title="专家加开常用层；极客展开全部 258 个">
+      <button data-mode="expert" class="on">专家模式</button>
+      <button data-mode="all">全部参数</button>
+    </div>
+    <select id="device" style="width:200px;flex:none" title="显存档位"></select>
+    <input type="search" id="search" placeholder="搜索参数：CFG / 种子 / 颗粒…" title="按中文名 / 键名 / 说明搜索，命中自动展开所在层">
+    <div class="spacer"></div>
+    <button class="btn" id="saveBtn" title="把当前 258 参数存成自己的预设（本机浏览器存储）">保存为我的预设</button>
+    <button class="btn" id="importBtn">导入 JSON</button>
+    <button class="btn acc" id="exportBtn">导出 JSON</button>
+    <button class="btn" id="cineEntryBtn" title="打开一句话电影 / 参数生成向导">一句话电影</button>
+    <button class="btn" id="libBtn" title="作品库：电影库 / 专家库 分开存放">作品库</button>
+    <input type="file" id="fileInput" accept=".json" style="display:none">
+  </header>
+
+  <main id="workbenchMain">
+    <nav id="rail"></nav>
+    <section id="board">
+      <div class="board-head">
+        <div class="bh-left">
+          <h1 id="boardTitle">参数总览</h1>
+          <p id="boardDesc">258 个参数，AI 帮你调到最优。开源模型，也能出 Muse 级电影画面。</p>
+        </div>
+        <div class="toolbar">
+          <select id="enginePreset" title="引擎内置预设（注册表逐参数 presets 字段）">
+            <option value="">引擎预设…</option>
+            <option value="standard">标准</option>
+            <option value="cinematic">电影级</option>
+          </select>
+          <span id="boardCount"></span>
+          <span class="restore" id="resetBoard">还原本板块</span>
+        </div>
+      </div>
+
+      <div class="preset-bar" id="presetBar"></div>
+
+      <div class="ai-card">
+        <h3>模型库 <small>开源免费 · 只做配置切换，不下载权重，实际模型路径自配</small></h3>
+        <div class="model-row">
+          <select id="modelSelect" title="选中后自动切换采样器 / CFG / 步数 / 分辨率 / 负面词 / 提示词口径"></select>
+          <span class="model-feat" id="modelFeat"></span>
+        </div>
+        <div class="model-tips" id="modelTips"></div>
+      </div>
+
+      <div class="ai-card">
+        <h3>AI 推荐 <small>输入提示词 → 一次性给满三层配置（核心 5 项明确给值 / 常用层推荐值 / 高级层只覆盖需要改的）</small></h3>
+        <div class="ai-row">
+          <textarea id="aiPrompt" rows="2" placeholder="描述你想拍的画面，例如：国风仙境，云海之上的宫殿，雾气缭绕，衣袂飘飘…"></textarea>
+          <button class="btn" id="aiPaste" title="从剪贴板粘贴提示词（在输入框右键或按 Ctrl+V 也可粘贴）">粘贴</button>
+          <button class="btn acc" id="aiBtn">AI 推荐参数</button>
+        </div>
+        <div class="ai-result" id="aiResult"></div>
+      </div>
+
+      <!-- 关键帧两阶段（规格四）：先生成候选并自动选优，未选定不允许进入视频 -->
+      <div class="gen-card" id="kfCard" style="margin-bottom:10px">
+        <div class="panel-h" style="margin-bottom:8px">关键帧 · 文生图 → 自动选优 → 图生视频 <span class="spacer"></span><span id="kfState" style="font:var(--fz-xs)/1 var(--mono);color:var(--text-dim)">未开始</span></div>
+        <div class="gen-row" style="margin-bottom:8px">
+          <button class="btn acc" id="kfGen" title="按当前提示词批量生成候选关键帧（Kolors 中文原生）">① 生成候选关键帧</button>
+          <select class="input" id="kfCount" title="候选数量" style="height:28px;width:auto;min-width:96px">
+            <option value="3">3 张</option>
+            <option value="4" selected>4 张</option>
+            <option value="6">6 张</option>
+          </select>
+          <span id="kfHint" style="font-size:var(--fz-xs);color:var(--text-dim2)">候选用中英双语模型 Kolors；生成后自动打分排序</span>
+        </div>
+        <div id="kfGrid" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:8px"></div>
+        <div class="gen-row" style="margin-top:8px">
+          <button class="btn" id="kfVideo" disabled title="把当前选中的关键帧作为 i2v 首帧">② 用选中帧生成视频</button>
+          <span id="kfSel" style="font-size:var(--fz-xs);color:var(--text-dim)">未选定关键帧</span>
+        </div>
+      </div>
+
+      <!-- BYOK 云端生成（纯前端，Key 只存本机；不填 Key 则置灰） -->
+      <div id="byokPanel" style="margin-bottom:10px"></div>
+
+      <div class="gen-card" id="genCard">
+        <div class="gen-row">
+          <button class="btn acc gen-btn" id="genBtn" title="把当前 258 参数交给选定引擎出片（本地 ComfyUI；H3 带原生音频）">一键生成</button>
+          <select class="input" id="genEngine" title="出片引擎（本地免费）" style="height:26px;min-width:132px">
+            <option value="wan22" selected>Wan2.2（5B 本地）</option>
+            <option value="minimax_h3">MiniMax H3（原生 24fps 音画同步）</option>
+          </select>
+          <select class="input" id="genTier" title="分辨率档位（质量优先：不自动降档，显存不足会拒绝）" style="height:26px;min-width:150px">
+            <option value="720p" selected>1280×720</option>
+            <option value="864p">1536×864</option>
+            <option value="1080p">1920×1080</option>
+            <option value="cinema_2176">2176×912</option>
+            <option value="custom">自定义原生尺寸（手动选择）</option>
+          </select>
+          <label id="genQuality"><input type="radio" name="genQuality" value="quality_first" checked>质量优先（当前默认）</label>
+          <label>原生帧率 <select class="input" id="genNativeFps"><option value="24">24fps</option><option value="30" selected>30fps</option></select></label>
+          <label>输出帧率 <select class="input" id="genOutputFps"><option value="24">24fps</option><option value="30">30fps</option><option value="60" selected>60fps（插帧）</option></select></label>
+          <span id="genFpsNote"></span>
+          <div class="gen-meta" id="genMeta"></div>
+          <button class="btn" id="genCancel" style="display:none">取消任务</button>
+        </div>
+        <div id="genCustomSize" hidden>
+          <label>原生宽度（正偶数）<input class="input" id="genWidth" type="number" min="2" step="2" value="640" aria-describedby="genCustomNote"></label>
+          <label>原生高度（正偶数）<input class="input" id="genHeight" type="number" min="2" step="2" value="384" aria-describedby="genCustomNote"></label>
+          <p id="genCustomNote">自定义尺寸是用户明确手动选择，不是自动降分辨率，也不是预览快速模式；采样步数、种子与质量约束保持不变。</p>
+        </div>
+        <p class="ghint">现有模型权重可能已量化，实际精度以后端记录为准，不作全精度承诺；不自动量化、不启用加速节点。8GB 显存不保证所有高分辨率档位可运行。</p>
+        <div class="ghint" id="genRuntime" role="status" style="white-space:pre-wrap">运行环境：runtime 未核验（不代表模型文件缺失）。</div>
+        <div class="gen-status" id="genStatus" role="status"></div>
+        <div id="genSubmitError" role="alert"></div>
+        <div id="genVersions"></div>
+        <button class="btn" id="genEnhance" style="display:none">生成 / 重试增强（保留原生版）</button>
+        <div id="genEnhanceMsg" role="status"></div>
+        <button class="btn" id="genRetry" style="display:none">重试原任务</button>
+        <video id="genVideo" controls hidden style="width:100%;margin-top:var(--sp2)"></video>
+        <div class="ghint">后端任务历史 <button class="btn" id="genRefresh">刷新</button></div>
+        <div id="genHistory" style="max-height:280px;overflow:auto"></div>
+      </div>
+
+      <div class="override-banner" id="overrideBanner">
+        <span class="txt" id="overrideText"></span>
+        <button class="btn" id="restoreRec">恢复推荐值</button>
+      </div>
+
+      <div id="myPresets"></div>
+      <div class="search-info" id="searchInfo" style="display:none"></div>
+      <div id="paramList"></div>
+    </section>
+    <aside id="meters"></aside>
+  </main>
+
+  <section id="wizard" hidden>
+    <nav id="wizRail">
+      <button class="wiz-grip" id="wizRailGrip" type="button" title="拖动移动步骤条；双击回到默认位置" aria-label="拖动步骤条"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M5 4h.01M5 8h.01M5 12h.01M11 4h.01M11 8h.01M11 12h.01" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg></button>
+      <div class="wiz-steps">
+        <button class="wiz-step-btn on" data-wstep="1"><i>1</i>选风格</button>
+        <button class="wiz-step-btn" data-wstep="2"><i>2</i>写描述</button>
+        <button class="wiz-step-btn" data-wstep="3"><i>3</i>生成</button>
+        <button class="wiz-step-btn" data-wstep="4"><i>4</i>预览</button>
+      </div>
+      <button class="btn" id="wizLibBtn">作品库 · <b id="wizLibN">0</b></button>
+      <div class="wiz-note">电影通道：选风格 → 写一句话 → 等 AI 调好 258 个参数 → 看成片。全程不用懂任何参数。</div>
+      <button class="btn" id="wizSkip">跳过引导，直接调 258 参数 →</button>
+    </nav>
+    <div id="wizBody">
+      <div class="wstep" id="wstep1">
+        <h2>第一步：选一种风格</h2>
+        <p class="wsub">点一个卡片就进入下一步，不用点「下一步」。</p>
+        <div class="style-strip" id="styleStrip"></div>
+      </div>
+      <div class="wstep" id="wstep2" hidden>
+        <h2>第二步：让想象成为现实</h2>
+        <div class="wiz-mode" id="wizMode" role="group" aria-label="生成模式">
+          <button type="button" data-mode="cine" class="on">电影模式 · 8 组打磨出 Muse 级</button>
+          <button type="button" data-mode="quick">参数生成 · AI 调 258 参数</button>
+        </div>
+        <div class="wiz-mode wiz-shotmode" id="wizShotMode" role="group" aria-label="镜头数">
+          <button type="button" data-shots="1" class="on">单镜 · 5s 一镜到底</button>
+          <button type="button" data-shots="3">多镜短片 · 3 镜组接 ~14s</button>
+        </div>
+        <div class="wiz-mode wiz-ratio" id="wizRatio" role="group" aria-label="画幅比例">
+          <button type="button" data-ratio="16:9" class="on" title="横屏电影画幅（默认）">16:9</button>
+          <button type="button" data-ratio="9:16" title="竖屏短视频">9:16</button>
+          <button type="button" data-ratio="1:1" title="方形">1:1</button>
+          <button type="button" data-ratio="3:2" title="横版照片">3:2</button>
+          <button type="button" data-ratio="2:3" title="竖版照片">2:3</button>
+        </div>
+        <div class="wiz-theme-row">
+          <label class="wiz-theme-label" for="wizTheme">氛围题材</label>
+          <select id="wizTheme" class="glass-input" title="内置抖音氛围感配方：光影/色调/镜头/质感/参数/声音，一键套用"></select>
+        </div>
+        <div class="wiz-theme-note" id="wizThemeNote"></div>
+        <div class="wiz-prompt-wrap">
+          <textarea id="wizPrompt" rows="3" contenteditable="false" autocomplete="off" spellcheck="false"></textarea>
+          <button class="wiz-paste" id="wizPaste" type="button" title="读取剪贴板填入输入框（手机免长按）；也可按 Ctrl+V"><svg width="13" height="13" viewBox="0 0 16 16" fill="none" aria-hidden="true"><rect x="3.5" y="2.5" width="9" height="11" rx="1.5" stroke="currentColor" stroke-width="1.3"/><path d="M6 2.5h4M6 6h4M6 8.5h4M6 11h2.5" stroke="currentColor" stroke-width="1.3" stroke-linecap="round"/></svg><span>粘贴</span></button>
+        </div>
+        <div class="wiz-paste-hint" id="wizPasteHint" role="alert" hidden></div>
+        <div class="wiz-prompt-tools">
+          <button class="wtool" id="wizClear" type="button" title="一键清空输入框"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 4.5h10M6.5 4.5V3h3v1.5M5 4.5l.6 8h4.8l.6-8" stroke="currentColor" stroke-width="1.3" stroke-linecap="round" stroke-linejoin="round"/></svg><span>清空</span></button>
+          <button class="wtool" id="wizExample" type="button" title="填入一段示例提示词"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M8 2l1.6 3.6L13.5 6l-2.8 2.5.8 3.9L8 10.6 4.5 12.4l.8-3.9L2.5 6l3.9-.4z" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round"/></svg><span>示例</span></button>
+        </div>
+        <button class="btn acc wiz-go" id="wizGenBtn">生成视频</button>
+        <div class="wiz-style-chip" id="wizStyleChip"></div>
+      </div>
+      <div class="wstep" id="wstep3" hidden>
+        <h2>第三步：AI 正在处理</h2>
+        <p class="wsub">你只需要等，不用做任何操作。</p>
+        <div class="wiz-phases" id="wizPhases"></div>
+        <div class="cine-pick" id="cinePick" hidden></div>
+        <div class="cine-grid" id="cineGridLive"></div>
+        <div class="bar"><i id="wizBarFill" style="width:0%;background:var(--acc)"></i></div>
+        <div class="wiz-eta" id="wizEta"></div>
+        <div class="wiz-tip">喝口水，AI 在帮你调 258 个参数。</div>
+        <div class="wiz-err" id="wizErr" hidden></div>
+        <div class="wiz-actions"><button class="btn" id="wizCancel">取消</button><button class="btn" id="wizResume" hidden>从失败步重试</button><button class="btn" id="wizBack2" hidden>返回修改描述</button></div>
+      </div>
+      <div class="wstep" id="wstep4" hidden>
+        <h2>第四步：预览</h2>
+        <div id="wizPreview"></div>
+        <div class="cine-grid" id="cineCands" hidden></div>
+        <div class="cine-sub" id="cineSub" hidden></div>
+        <div class="wiz-actions">
+          <button class="btn acc" id="wizSave"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M3 8.5l3.5 3.5L13 4.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>满意，保存</button>
+          <button class="btn" id="wizReroll"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M13 8A5 5 0 1 1 8 3c1.8 0 3.4 1 4.3 2.4M13 2v3.5h-3.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>换一版</button>
+          <button class="btn" id="wizTweak"><svg width="12" height="12" viewBox="0 0 16 16" fill="none" aria-hidden="true"><path d="M2 5h12M2 11h12" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><circle cx="6" cy="5" r="1.8" stroke="currentColor" stroke-width="1.5"/><circle cx="10" cy="11" r="1.8" stroke="currentColor" stroke-width="1.5"/></svg>手动调整</button>
+        </div>
+        <div class="wiz-saved" id="wizSavedNote"></div>
+        <div class="wiz-meta" id="wizMeta"></div>
+      </div>
+      <div class="wstep" id="wstepLib" hidden>
+        <h2>作品库</h2>
+        <p class="wsub">所有历史作品按时间排列（存于本机浏览器）。可重播、复用参数、复用风格。</p>
+        <div id="wizLibList"></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="libPanel" hidden>
+    <div class="lib-head">
+      <h1>作品库</h1>
+      <div class="seg" id="libTabs" role="group" aria-label="作品库分类">
+        <button data-lib="cine" class="on">电影库 · <b id="libCineN">0</b></button>
+        <button data-lib="expert">专家库 · <b id="libExpertN">0</b></button>
+      </div>
+      <button class="btn" id="libClose">返回工作台</button>
+    </div>
+    <p class="lib-sub">电影库 = 一句话电影/向导产出；专家库 = 专家模式一键生成产出。分开存放，均在本机浏览器。</p>
+    <div id="libList"></div>
+    <div id="libPreview" hidden></div>
+  </section>
+
+  <div id="guideMask" hidden>
+    <div id="guideSpot"></div>
+    <div id="guideCard">
+      <h4 id="guideTitle"></h4>
+      <p id="guideText"></p>
+      <div class="gbtns"><button class="btn" id="guideSkip">跳过</button><button class="btn acc" id="guideNext">下一步</button></div>
+    </div>
+  </div>
+
+  <footer>
+    <span>注册表 <b id="fVer"></b></span>
+    <span>参数 <b id="fCount"></b></span>
+    <span>分层 <b id="fLayers"></b></span>
+    <span class="live" id="fState"></span>
+    <span class="live" id="fBridge"></span>
+    <span style="margin-left:auto">口径：估算（provenance 见 spec/models.catalog.json）· Muse 评分为 estimate 非实测</span>
+  </footer>
+</div>
+<div id="toast"></div>
+
+<div id="genBackground" role="status" style="position:fixed;bottom:8px;left:16px;right:16px;z-index:70;padding:8px;background:var(--panel);color:var(--text-dim);font-size:var(--fz-xs);border:1px solid var(--line)"></div>
+<script>
+/*__BYOK__*/
+/*__ENGINE__*/</script>
+<script>/*__DATA__*/</script>
+<script>
+(function () {
+  'use strict';
+  const AVP = window.AVP, reg = window.__REG, cat = window.__CATALOG, rules = window.__RULES, MUSE = window.__MUSE, MODELS = window.__MODELS, AESTH = window.__AESTH || { themes: [], words: {} };
+  const map = AVP.byKey(reg);
+  const stageOf = {}; reg.stages.forEach(s => stageOf[s.id] = s);
+  const CORE = MUSE.core_keys;
+  const layerOf = (p) => CORE.includes(p.key) ? 'core' : (p.tier === 'L3' ? 'common' : 'advanced');
+  const LAYERS = ['core', 'common', 'advanced'];
+  const layerCount = { core: 0, common: 0, advanced: 0 };
+  reg.params.forEach(p => layerCount[layerOf(p)]++);
+  const STAGE_IMPACT = { character: '角色一致性', storyboard: '叙事节奏', keyframe: '画面细节 · 光影', motion: '动态 · 速度', voice: '声音', look: '光影 · 色调', export: '输出 · 速度' };
+
+  let device = 'T0', mode = 'expert', stageFilter = 'all', search = '';
+  let expanded = { core: true, common: false, advanced: false };
+  let values = AVP.defaults(reg);
+  let baseline = null;               // {values, label}：最近一次预设/AI 推荐的快照
+  let overrides = new Set();         // 相对 baseline 被手动改写的键
+  let activeMuse = null;
+  let activeModel = MODELS.default_model;
+  let modelTouched = false;          // 用户显式选过模型后，推荐请求才带 model_id（向导默认风格驱动）
+  let rows = new Map();
+  let report = null, resolved = null;
+  let recMeta = null;                // 最近一次推荐的来源快照：低置信确认卡只从这里取真实字段
+  /* ── 角色设定自动提取（AI 提取角标 / 冲突选主体 / 与提示词矛盾留痕） ── */
+  const CHAR_KEYS = ['ch.subject', 'ch.age', 'ch.face_shape', 'ch.outfit_1', 'ch.style', 'ch.consistency'];
+  let charMeta = {};
+  try { charMeta = JSON.parse(localStorage.getItem('avp.character.meta.v1') || '{}') || {}; } catch (e) { charMeta = {}; }
+  function saveCharMeta() { try { localStorage.setItem('avp.character.meta.v1', JSON.stringify(charMeta)); } catch (e) { /* 隐私模式：只在内存里生效，不影响本次会话 */ } }
+  const showVal = (x) => (x == null || x === '' ? '（空）' : String(x));
+
+  /** 把 /api/recommend 的 character 块落到面板：只加角标与留痕，值本身已随 r.values 一起套上。 */
+  function applyCharacter(ch) {
+    if (!ch || !ch.fields) return;
+    const at = new Date().toISOString();
+    for (const k of CHAR_KEYS) {
+      const f = ch.fields[k];
+      if (!f) continue;
+      charMeta[k] = { source: f.source, evidence: f.evidence || '', value: f.value == null ? '' : f.value, at: at };
+    }
+    saveCharMeta();
+    renderBoard();
+    const aiN = CHAR_KEYS.filter(k => charMeta[k] && charMeta[k].source === 'ai').length;
+    if (ch.contradictions && ch.contradictions.length) {
+      const list = ch.contradictions.map(c => labelOf(map[c.key] || { key: c.key }) + ' ' + showVal(c.from) + ' → ' + showVal(c.to)).join('；');
+      toast('已按提示词更新：' + list);
+    } else if (aiN) {
+      toast('角色设定已从提示词提取 ' + aiN + ' 项（标「AI提取」，可手改；没提到的保持默认/留空）');
+    }
+    if (ch.conflicts && ch.conflicts.length) openSubjectPick(ch.conflicts[0]);
+    if (ch.style7 && ch.style7.explicit && MUSE.presets.some(p => p.id === ch.style7.id)) {
+      activeMuse = ch.style7.id;
+      renderPresetBar();
+    }
+  }
+
+  /** 主体冲突：平台不替你选。候选来自服务端 detectSubjects，点一个才写 ch.subject。 */
+  function openSubjectPick(conf) {
+    const cands = (conf && conf.candidates) || [];
+    if (!cands.length) return;
+    let m = document.getElementById('chPick');
+    if (!m) {
+      m = document.createElement('div');
+      m.id = 'chPick';
+      m.className = 'ch-mask';
+      m.innerHTML = [
+        '<div class="glass-modal ch-card" role="dialog" aria-modal="true" aria-labelledby="chPickTitle">',
+        '  <h3 id="chPickTitle">提示词里有不止一个主体：先选一个</h3>',
+        '  <p class="ch-sub" id="chPickSub"></p>',
+        '  <div class="ch-opts" id="chPickOpts"></div>',
+        '  <div class="ch-foot"><button class="btn ghost" type="button" id="chPickBack">返回修改描述</button></div>',
+        '</div>',
+      ].join('');
+      document.body.appendChild(m);
+      m.addEventListener('keydown', (ev) => {
+        if (ev.key === 'Escape') { m.classList.remove('on'); if ($('#aiPrompt')) $('#aiPrompt').focus(); }
+      });
+    }
+    const close = () => m.classList.remove('on');
+    const sub = document.getElementById('chPickSub');
+    sub.textContent = (conf && conf.reason ? conf.reason + '。' : '') + '平台不会替你挑，选中后才写入「主体描述」；也可以关掉卡片改写提示词。';
+    const opts = document.getElementById('chPickOpts');
+    opts.innerHTML = '';
+    cands.forEach((c) => {
+      const b = document.createElement('button');
+      b.className = 'btn';
+      b.type = 'button';
+      b.textContent = c;
+      b.onclick = () => {
+        setParam('ch.subject', c);
+        charMeta['ch.subject'] = { source: 'ai', evidence: '用户从候选中确认：' + c, value: c, at: new Date().toISOString() };
+        saveCharMeta(); renderBoard(); close();
+        toast('主体已确认：' + c);
+      };
+      opts.appendChild(b);
+    });
+    document.getElementById('chPickBack').onclick = () => { close(); if ($('#aiPrompt')) $('#aiPrompt').focus(); };
+    m.classList.add('on');
+    const first = opts.querySelector('button');
+    if (first) first.focus();
+  }
+
+  const $ = (s) => document.querySelector(s);
+  const fmt = (n) => (n >= 10000 ? (n / 1000).toFixed(1) + 'k' : String(n));
+  const deviceObj = () => cat.devices.find(d => d.id === device) || cat.devices[0];
+  const ctx = () => ({ usable_mib: deviceObj().usable_mib, device: device });
+  const labelOf = (p) => (typeof p.label === 'string' ? p.label : (p.label && p.label.zh) || p.key);
+  const clone = (o) => Object.assign({}, o);
+
+  /* ───── 低置信阻断确认卡（单一实现：向导 / 一键生成 / 电影入库 / 外壳向导共用）─────
+     为什么要有它：提示词解析一旦退到规则轨兜底（非 AI），参数就是关键词猜的。
+     旧版只在替代口径区写一行字，用户仍可一路点下去 —— 等于系统替用户脑补参数。
+     现在「继续」必须显式确认，并把 confirmedByUser + 时间写进留痕（localStorage + 任务 note）。
+     卡片只吃调用方传进来的真实字段，不自己编任何一项。 */
+  const LOWCONF = (function () {
+    const KEY = 'avp.lowconf.trace.v1';
+    const DEF_TITLE = '解析置信低：本次走规则轨（非 AI）';
+    let open = null;
+    function es(v) {
+      return String(v == null ? '' : v).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+    function traces() { try { return JSON.parse(localStorage.getItem(KEY) || '[]'); } catch (e) { return []; } }
+    function remember(rec) {
+      try { const l = traces(); l.unshift(rec); localStorage.setItem(KEY, JSON.stringify(l.slice(0, 50))); } catch (e) { /* 存储不可用不阻断 */ }
+      return rec;
+    }
+    function rows(list) {
+      if (!list || !list.length) return '<li>无</li>';
+      return list.map(function (x) { return '<li><b>' + es(x.k) + '</b> · ' + es(x.v) + '</li>'; }).join('');
+    }
+    function paint(ctx) {
+      const mask = document.getElementById('lcMask');
+      document.getElementById('lcTitle').textContent = ctx.title || DEF_TITLE;
+      document.getElementById('lcSub').textContent = ctx.sub || '';
+      document.getElementById('lcScope').textContent = ctx.scope || '';
+      document.getElementById('lcInfer').innerHTML = rows(ctx.inferred);
+      document.getElementById('lcUnknown').innerHTML = rows(ctx.unknown);
+      document.getElementById('lcFoot').textContent = ctx.foot || '「按规则轨继续」会把 confirmedByUser: true 与确认时间写进留痕；Esc 与 Enter 都走「返回修改描述」，不提交。';
+      mask.hidden = false;
+      const back = document.getElementById('lcBack');
+      if (back) back.focus();
+    }
+    function close() {
+      const mask = document.getElementById('lcMask');
+      if (mask) mask.hidden = true;
+      const o = open; open = null;
+      if (o && o.prev && o.prev.focus) { try { o.prev.focus(); } catch (e) { /* 焦点目标已移出文档 */ } }
+      return o;
+    }
+    function settle(confirmed, ctx) {
+      const o = close();
+      if (!o) return;
+      const rec = remember({ at: new Date().toISOString(), scope: (ctx && ctx.scope) || '', source: (ctx && ctx.source) || '', reason: (ctx && ctx.reason) || '', confirmedByUser: confirmed });
+      o.resolve({ confirmed: confirmed, at: rec.at, trace: rec });
+    }
+    function mount() {
+      if (document.getElementById('lcMask')) return;
+      const wrap = document.createElement('div');
+      wrap.id = 'lcMask'; wrap.hidden = true;
+      wrap.innerHTML = '<div id="lcCard" class="glass-modal" role="dialog" aria-modal="true" aria-labelledby="lcTitle" aria-describedby="lcSub">'
+        + '<h4 id="lcTitle"></h4>'
+        + '<p class="lc-sub" id="lcSub"></p>'
+        + '<p class="lc-sub" id="lcScope"></p>'
+        + '<h5>被推断的关键项（规则轨按关键词给出，不是 AI 判断）</h5><ul id="lcInfer"></ul>'
+        + '<h5>未能确定、将使用默认值的项</h5><ul id="lcUnknown"></ul>'
+        + '<div class="lc-btns"><button class="btn" id="lcBack" type="button">返回修改描述</button><button class="btn acc" id="lcGo" type="button">按规则轨继续</button></div>'
+        + '<div class="lc-foot" id="lcFoot"></div>'
+        + '</div>';
+      document.body.appendChild(wrap);
+      wrap.addEventListener('click', function (e) { if (e.target === wrap) settle(false, wrap.__ctx); });
+      document.getElementById('lcBack').addEventListener('click', function () { settle(false, wrap.__ctx); });
+      document.getElementById('lcGo').addEventListener('click', function () { settle(true, wrap.__ctx); });
+    }
+    function show(ctx) {
+      mount();
+      const wrap = document.getElementById('lcMask');
+      if (open && open.resolve) { const prev = open; open = null; prev.resolve({ confirmed: false, at: null, superseded: true }); }
+      wrap.__ctx = ctx || {};
+      return new Promise(function (resolve) { open = { resolve: resolve, prev: document.activeElement }; paint(wrap.__ctx); });
+    }
+    // 键盘：Esc = 返回修改描述；Enter 只在焦点明确落在「按规则轨继续」时才算确认（危险动作不做回车默认）
+    document.addEventListener('keydown', function (e) {
+      const mask = document.getElementById('lcMask');
+      if (!mask || mask.hidden) return;
+      if (e.key === 'Escape') { e.preventDefault(); settle(false, mask.__ctx); return; }
+      if (e.key === 'Enter') {
+        if (document.activeElement === document.getElementById('lcGo')) return;
+        e.preventDefault(); settle(false, mask.__ctx);
+      }
+    });
+    return { show: show, traces: traces };
+  })();
+
+  const SAMPLER_LABEL = { euler: 'Euler', euler_a: 'Euler a', dpmpp_2m: 'DPM++ 2M', dpmpp_2m_sde: 'DPM++ 2M SDE', dpmpp_3m_sde: 'DPM++ 3M SDE', uni_pc: 'UniPC', lcm: 'LCM', ddim: 'DDIM' };
+  const SCHED_LABEL = { normal: 'Normal', karras: 'Karras', exponential: 'Exponential', sgm_uniform: 'SGM Uniform', beta: 'Beta' };
+  function enumLabel(key, v) {
+    if (/\.sampler$/.test(key)) return SAMPLER_LABEL[v] || v;
+    if (/\.scheduler$/.test(key)) return SCHED_LABEL[v] || v;
+    return v;
+  }
+  function samplerCombo() {
+    const s = SAMPLER_LABEL[values['kf.sampler']] || values['kf.sampler'];
+    return values['kf.scheduler'] === 'karras' ? s + ' Karras' : s;
+  }
+
+  /* ───── 计算 ───── */
+  function recompute() {
+    const r = AVP.resolve(reg, rules, values, { ctx: ctx() });
+    values = r.values; resolved = r;
+    report = AVP.estimate(reg, cat, values, { device: device });
+    renderMeters();
+    syncControls();
+    $('#fState').textContent = report.vram.state === 'ok' ? '● 预算内' : report.vram.state === 'warn' ? '● 接近红线' : '● 超预算';
+    $('#fState').style.color = report.vram.state === 'ok' ? 'var(--acc)' : report.vram.state === 'warn' ? 'var(--warn)' : 'var(--bad-ink)';
+  }
+
+  /* ───── 控件 ───── */
+  function controlHtml(p) {
+    const v = values[p.key];
+    if (p.type === 'bool') return `<div class="ctrl"><div class="switch ${v ? 'on' : ''}" data-key="${p.key}" data-type="bool"></div><span class="unit" data-state="${p.key}">${v ? '开' : '关'}</span></div>`;
+    if (p.type === 'enum') {
+      return `<select data-key="${p.key}" data-type="enum">${p.options.map(o => `<option value="${o}" ${o === v ? 'selected' : ''}>${enumLabel(p.key, o)}</option>`).join('')}</select>`;
+    }
+    if (p.type === 'text') return '';
+    if (p.type === 'seed') return `<input type="number" class="num" data-key="${p.key}" data-type="seed" value="${v}" step="1">`;
+    return `<div class="ctrl">
+      <input type="range" data-key="${p.key}" data-type="${p.type}" min="${p.min}" max="${p.max}" step="${p.step}" value="${v}">
+      <input type="number" class="num" data-key="${p.key}" data-type="${p.type}" min="${p.min}" max="${p.max}" step="${p.step}" value="${v}">
+      <span class="unit">${p.unit || ''}</span>
+    </div>`;
+  }
+
+  function impactText(p) {
+    const i = p.impact || {};
+    const parts = [];
+    if (i.vram > 0) parts.push('显存+' + Math.round(i.vram * 100) + '%');
+    if (i.time > 0) parts.push('耗时+' + Math.round(i.time * 100) + '%');
+    if (i.quality > 0) parts.push('画质权重 ' + i.quality);
+    const cat = STAGE_IMPACT[p.stage] || '';
+    return '影响：' + (cat ? cat + (parts.length ? ' · ' : '') : '') + (parts.join(' · ') || '由求解器统一核算');
+  }
+
+  function guardBadge(p) {
+    const hit = resolved && resolved.warnings.find(w => w.id === 'guard:' + p.key);
+    if (hit) return `<span class="badge guard-hit" title="${hit.text}（条件 ${hit.why}）">警告</span>`;
+    if (p.guards && p.guards.length) return `<span class="badge guard" title="护栏：${p.guards.map(g => g.when + ' → ' + g.warn).join('；')}">护栏</span>`;
+    return '';
+  }
+
+  function rowHtml(p) {
+    const v = values[p.key];
+    const isText = p.type === 'text';
+    const tier = `<span class="badge core">${p.tier}</span>`;
+    const auto = p.auto ? `<span class="badge auto">联动</span>` : '';
+    return `<div class="row ${auto ? 'auto-row' : ''}" data-row="${p.key}">
+      <div class="row-meta">
+        <div class="row-top">
+          <span class="lbl">${labelOf(p)}</span>
+          ${tier}${auto}${guardBadge(p)}
+          ${p.key === 'kf.sampler' ? '<span class="badge combo" data-combo="kf.sampler"></span>' : ''}
+          <span class="key">${p.key}</span>
+          <span class="badge diff" style="display:none">已自定义</span>
+        </div>
+        ${isText ? '' : `<div class="hint">${p.hint || ''}</div><div class="imp">${impactText(p)}</div>`}
+        ${isText ? `<div class="row-attach"><textarea data-key="${p.key}" data-type="text" rows="2">${v}</textarea></div>` : ''}
+      </div>
+      <div class="ctrl" style="${isText ? 'justify-content:flex-end' : ''}">
+        ${controlHtml(p)}
+        <span class="restore" data-restore="${p.key}">还原</span>
+      </div>
+    </div>`;
+  }
+
+  function matchSearch(p) {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return p.key.toLowerCase().includes(q) || labelOf(p).toLowerCase().includes(q)
+      || (p.hint || '').toLowerCase().includes(q) || (p.options || []).join(' ').toLowerCase().includes(q);
+  }
+
+  function renderBoard() {
+    const head = stageFilter === 'all' ? null : stageOf[stageFilter];
+    $('#boardTitle').textContent = head ? head.code + ' · ' + head.name : '参数总览 · 三层视图';
+    $('#boardDesc').textContent = head ? head.desc : '258 个参数，AI 帮你调到最优。开源模型，也能出 Muse 级电影画面。';
+
+    let totalHits = 0;
+    let html = '';
+    for (const layer of LAYERS) {
+      const meta = MUSE.layers[layer];
+      const all = reg.params.filter(p => layerOf(p) === layer && (stageFilter === 'all' || p.stage === stageFilter));
+      const list = all.filter(matchSearch);
+      totalHits += list.length;
+      const open = search ? list.length > 0 : expanded[layer];
+      const caution = layer === 'advanced' ? '<span class="tier-caution">高级用户慎用</span>' : '';
+      html += `<div class="tier ${open ? 'open' : ''}" data-tier="${layer}">
+        <div class="tier-head" data-toggle="${layer}" title="点击展开/折叠">
+          <span class="tier-arrow">▸</span>
+          <span class="tier-name">${meta.name}</span>
+          <span class="tier-desc">${meta.desc}</span>
+          ${caution}
+          <span class="tier-n">${search ? list.length + '/' + all.length : all.length}</span>
+        </div>
+        <div class="tier-body">`;
+      if (open) {
+        if (!list.length) {
+          html += `<div class="tier-empty">${search ? '本层无搜索命中。' : '本板块在此层没有参数。'}</div>`;
+        } else {
+          const byStage = {};
+          list.forEach(p => (byStage[p.stage] = byStage[p.stage] || []).push(p));
+          for (const sid of Object.keys(byStage)) {
+            if (stageFilter === 'all') html += `<div class="group-title">${stageOf[sid].code} · ${stageOf[sid].name}</div>`;
+            html += byStage[sid].map(rowHtml).join('');
+          }
+        }
+      }
+      html += '</div></div>';
+    }
+    $('#paramList').innerHTML = html;
+
+    const si = $('#searchInfo');
+    if (search) { si.style.display = ''; si.innerHTML = `搜索「<b>${search}</b>」· 命中 ${totalHits} 项（自动展开命中层；清空搜索框恢复）`; }
+    else si.style.display = 'none';
+
+    rows = new Map();
+    $('#paramList').querySelectorAll('[data-row]').forEach(el => rows.set(el.dataset.row, el));
+    $('#paramList').querySelectorAll('[data-toggle]').forEach(el => {
+      el.onclick = () => { const l = el.dataset.toggle; expanded[l] = !expanded[l]; renderBoard(); };
+    });
+    bindControls();
+    syncControls();
+    renderBoardBadges();
+    if (search && totalHits) {
+      const first = $('#paramList').querySelector('[data-row]');
+      if (first) first.scrollIntoView({ block: 'center' });
+    }
+  }
+
+  function bindControls() {
+    const list = $('#paramList');
+    list.oninput = (e) => {
+      const el = e.target, key = el.dataset.key;
+      if (!key) return;
+      let v;
+      if (el.dataset.type === 'bool') v = el.classList.toggle('on');
+      else if (el.dataset.type === 'enum' || el.dataset.type === 'text' || el.dataset.type === 'seed') v = el.value;
+      else v = Number(el.value);
+      setParam(key, v, el);
+    };
+    list.onclick = (e) => {
+      const t = e.target;
+      if (t.classList.contains('switch')) { setParam(t.dataset.key, !t.classList.contains('on'), t); return; }
+      if (t.dataset.restore) { setParam(t.dataset.restore, map[t.dataset.restore].default); return; }
+    };
+  }
+
+  function setParam(key, raw, sourceEl) {
+    const p = map[key];
+    const v = AVP.coerce(p, raw);
+    values = Object.assign({}, values, { [key]: v });
+    if (baseline) {
+      if (v !== baseline.values[key]) overrides.add(key); else overrides.delete(key);
+      updateBanner(key);
+    }
+    recompute();
+    if (sourceEl) {
+      const siblings = rows.get(key) ? rows.get(key).querySelectorAll('[data-key="' + key + '"]') : [];
+      siblings.forEach(s => {
+        if (s === sourceEl) return;
+        if (s.type === 'range' || s.type === 'number') s.value = values[key];
+      });
+    }
+    const row = rows.get(key);
+    if (row) {
+      const st = row.querySelector('[data-state="' + key + '"]');
+      if (st) st.textContent = values[key] ? '开' : '关';
+      const sw = row.querySelector('.switch');
+      if (sw) sw.classList.toggle('on', !!values[key]);
+    }
+    renderBoardBadges();
+    bridgeQueue();
+  }
+
+  function updateBanner(lastKey) {
+    const b = $('#overrideBanner');
+    if (!baseline || !overrides.size) { b.classList.remove('on'); return; }
+    const p = map[lastKey] || map[[...overrides][overrides.size - 1]];
+    $('#overrideText').innerHTML = `你正在手动调整「<b>${labelOf(p)}</b>」· ${baseline.label}值已被覆盖（共 <b>${overrides.size}</b> 项）`;
+    b.classList.add('on');
+  }
+
+  function syncControls() {
+    for (const [key, row] of rows) {
+      const p = map[key], v = values[key];
+      row.querySelectorAll('[data-key="' + key + '"]').forEach(el => {
+        if (el === document.activeElement) return;
+        if (el.type === 'checkbox') el.checked = !!v;
+        else if (el.dataset.type === 'bool') el.classList.toggle('on', !!v);
+        else if (String(el.value) !== String(v)) el.value = v;
+      });
+      const st = row.querySelector('[data-state="' + key + '"]');
+      if (st) st.textContent = v ? '开' : '关';
+      row.classList.toggle('custom', v !== p.default);
+      row.classList.toggle('overridden', overrides.has(key));
+      const diff = row.querySelector('.badge.diff');
+      if (diff) {
+        const cm = charMeta[key];
+        if (overrides.has(key)) { diff.textContent = '已自定义'; diff.title = '你手动改过，再次推荐不覆盖'; diff.style.display = ''; }
+        else if (cm && cm.source === 'ai') { diff.textContent = 'AI提取'; diff.title = cm.evidence || '从提示词提取'; diff.style.display = ''; }
+        else { diff.textContent = '已自定义'; diff.title = ''; diff.style.display = v !== p.default ? '' : 'none'; }
+      }
+      if (key === 'kf.sampler') { const cb = row.querySelector('[data-combo]'); if (cb) cb.textContent = samplerCombo(); }
+    }
+    renderBoardBadges();
+  }
+
+  function renderBoardBadges() {
+    let n = 0;
+    for (const k in values) if (map[k] && values[k] !== map[k].default) n++;
+    const scope = stageFilter === 'all' ? '全套' : stageOf[stageFilter].name;
+    $('#boardCount').textContent = `${scope}已改 ${n} 项${overrides.size ? ' · 覆盖推荐 ' + overrides.size + ' 项' : ''}`;
+  }
+
+  /* ───── 统一入口：套上一套完整 values ───── */
+  function applyValues(next, label, opts) {
+    values = clone(next);
+    overrides = new Set();
+    baseline = (opts && opts.baseline === false) ? null : { values: clone(next), label };
+    recompute();
+    renderBoard();
+    updateBanner();
+    bridgeQueue();
+  }
+
+  /* ───── 风格预设（7 个市面口径风格，一点配齐 258 参数） ───── */
+  function renderPresetBar() {
+    $('#presetBar').innerHTML = MUSE.presets.map(p => `
+      <button class="style-card ${activeMuse === p.id ? 'on' : ''}" data-muse="${p.id}" title="${p.desc} · ${p.mapping_note}">
+        <i class="sc-emoji">${p.emoji}</i><b>${p.name}</b>
+      </button>`).join('');
+    $('#presetBar').querySelectorAll('[data-muse]').forEach(b => {
+      b.onclick = () => applyMuse(b.dataset.muse);
+    });
+  }
+
+  function applyMuse(id, silent) {
+    const pr = MUSE.presets.find(p => p.id === id);
+    if (!pr) return;
+    const next = AVP.defaults(reg);
+    for (const [k, v] of Object.entries(pr.values)) if (map[k]) next[k] = AVP.coerce(map[k], v);
+    activeMuse = id;
+    applyValues(next, '风格·' + pr.name);
+    renderPresetBar();
+    syncWizardStyle(id);
+    if (!silent) toast(`已套用「${pr.name}」· ${Object.keys(pr.values).length} 项补丁 · 258 参数全部就位（展开「全部参数」可验证）`);
+  }
+
+  /* ───── 模型库（model_configs 叠加层：选中即切参数基线，不下载权重） ───── */
+  const RATIO_VAL = { '16:9': 16 / 9, '9:16': 9 / 16, '1:1': 1, '4:3': 4 / 3, '2.35:1': 2.35 };
+  const modelById = (id) => MODELS.models.find(c => c.id === id);
+
+  /** 配置 → 注册表补丁（逐键 coerce；越界夹取与比例近似如实记 notes，不静默）。 */
+  function modelPatches(c) {
+    const patch = {}, notes = [];
+    const put = (k, v) => {
+      if (v == null || !map[k]) return;
+      const cv = AVP.coerce(map[k], v);
+      if (cv !== v && (map[k].type === 'int' || map[k].type === 'float')) notes.push(`${k} ${v} 超注册表范围，夹取到 ${cv}`);
+      patch[k] = cv;
+    };
+    put('kf.sampler', c.sampler); put('kf.scheduler', c.scheduler); put('kf.cfg', c.cfg); put('kf.steps', c.steps);
+    if (Array.isArray(c.res)) {
+      const [w, h] = c.res;
+      put('kf.resolution', Math.max(w, h));
+      let best = null, bd = Infinity;
+      for (const [r, v] of Object.entries(RATIO_VAL)) { const d = Math.abs(Math.log((w / h) / v)); if (d < bd) { bd = d; best = r; } }
+      patch['kf.ratio'] = best;
+      if (bd > 0.01) notes.push(`${w}×${h} 无精确比例枚举，按最近 ${best} 近似`);
+    }
+    put('mo.fps', c.fps); put('mo.duration', c.duration);
+    if (c.default_negative != null) patch['ch.negative'] = c.default_negative;
+    if (c.prompt_suffix != null) patch['ch.prompt_prefix'] = c.prompt_suffix;
+    for (const [k, v] of Object.entries(c.registry_map || {})) put(k, v);
+    return { patch, notes };
+  }
+
+  function renderModelSelect() {
+    const groups = [['image', '图像模型 · 开源本地'], ['video', '视频模型 · 开源本地']];
+    $('#modelSelect').innerHTML = groups.map(([t, label]) =>
+      `<optgroup label="${label}">` + MODELS.models.filter(c => c.type === t).map(c =>
+        `<option value="${c.id}"${c.id === activeModel ? ' selected' : ''}>${c.name} · ${c.tag}</option>`).join('') + '</optgroup>').join('');
+    $('#modelSelect').onchange = (e) => applyModel(e.target.value);
+    renderModelInfo();
+  }
+
+  function renderModelInfo() {
+    const c = modelById(activeModel);
+    if (!c) return;
+    $('#modelFeat').textContent = `${c.name} | ${c.features}`;
+    const noMap = c.registry_map ? '' : '<span class="warn">注册表无对应底模枚举：checkpoint 保持当前值，权重路径自配。</span> ';
+    $('#modelTips').innerHTML = noMap + esc(c.tips) + `<span class="note">${esc(c.mapping_note)}</span>`;
+  }
+
+  function applyModel(id, silent) {
+    const c = modelById(id);
+    if (!c) return;
+    activeModel = id; modelTouched = true;
+    const { patch, notes } = modelPatches(c);
+    const next = clone(values);
+    for (const [k, v] of Object.entries(patch)) next[k] = v;
+    applyValues(next, '模型·' + c.name);
+    $('#aiPrompt').placeholder = c.placeholder;
+    $('#modelSelect').value = id;
+    renderModelInfo();
+    if (!silent) toast(`已切换到 ${c.name}，已自动调整最佳参数${notes.length ? ' · ' + notes.join('；') : ''}`);
+  }
+
+  /** 旧后端不认识 model_id（不回显）时，把用户选定的模型基线在本地补叠进推荐值，并如实注记。 */
+  function ensureModelOverlay(r) {
+    if (!modelTouched || !r || !r.values || r.model_id) return '';
+    const c = modelById(activeModel);
+    if (!c) return '';
+    Object.assign(r.values, modelPatches(c).patch);
+    r.model_id = c.id;
+    return '旧后端未识别 model_id，模型基线已本地补叠';
+  }
+
+  /* ───── AI 推荐（双轨：后端 Qwen / 本地规则，绝不伪装） ───── */
+  function splitLayers(vals) {
+    const core = {}, common = {}, advanced_overrides = {};
+    for (const p of reg.params) {
+      const v = vals[p.key];
+      if (CORE.includes(p.key)) core[p.key] = v;
+      else if (p.tier === 'L3') common[p.key] = v;
+      else if (v !== p.default) advanced_overrides[p.key] = v;
+    }
+    return { core, common, advanced_overrides };
+  }
+
+  function localRecommend(prompt) {
+    const text = String(prompt || '').toLowerCase();
+    let best = MUSE.presets[0], bestScore = 0;
+    for (const p of MUSE.presets) {
+      const s = (p.keywords || []).filter(k => text.includes(String(k).toLowerCase())).length;
+      if (s > bestScore) { best = p; bestScore = s; }
+    }
+    const next = AVP.defaults(reg);
+    for (const [k, v] of Object.entries(best.values)) if (map[k]) next[k] = AVP.coerce(map[k], v);
+    let modelNote = '';
+    if (modelTouched) {
+      const c = modelById(activeModel);
+      if (c) { const { patch } = modelPatches(c); Object.assign(next, patch); modelNote = ` 叠加模型库「${c.name}」基线（${Object.keys(patch).length} 键）。`; }
+    }
+    const r = AVP.resolve(reg, rules, next, { ctx: ctx() });
+    const est = AVP.estimate(reg, cat, r.values, { device });
+    return {
+      source: 'rules', preset: { id: best.id, name: best.name },
+      model_id: modelTouched ? activeModel : null,
+      reason: `本地规则推荐：提示词关键词匹配「${best.name}」预设（${Object.keys(best.values).length} 项补丁），其余保持注册表默认。${modelNote}非 AI 输出。`,
+      ...splitLayers(r.values), values: r.values,
+      muse_level: { score: +(est.quality.score / 10).toFixed(1), provenance: 'estimate', basis: 'engine.estimate 质量分/10（估算模型，非实测）' },
+      ai: { attempted: false, ok: false }, invalid_keys: [],
+    };
+  }
+
+  function showRecommend(r, transportNote) {
+    applyValues(r.values, r.source === 'qwen' ? 'AI推荐' : '规则推荐');
+    activeMuse = r.preset ? r.preset.id : null;
+    renderPresetBar();
+    recMeta = {
+      source: r.source || 'rules',
+      reason: r.reason || '',
+      presetName: (r.preset && r.preset.name) || '',
+      core: r.core || {},
+      advN: Object.keys(r.advanced_overrides || {}).length,
+      aiCode: (r.ai && r.ai.error && r.ai.error.code) || '',
+      transportNote: transportNote || '',
+      confirmedAt: null,
+    };
+    applyCharacter(r.character);
+    const el = $('#aiResult');
+    const srcCls = r.source === 'qwen' ? 'qwen' : 'rules';
+    const srcTxt = r.source === 'qwen' ? `AI 推荐 · ${r.model || 'qwen'}` : '规则推荐 · 非 AI';
+    const inv = (r.invalid_keys || []).length;
+    el.innerHTML = `<span class="src ${srcCls}">${srcTxt}</span><span class="reason">${r.reason}</span>
+      <div class="meta">Muse 质感预估 ${r.muse_level.score}/10（provenance: estimate，非实测）· 核心 ${Object.keys(r.core).length} 项 · 常用 ${Object.keys(r.common).length} 项 · 高级覆盖 ${Object.keys(r.advanced_overrides).length} 项${r.model_id ? ' · 模型库 ' + esc((modelById(r.model_id) || {}).name || r.model_id) : ''}${inv ? ' · AI 非法键已拦截 ' + inv + ' 项' : ''}${transportNote ? ' · ' + transportNote : ''}</div>`;
+    el.classList.add('on');
+  }
+
+  async function aiRecommend() {
+    const prompt = $('#aiPrompt').value.trim();
+    const btn = $('#aiBtn');
+    btn.disabled = true; btn.textContent = '推荐中…';
+    const base = location.protocol === 'http:' || location.protocol === 'https:' ? location.origin : 'http://127.0.0.1:8388';
+    try {
+      const res = await fetch(base + '/api/recommend', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt, device, model_id: modelTouched ? activeModel : undefined }),
+      });
+      if (!res.ok) throw new Error('HTTP ' + res.status);
+      const r = await res.json();
+      const overlayNote = ensureModelOverlay(r);
+      const note = [r.source === 'qwen' ? '' : (r.ai && r.ai.error ? r.ai.error.code : ''), overlayNote].filter(Boolean).join(' · ');
+      showRecommend(r, note);
+      toast(r.source === 'qwen' ? 'AI 推荐已填入三层参数' : '后端规则推荐已填入（' + ((r.ai && r.ai.error && r.ai.error.code) || '无 key') + '，未伪装 AI）');
+    } catch (e) {
+      const r = localRecommend(prompt);
+      showRecommend(r, '后端不可达（' + e.message + '），走本地规则轨');
+      toast('后端不可达：已用本地规则推荐（非 AI），启动 node tools/serve.mjs 并设置 DASHSCOPE_API_KEY 可走 Qwen');
+    } finally {
+      btn.disabled = false; btn.textContent = 'AI 推荐参数';
+    }
+  }
+
+  /* ───── 低置信上下文的两个构造器（推荐轨 / 电影槽位轨），只读响应真值 ───── */
+  function lowConfCtxFromRec(meta, scope) {
+    const inferred = [];
+    const unknown = [];
+    if (meta.presetName) inferred.push({ k: '风格预设', v: meta.presetName + '（提示词关键词命中）' });
+    for (const key of CORE) {
+      if (meta.core && meta.core[key] != null) {
+        const p = map[key];
+        inferred.push({ k: labelOf(p || { key: key }), v: enumLabel(key, meta.core[key]) + '（' + key + '）' });
+      }
+    }
+    unknown.push({ k: '提示词语义（主体 / 场景 / 光线 / 情绪）', v: '规则轨不做语义解析 → 未确定' });
+    unknown.push({ k: '常用层 + 高级层其余参数', v: '规则轨未逐项判定，取关键词预设补丁 + 注册表默认值（高级层仅 ' + meta.advN + ' 项被覆盖）' });
+    if (meta.aiCode) unknown.push({ k: 'AI 通路', v: '未执行（' + meta.aiCode + '）' });
+    if (meta.transportNote) unknown.push({ k: '通路说明', v: meta.transportNote });
+    return {
+      title: '解析置信低：本次走规则轨（非 AI）',
+      sub: '这次参数来自规则轨：' + (meta.reason || '关键词匹配 + 求解器，非 AI 输出'),
+      scope: scope + ' · 分析来源 ' + (meta.source || 'rules'),
+      inferred: inferred, unknown: unknown, source: meta.source || 'rules', reason: meta.reason || '',
+    };
+  }
+  function lowConfCtxFromCine(ana, rep) {
+    const inferred = [];
+    const unknown = [];
+    if (ana.subject) inferred.push({ k: '主体', v: ana.subject + '（原文整句直用，未经拆解）' });
+    if (rep && rep.styleId) inferred.push({ k: '风格', v: rep.styleId + '（规则轨 style_id 兜底映射）' });
+    [['scene', '场景'], ['light', '光线'], ['mood', '情绪'], ['camera', '镜头语言'], ['shot', '画面类型']].forEach(function (pair) {
+      const v = ana[pair[0]];
+      unknown.push({ k: pair[1], v: v ? v + '（规则轨默认值，未从描述里解析到）' : '未确定（空）→ 按默认值执行' });
+    });
+    return {
+      title: '解析置信低：本次走规则轨（非 AI）',
+      sub: '槽位分析退规则轨兜底：' + ((ana.error && (ana.error.code + ' · ' + ana.error.message)) || ana.reason || '非 AI'),
+      scope: '电影向导 · 成片入库 · 分析来源 rules',
+      inferred: inferred, unknown: unknown, source: 'rules', reason: ana.reason || '',
+    };
+  }
+
+  /* ───── 一键生成：当前 258 参数 → POST /api/jobs → SSE 实时进度 ───── */
+  const apiBase = () => location.protocol === 'http:' || location.protocol === 'https:' ? location.origin : 'http://127.0.0.1:8388';
+  let genJob = null, genEs = null, genObserved = null, genActive = null, genSelected = null;
+  let serverJobs = [], genReady = false, genLoading = false, genSubmitting = false, genAgain = false, genTimer = null, genVideoId = null;
+  const genNotified = new Set();
+  const GEN_BACKGROUND = '任务在后台继续生成，可稍后回来看（需后端服务保持运行；关机后待重启续接）。';
+  const GEN_STATE = { queued: ['排队中', 'warn'], running: ['生成中', 'warn'], succeeded: ['已完成', 'ok'], failed: ['失败', 'bad'], canceled: ['已取消', 'bad'] };
+  const GEN_LIVE = ['queued', 'running'];
+  const genLive = (j) => GEN_LIVE.includes(j.state);
+  const genBusy = () => !genReady || genLoading || genSubmitting || !!genActive;
+  function syncGen() {
+    $('#genBtn').disabled = genBusy();
+    $('#genBtn').textContent = genSubmitting ? '提交中…' : !genReady ? '同步任务中…' : genActive ? '生成中…' : '铸造画面';
+    $('#genRetry').disabled = genBusy();
+    $('#genEnhance').disabled = genEnhancing || genLoading || !genReady || genEnhancementLive(genJob);
+    $('#genBackground').textContent = !genReady ? '正在同步后端任务；查询成功前不重复提交。' : genActive ? GEN_BACKGROUND : '任务历史已同步；进度与成片保留在后端。';
+  }
+  async function genRequest(path, options = {}) {
+    const opt = { ...options };
+    if (typeof AbortSignal !== 'undefined' && AbortSignal.timeout) opt.signal = AbortSignal.timeout(15000);
+    const res = await fetch(apiBase() + path, opt);
+    const data = await res.json();
+    if (!res.ok) throw new Error((data.error && (data.error.code + ' ' + data.error.message)) || 'HTTP ' + res.status);
+    return data;
+  }
+  let runtimeLoading = false;
+  function refreshQualityRuntime() {
+    if (runtimeLoading) return;
+    runtimeLoading = true;
+    genRequest('/api/quality').then(function (data) {
+      var runtime = data && data.runtime;
+      if (!runtime || typeof runtime !== 'object') throw new Error('接口未提供 runtime');
+      var list = function (items) { return Array.isArray(items) ? items.filter(Boolean) : []; };
+      var state = function (ready) { return ready === true ? '依赖就绪' : ready === false ? '未就绪（见详情）' : 'runtime 未核验'; };
+      var message = function (item) { return typeof item === 'string' ? item : [item.code, item.message, item.hint].filter(Boolean).join(' '); };
+      var lines = ['运行环境（后端核验；依赖就绪不保证显存足够）', 'ComfyUI：' + (runtime.comfy_reachable === true ? '可达' : runtime.comfy_reachable === false ? '不可达' : 'runtime 未核验')];
+      var models = list(runtime.models);
+      if (!models.length) lines.push('模型：runtime 未核验');
+      models.forEach(function (model) {
+        lines.push(String(model.engine || '模型') + '：' + state(model.ready));
+        list(model.requirements).forEach(function (req) {
+          lines.push('  ' + [req.node, req.field, req.name].filter(Boolean).join(' / ') + '：' + (req.state === 'installed' ? '已安装' : req.state === 'missing' ? '缺失（后端核验）' : '未核验'));
+        });
+        list(model.warnings).forEach(function (warning) { lines.push('  警告：' + message(warning)); });
+        list(model.errors).forEach(function (error) { lines.push('  错误：' + message(error)); });
+      });
+      var postprocess = list(runtime.postprocess);
+      if (!postprocess.length) lines.push('后处理：runtime 未核验');
+      postprocess.forEach(function (item) { lines.push('后处理 ' + (item.id || '') + '：' + state(item.ready) + ' ' + (item.message || '')); });
+      $('#genRuntime').textContent = lines.join('\n');
+    }).catch(function (e) {
+      $('#genRuntime').textContent = '运行环境：runtime 未核验（不代表模型文件缺失）。' + e.message;
+    }).finally(function () { runtimeLoading = false; });
+  }
+  let genWanNativeFps = 30;
+  function syncGenQuality() {
+    const h3 = $('#genEngine').value === 'minimax_h3';
+    $('#genNativeFps').disabled = h3;
+    $('#genNativeFps').value = String(h3 ? 24 : genWanNativeFps);
+    $('#genFpsNote').textContent = h3 ? 'H3 原生 24fps（模型约束）；输出 60fps 为插帧，不修改原生容器帧率。' : 'Wan 默认原生 30fps；可主动选择 24fps。输出 60fps 为插帧。';
+  }
+  function syncGenCustomSize() { $('#genCustomSize').hidden = $('#genTier').value !== 'custom'; }
+  function genQualitySelection() {
+    const selection = { native_fps: $('#genEngine').value === 'minimax_h3' ? 24 : Number($('#genNativeFps').value), output_fps: Number($('#genOutputFps').value), mode: 'quality_first' };
+    if ($('#genTier').value === 'custom') {
+      const width = Number($('#genWidth').value), height = Number($('#genHeight').value);
+      if (![width, height].every(n => Number.isSafeInteger(n) && n > 0 && n % 2 === 0)) throw new Error('自定义原生宽高必须为正偶数；请手动修正，不自动调整尺寸。');
+      selection.width = width; selection.height = height;
+    } else selection.tier = $('#genTier').value || '720p';
+    return selection;
+  }
+  $('#genTier').addEventListener('change', syncGenCustomSize);
+  syncGenCustomSize();
+  $('#genEngine').addEventListener('change', syncGenQuality);
+  $('#genNativeFps').addEventListener('change', () => { if ($('#genEngine').value !== 'minimax_h3') genWanNativeFps = Number($('#genNativeFps').value); });
+  $('#genOutputFps').addEventListener('change', syncGenQuality);
+  syncGenQuality();
+  function rememberGen(id) { genSelected = id; try { localStorage.setItem('avp.expert.selectedJob', id); } catch (e) {} }
+  let genEnhancing = false;
+  const genEnhancementLive = j => !!j && ['pending', 'queued', 'running'].includes((j.enhancement || {}).state);
+  function genVersions(j) {
+    const native = ((j.quality || {}).fps || {}).native_fps, en = j.enhanced || {}, err = j.enhancedError;
+    const state = (j.enhancement || {}).state || (err ? 'failed' : en.file ? 'succeeded' : '未生成');
+    let text = j.state === 'succeeded' && j.output && !j.mock ? `<a target="_blank" rel="noopener" href="${apiBase()}/api/jobs/${encodeURIComponent(j.id)}/output">原生版</a> · 原生 ${esc(native == null ? '未知' : native + 'fps')}` : '';
+    if (en.file) text += ` · <a target="_blank" rel="noopener" href="${apiBase()}/api/works/preview?file=${encodeURIComponent(String(en.file).split(/[\\/]/).pop())}">增强版</a> · 原生 ${esc(en.native_fps == null ? '未知' : en.native_fps + 'fps')} → 输出 ${esc(en.output_fps == null ? '未生成' : en.output_fps + 'fps')}`;
+    return text + ' · 增强状态：' + esc(state) + (err ? ' · 增强失败：' + esc((err.code || '') + ' ' + (err.message || '') + ' ' + (err.hint || '')) : '');
+  }
+  async function retryGenEnhance() {
+    const j = genJob;
+    if (genEnhancing || genLoading || !genReady || !j || j.state !== 'succeeded' || !j.output || j.mock || genEnhancementLive(j) || !(!j.enhanced || !j.enhanced.file)) return;
+    genEnhancing = true; $('#genEnhance').disabled = true; $('#genEnhanceMsg').textContent = '提交增强重试中…';
+    try {
+      await genRequest('/api/jobs/' + encodeURIComponent(j.id) + '/enhance', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: '{}' });
+      $('#genEnhanceMsg').textContent = '增强重试已受理，原生版保留。';
+    } catch (e) { $('#genEnhanceMsg').textContent = '增强重试失败或受理结果未知：' + e.message + '；请刷新确认，不自动重发。'; }
+    finally { genEnhancing = false; $('#genEnhance').disabled = false; refreshGenJobs(); }
+  }
+  $('#genEnhance').onclick = retryGenEnhance;
+  function renderJobHistory(box) {
+    box.innerHTML = serverJobs.map(j => `<div class="gout"><button class="btn" data-task="${esc(j.id)}">${j.state === 'succeeded' ? '播放 / 查看' : '查看'}</button> ${esc((GEN_STATE[j.state] || [j.state])[0])} · ${esc(j.progress && j.progress.percent != null ? j.progress.percent : '—')}% · ${esc(j.engine || j.model || '')} · ${esc(j.createdAt || '')}<br>${esc(j.prompt || j.id)}<div>${genVersions(j)}</div></div>`).join('') || '<div class="ghint">后端暂无任务。提交后进度和成片会保留在这里。</div>';
+    box.querySelectorAll('[data-task]').forEach(b => { b.onclick = () => {
+      rememberGen(b.dataset.task); renderGen(serverJobs.find(j => j.id === genSelected));
+      if (box.id === 'libList') setMode('expert');
+      refreshGenJobs();
+    }; });
+  }
+  function updateGenHistory() {
+    genActive = (serverJobs.find(genLive) || {}).id || null;
+    renderJobHistory($('#genHistory')); syncGen(); updateLibCounts();
+    if (!$('#libPanel').hidden && libTab === 'expert') renderJobHistory($('#libList'));
+  }
+  async function refreshGenJobs() {
+    if (genLoading || genSubmitting) return;
+    refreshQualityRuntime();
+    clearTimeout(genTimer); genLoading = true; syncGen();
+    try {
+      const data = await genRequest('/api/jobs?limit=500');
+      if (!Array.isArray(data.jobs)) throw new Error('任务列表响应不完整');
+      const previous = serverJobs;
+      serverJobs = data.jobs; genReady = true;
+      if (!genSelected || !serverJobs.some(j => j.id === genSelected)) {
+        let saved; try { saved = localStorage.getItem('avp.expert.selectedJob'); } catch (e) {}
+        const j = serverJobs.find(genLive) || serverJobs.find(j => j.id === saved) || serverJobs[0];
+        if (j) rememberGen(j.id);
+      }
+      previous.filter(genLive).forEach(old => { const j = serverJobs.find(x => x.id === old.id); if (j && !genLive(j)) genDone(j); });
+      updateGenHistory(); observeGen(genActive);
+      if (genSelected) {
+        const id = genSelected, j = await genRequest('/api/jobs/' + encodeURIComponent(id));
+        if (genSelected === id) {
+          serverJobs = serverJobs.map(x => x.id === id ? j : x); updateGenHistory();
+          if (genLive(j)) renderGen(j); else genDone(j);
+        } else genAgain = true;
+      }
+    } catch (e) {
+      genReady = false;
+      $('#genStatus').classList.add('on');
+      $('#genStatus').innerHTML = `<div class="gerr">任务查询失败，将自动重试；请勿重复提交。${esc(e.message)}</div>`;
+    } finally {
+      genLoading = false; syncGen();
+      if (genAgain) { genAgain = false; refreshGenJobs(); return; }
+      if (!genReady || genActive || serverJobs.some(genEnhancementLive)) genTimer = setTimeout(refreshGenJobs, genReady ? 4000 : 6000);
+    }
+  }
+  function observeGen(id) {
+    if (genObserved === id) return;
+    if (genEs) genEs.close(); genEs = null; genObserved = id;
+    if (!id || typeof EventSource !== 'function') return;
+    const es = genEs = new EventSource(apiBase() + '/api/jobs/' + encodeURIComponent(id) + '/events');
+    const receive = (ev) => {
+      if (genEs !== es) return;
+      try {
+        const d = JSON.parse(ev.data), j = d.job;
+        if (!j) return;
+        serverJobs = serverJobs.map(x => x.id === j.id ? j : x);
+        if (!genLive(j)) genDone(j); else if (genSelected === j.id) renderGen(j);
+        updateGenHistory();
+      } catch (e) { es.onerror(); }
+    };
+    ['snapshot', 'state', 'done'].forEach(type => es.addEventListener(type, receive));
+    es.addEventListener('progress', ev => {
+      if (genEs !== es) return;
+      try {
+        const p = JSON.parse(ev.data), j = serverJobs.find(x => x.id === id);
+        if (j) { j.progress = { percent: p.percent, stage: p.stage, text: p.text }; if (genSelected === id) renderGen(j); }
+      } catch (e) { es.onerror(); }
+    });
+    es.onerror = () => {
+      if (genEs !== es) return;
+      es.close(); genEs = null; genObserved = null;
+      if (genJob) renderGen(genJob, '进度流断开，使用后端轮询恢复');
+      // 与恢复/普通轮询共用同一个定时器及 genDone，不另开 interval。
+      if (!genLoading && !genSubmitting) { clearTimeout(genTimer); genTimer = setTimeout(refreshGenJobs, 2000); }
+    };
+  }
+
+  function renderGenMeta() {
+    const v = report.vram;
+    const over = v.state === 'block' ? ` · <b style="color:var(--bad-ink)">超预算 ${(v.ratio * 100).toFixed(0)}%，请检查显存需求；不会自动降档</b>` : '';
+    $('#genMeta').innerHTML = `当前 <b>258</b> 参数 · 档位 <b>${device}</b> · 质量 <b>${report.quality.score}</b> 分（estimate）${over}<br>提交本地后端队列出片；引擎可选 <b>MiniMax H3</b>（音画同步）或 <b>Wan2.2</b>（5B 本地）。<b>质量优先</b>：高分辨率/高帧率会显著增加生成时长；显存不足时平台<b>拒绝</b>并给出需求，不自动降分辨率、不自动减步数`;
+  }
+
+  function renderGen(job, extra) {
+    genJob = job;
+    const box = $('#genStatus');
+    box.classList.add('on');
+    const st = GEN_STATE[job.state] || [job.state, ''];
+    const pct = job.progress && job.progress.percent != null ? job.progress.percent : (job.state === 'succeeded' ? 100 : 0);
+    const stage = job.progress && job.progress.stage ? job.progress.stage : '';
+    const barColor2 = st[1] === 'bad' ? 'var(--bad-ink)' : st[1] === 'ok' ? 'var(--ok)' : 'var(--acc)';
+    let tail = '';
+    if (job.state === 'succeeded') {
+      const outFile = job.output && job.output.file ? job.output.file : job.output;
+      if (outFile) {
+        tail += `<div class="gout">成片 ${esc(outFile)} · <a href="${apiBase()}/api/jobs/${encodeURIComponent(job.id)}/output" target="_blank" style="color:var(--acc)">预览</a></div>`;
+      }
+      if (job.images && job.images.length) tail += `<div class="gout">帧图 ${job.images.length} 张</div>`;
+      if (job.mock === true) tail += '<div class="ghint">mock 演示产物（占位文件名），不是真实视频。真出片：AVP_PROVIDER=comfy（本机 ComfyUI）或 dashscope + DASHSCOPE_API_KEY。</div>';
+    } else if (job.state === 'failed') {
+      const e = job.error || {};
+      const CN = { DS_PRECHECK_FAILED: '参数预检不通过（未打云端）', DS_TASK_FAILED: '云端生成失败', DS_NO_API_KEY: '未设置 API key', DS_INVALID_API_KEY: 'API key 无效', DS_UNREACHABLE: '云端不可达', DS_TIMEOUT: '云端超时', CINE_G1_REJECT: '关键帧审核否决', CINE_G2_REJECT: '视频审核否决', CINE_I2V_BOTH_CHANNELS_FAILED: '主/备视频通道均不可用' };
+      tail = `<div class="gerr">${esc(CN[e.code] || e.code || 'ERROR')} · ${esc(e.message || '未知错误')}</div>`;
+      if (e.hint) tail += `<div class="ghint">${esc(e.hint)}</div>`;
+      if (e.code === 'DS_NO_API_KEY') tail += '<div class="ghint">设置 DASHSCOPE_API_KEY（setx 后重启 Qoder）即可启用真出片与 Qwen AI 推荐。</div>';
+      if (e.code === 'DS_PRECHECK_FAILED' && e.detail && e.detail.fields) tail += e.detail.fields.map(f => `<div class="gerr">· ${esc(f.key)} 合法取值：${esc(f.legal)}</div>`).join('');
+    }
+    box.innerHTML = `
+      <div class="gline">
+        <span class="gstate ${st[1]}">${esc(st[0])}</span>
+        <span class="gstate">${esc(job.engine || job.model || job.provider || '—')}</span>
+        ${job.mock === true ? '<span class="gmock">mock 演示 · 非真实出片</span>' : ''}
+        <span style="color:var(--text-dim2);font:var(--fz-xs) var(--mono)">${esc(job.id)}${stage ? ' · ' + esc(stage) : ''} · ${esc(job.createdAt || '')}</span>
+      </div>
+      <div class="bar"><i style="width:${Math.min(100, pct)}%;background:${barColor2}"></i></div>
+      <div class="gout">${esc(pct)}% · ${esc((job.progress || {}).text || '')}${extra ? ' · ' + esc(extra) : ''}</div>
+      ${tail}`;
+    $('#genCancel').style.display = genLive(job) ? '' : 'none';
+    $('#genVersions').innerHTML = genVersions(job);
+    $('#genEnhance').style.display = job.state === 'succeeded' && job.output && !job.mock && (!job.enhanced || !job.enhanced.file) ? '' : 'none';
+    $('#genEnhance').disabled = genEnhancing || genEnhancementLive(job);
+    $('#genRetry').style.display = job.state === 'failed' && job.canRetry ? '' : 'none';
+    const playable = job.state === 'succeeded' && job.output && job.mock !== true;
+    if (playable && genVideoId !== job.id) { $('#genVideo').src = apiBase() + '/api/jobs/' + encodeURIComponent(job.id) + '/output'; genVideoId = job.id; }
+    $('#genVideo').hidden = !playable;
+    if (!playable) genVideoId = null;
+    syncGen();
+  }
+
+  function genDone(job) {
+    if (genObserved === job.id) observeGen(null);
+    if (genSelected === job.id) renderGen(job);
+    const key = job.id + ':' + job.state + ':' + (job.updatedAt || '');
+    if (!genNotified.has(key)) {
+      genNotified.add(key);
+      toast('任务' + (GEN_STATE[job.state] || [job.state])[0] + '，已保留在后端历史');
+    }
+  }
+
+  async function generate(retryId) {
+    if (genBusy()) return;
+    if (!retryId) {
+      try { genQualitySelection(); }
+      catch (e) {
+        $('#genSubmitError').textContent = e.message;
+        $('#genStatus').classList.add('on'); $('#genStatus').textContent = e.message; return;
+      }
+    }
+    $('#genSubmitError').textContent = '';
+    genSubmitting = true; clearTimeout(genTimer); syncGen();
+    try {
+      // 重试只复用后端快照，不读取或重新确认当前表单。
+      if (!retryId && recMeta && recMeta.source !== 'qwen' && !recMeta.confirmedAt) {
+        const ans = await LOWCONF.show(lowConfCtxFromRec(recMeta, '专家工作台 · 一键生成'));
+        if (!ans.confirmed) { toast('已取消：没有提交任何任务，参数保持原样'); $('#aiPrompt').focus(); return; }
+        recMeta.confirmedAt = ans.at;
+      }
+      if (genActive) return;
+      const confirmNote = recMeta && recMeta.confirmedAt ? ' · 低置信确认 confirmedByUser: true @ ' + recMeta.confirmedAt : '';
+      $('#genVideo').hidden = true; genVideoId = null;
+      const job = await genRequest(retryId ? '/api/jobs/' + encodeURIComponent(retryId) + '/retry' : '/api/jobs', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(retryId ? {} : {
+          values, device, experiment_id: BRIDGE && BRIDGE.id,
+          engine: $('#genEngine').value || 'wan22',
+          ...genQualitySelection(),
+          note: '参数面板一键生成' + (baseline ? ' · ' + baseline.label : '') + confirmNote,
+        }),
+      });
+      if (typeof job.id !== 'string' || !job.id) throw new Error('接口未返回任务编号');
+      serverJobs = [job, ...serverJobs.filter(j => j.id !== job.id)];
+      rememberGen(job.id); genActive = job.id; renderGen(job); updateGenHistory();
+      toast('任务已受理 ' + job.id);
+    } catch (e) {
+      genReady = false;
+      $('#genSubmitError').textContent = '提交响应错误，请核对任务历史：' + e.message + '。未降低分辨率或减少步数。';
+      const box = $('#genStatus'); box.classList.add('on');
+      box.innerHTML = `<div class="gerr">提交失败或受理结果未知：${esc(e.message)}；正在核对后端任务，请勿重复提交。</div>`;
+    } finally {
+      genSubmitting = false; syncGen(); refreshGenJobs();
+    }
+  }
+
+  $('#genBtn').onclick = () => generate();
+  $('#genRetry').onclick = () => { if (genJob && genJob.state === 'failed' && genJob.canRetry) generate(genJob.id); };
+  $('#genRefresh').onclick = refreshGenJobs;
+  function genLeave() { if (genActive || genSubmitting) { $('#genBackground').textContent = GEN_BACKGROUND; toast(GEN_BACKGROUND); } }
+  document.addEventListener('click', ev => { if (ev.target.closest('a[href]')) genLeave(); });
+  document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshGenJobs(); else genLeave(); });
+  window.addEventListener('pageshow', refreshGenJobs); window.addEventListener('pagehide', genLeave);
+  $('#genCancel').onclick = async () => {
+    if (!genJob) return;
+    try {
+      const r = await fetch(apiBase() + '/api/jobs/' + genJob.id + '/cancel', { method: 'POST' });
+      const j = await r.json();
+      if (r.ok) { renderGen(j); refreshGenJobs(); toast('已取消 ' + j.id); } else toast((j.error && j.error.message) || '取消失败');
+    } catch (e) { toast('取消失败：' + e.message); }
+  };
+
+  /* ───── 我的预设（localStorage，file:// 可用） ───── */
+  const MY_KEY = 'avp.myPresets.v1';
+  function loadMine() { try { return JSON.parse(localStorage.getItem(MY_KEY) || '[]'); } catch (e) { return []; } }
+  function saveMine(list) { try { localStorage.setItem(MY_KEY, JSON.stringify(list)); } catch (e) { toast('本机存储不可用：' + e.message); } }
+  function renderMine() {
+    const list = loadMine();
+    $('#myPresets').innerHTML = list.map((m, i) => `<span class="my-chip" data-mine="${i}" title="套用我的预设「${m.name}」（${m.savedAt}）">${m.name}<i data-del="${i}" title="删除">×</i></span>`).join('');
+    $('#myPresets').querySelectorAll('[data-mine]').forEach(chip => {
+      chip.onclick = (e) => {
+        if (e.target.dataset.del !== undefined) {
+          const l = loadMine(); l.splice(+e.target.dataset.del, 1); saveMine(l); renderMine(); return;
+        }
+        const m = loadMine()[+chip.dataset.mine];
+        if (!m) return;
+        const next = AVP.defaults(reg);
+        for (const [k, v] of Object.entries(m.values)) if (map[k]) next[k] = AVP.coerce(map[k], v);
+        activeMuse = null;
+        applyValues(next, '我的预设·' + m.name);
+        renderPresetBar();
+        toast(`已套用我的预设「${m.name}」`);
+      };
+    });
+  }
+
+  /* ───── 右栏：四向预估 ───── */
+  function barColor(state) { return state === 'ok' ? 'var(--ok)' : state === 'warn' ? 'var(--warn)' : 'var(--bad-ink)'; }
+
+  function renderMeters() {
+    const r = report, v = r.vram, t = r.time, q = r.quality, c = r.cost;
+    const pct = (v.ratio * 100);
+    const stateText = { ok: '预算内', warn: '接近红线', block: '超预算' }[v.state];
+    const stages = v.stages.filter(s => s.peak_mib > 0).map(s => `<div title="${s.label} · ${s.model} · ${s.dtype}"><span>${s.label}</span><b>${fmt(s.peak_mib)} MiB</b></div>`).join('');
+    const qColor = q.score >= 80 ? 'var(--ok)' : q.score >= 68 ? 'var(--acc)' : 'var(--warn)';
+
+    const degHtml = v.state !== 'ok' ? '<div class="card"><h3>质量优先 · 显存提示</h3><p>当前预算不足或接近红线（estimate）。请检查显存需求；后端不满足质量要求时拒绝生成，不自动降低分辨率或减少步数。</p></div>' : '';
+
+    const warns = resolved.warnings.length
+      ? resolved.warnings.map(w => `<div class="warn-item"><i class="${w.level}">${w.level === 'yellow' ? '注意' : '提示'}</i><span>${w.text}</span></div>`).join('')
+      : '<div class="empty">无护栏提示：当前组合没有已知坑。</div>';
+    const trace = resolved.trace.filter(x => x.target);
+    const traceHtml = trace.length
+      ? trace.map(x => `<div class="trace">联动 <b>${x.target}</b> ${x.from} → ${x.to}</div>`).join('')
+      : '<div class="empty">无联动改写。</div>';
+
+    $('#meters').innerHTML = `
+      <div class="card">
+        <h3>显存 <span>${deviceObj().name}</span></h3>
+        <div class="meter-h"><b style="color:${barColor(v.state)}">${pct.toFixed(1)}%</b><span class="st ${v.state}">${stateText}</span></div>
+        <div class="bar"><i style="width:${Math.min(100, pct)}%;background:${barColor(v.state)}"></i><div class="tick" style="left:92%"></div></div>
+        <div class="meter-sub"><span>峰值 ${fmt(v.peak_mib)} MiB</span><span>可用 ${fmt(v.usable_mib)} MiB</span><span>余量 ${fmt(v.headroom_mib)} MiB</span></div>
+        <div class="kv">${stages}</div>
+      </div>
+      <div class="card">
+        <h3>耗时 <span>按 ${values['sb.grid_count']} 格/集</span></h3>
+        <div class="meter-h"><b>${t.episode_min}<small> min/集</small></b><span class="st">${t.shot_sec}s / 格</span></div>
+        <div class="bar"><i style="width:${Math.min(100, (t.episode_min / 90) * 100)}%;background:var(--acc)"></i></div>
+        <div class="meter-sub"><span>成片 ${values['ex.episode_duration']}s</span><span>口径预算 90 min/集</span></div>
+        <div class="kv">${t.breakdown.map(b => `<div><span>${b.label}</span><b>${b.sec}s · ${b.pct}%</b></div>`).join('')}</div>
+      </div>
+      <div class="card">
+        <h3>质量 <span>饱和收益曲线</span></h3>
+        <div class="meter-h"><b style="color:${qColor}">${q.score}</b><span class="st ${q.score >= 80 ? 'ok' : 'warn'}">${q.score >= 80 ? '商用档' : q.score >= 68 ? '可用' : '偏弱'}</span></div>
+        <div class="bar"><i style="width:${q.score}%;background:${qColor}"></i></div>
+        <div class="meter-sub"><span>0-100 分制</span><span>80 以上为商用档</span></div>
+        <div class="kv">${q.top.slice(0, 4).map(x => `<div><span>${x.label}</span><b>${x.contrib}</b></div>`).join('')}</div>
+      </div>
+      <div class="card">
+        <h3>成本 <span>电费口径</span></h3>
+        <div class="meter-h"><b>¥${c.episode_yuan}</b><span class="st ok">/集</span></div>
+        <div class="meter-sub"><span>${c.watts}W × ¥${c.price}/kWh</span><span>批量 ¥${c.batch_yuan}</span></div>
+      </div>
+      ${degHtml}
+      <div class="card"><h3>护栏 <span>${resolved.warnings.length} 条</span></h3>${warns}</div>
+      <div class="card"><h3>联动改写 <span>${trace.length} 条</span></h3>${traceHtml}</div>
+    `;
+    renderGenMeta();
+  }
+
+  /* ───── 导轨 / 模式 / 顶栏 ───── */
+  function renderRail() {
+    const items = [{ id: 'all', code: 'Σ', name: '全部板块', count: reg.params.length }]
+      .concat(reg.stages.map(s => ({ id: s.id, code: s.code, name: s.name, count: s.count })));
+    $('#rail').innerHTML = items.map(s => `
+      <div class="rail-item ${s.id === stageFilter ? 'on' : ''}" data-stage="${s.id}">
+        <span class="rail-code">${s.code}</span>
+        <span class="rail-name">${s.name}</span>
+        <span class="rail-n">${s.count}</span>
+      </div>`).join('') + `<div class="rail-note">三层视图：核心 ${layerCount.core} · 常用 ${layerCount.common} · 高级 ${layerCount.advanced}。专家模式开核心+常用层；全部参数展开 258 项。</div>`;
+    $('#rail').querySelectorAll('[data-stage]').forEach(el => {
+      el.onclick = () => { stageFilter = el.dataset.stage; renderRail(); renderBoard(); };
+    });
+  }
+
+  function setMode(m) {
+    genLeave();
+    mode = m;
+    expanded = { core: true, common: true, advanced: m === 'all' };
+    $('#modeSeg').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.mode === m));
+    $('#workbenchMain').hidden = false;
+    $('#wizard').hidden = true;
+    $('#libPanel').hidden = true;
+    renderBoard();
+  }
+  function showWizard() {
+    genLeave();
+    $('#workbenchMain').hidden = true;
+    $('#libPanel').hidden = true;
+    $('#wizard').hidden = false;
+  }
+  function showLib(tab) {
+    $('#workbenchMain').hidden = true;
+    $('#wizard').hidden = true;
+    $('#libPanel').hidden = false;
+    libTab = tab || libTab || 'cine';
+    $('#libTabs').querySelectorAll('button').forEach(b => b.classList.toggle('on', b.dataset.lib === libTab));
+    renderLibPanel(); refreshGenJobs();
+  }
+
+  function initDevice() {
+    $('#device').innerHTML = cat.devices.map(d => `<option value="${d.id}">${d.name} · 可用 ${d.usable_mib}MiB</option>`).join('');
+    $('#device').onchange = (e) => { device = e.target.value; recompute(); renderBoard(); bridgeQueue(); };
+  }
+
+  function initMisc() {
+    $('#modeSeg').querySelectorAll('button').forEach(b => { b.onclick = () => setMode(b.dataset.mode); });
+    $('#cineEntryBtn').onclick = () => { showWizard(); goStep(wizStep || 1); };
+    $('#libBtn').onclick = () => showLib();
+    $('#libClose').onclick = () => setMode(mode === 'all' ? 'all' : 'expert');
+    $('#libTabs').querySelectorAll('button').forEach(b => { b.onclick = () => showLib(b.dataset.lib); });
+    $('#enginePreset').onchange = (e) => {
+      const name = e.target.value;
+      if (!name) return;
+      const ap = AVP.applyPreset(reg, name);
+      activeMuse = null;
+      applyValues(ap.values, '引擎预设·' + name);
+      renderPresetBar();
+      toast(`已套用引擎预设「${name}」，改写 ${ap.applied.length} 个参数`);
+      e.target.value = '';
+    };
+    $('#search').oninput = (e) => { search = e.target.value.trim(); renderBoard(); };
+    $('#aiBtn').onclick = aiRecommend;
+    $('#aiPaste').onclick = async () => {
+      const ta = $('#aiPrompt');
+      let text;
+      try { text = await readClipboard(); } catch (err) { pasteFallback(ta, null); return; }
+      if (!text || !text.trim()) { toast('剪贴板是空的'); return; }
+      ta.focus();
+      insertAtCursor(ta, String(text).replace(/\s+$/, ''));
+    };
+    $('#aiPrompt').onkeydown = (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) aiRecommend(); };
+    $('#restoreRec').onclick = () => {
+      if (!baseline) return;
+      applyValues(baseline.values, baseline.label);
+      toast('已恢复' + baseline.label + '值');
+    };
+    $('#resetBoard').onclick = () => {
+      reg.params.filter(p => stageFilter === 'all' || p.stage === stageFilter).forEach(p => values[p.key] = p.default);
+      if (baseline) reg.params.forEach(p => { if (values[p.key] !== baseline.values[p.key]) overrides.add(p.key); else overrides.delete(p.key); });
+      recompute(); renderBoard(); updateBanner();
+      bridgeQueue();
+      toast(stageFilter === 'all' ? '全部参数已还原默认' : '本板块已还原默认');
+    };
+    $('#saveBtn').onclick = () => {
+      const name = (window.prompt('预设名称（存于本机浏览器，可导出 JSON 带走）：', '我的预设 ' + (loadMine().length + 1)) || '').trim();
+      if (!name) return;
+      const list = loadMine();
+      list.push({ name, values: clone(values), savedAt: new Date().toISOString().slice(0, 16).replace('T', ' ') });
+      saveMine(list); renderMine();
+      toast(`已保存「${name}」· 258 参数快照`);
+    };
+    $('#exportBtn').onclick = () => {
+      const file = AVP.exportPreset(reg, values, { name: activeMuse || 'custom', device: device });
+      const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `preset-${activeMuse || 'custom'}-${file.checksum.slice(5)}.preset.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+      toast(`导出 ${Object.keys(file.values).length} 个非默认参数 · ${file.checksum}`);
+    };
+    $('#importBtn').onclick = () => $('#fileInput').click();
+    $('#fileInput').onchange = (e) => {
+      const f = e.target.files[0]; if (!f) return;
+      const fr = new FileReader();
+      fr.onload = () => {
+        try {
+          const res = AVP.importPreset(reg, JSON.parse(fr.result));
+          activeMuse = null;
+          applyValues(res.values, '导入预设');
+          renderPresetBar();
+          toast(`导入成功${res.checksum_ok ? '' : '（校验和失配，已按注册表夹取）'}${res.unknown.length ? ' · 忽略未知键 ' + res.unknown.length : ''}`);
+        } catch (err) { toast('导入失败：' + err.message); }
+      };
+      fr.readAsText(f);
+      e.target.value = '';
+    };
+  }
+
+  let toastTimer = null;
+  function toast(msg) {
+    const el = $('#toast');
+    el.textContent = msg; el.classList.add('on');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => el.classList.remove('on'), 3200);
+  }
+
+  // 在光标处插入文本（不覆盖已有内容），并触发 input 事件让依赖输入的逻辑同步。
+  function insertAtCursor(ta, text) {
+    const s = ta.selectionStart == null ? ta.value.length : ta.selectionStart;
+    const e = ta.selectionEnd == null ? ta.value.length : ta.selectionEnd;
+    ta.value = ta.value.slice(0, s) + text + ta.value.slice(e);
+    const pos = s + text.length;
+    ta.setSelectionRange(pos, pos);
+    ta.dispatchEvent(new Event('input', { bubbles: true }));
+  }
+
+  // 读剪贴板原文；不可用（无 API / 非安全上下文）或被拒时抛错，交由调用方降级。
+  async function readClipboard() {
+    if (!navigator.clipboard || !navigator.clipboard.readText) throw new Error('clipboard-unavailable');
+    return await navigator.clipboard.readText();
+  }
+
+  // 读取失败时的统一降级：聚焦并选中输入框（唤起手机系统编辑菜单），红色提示 + toast 引导手动粘贴。
+  function pasteFallback(ta, hintEl) {
+    ta.focus();
+    try { ta.select(); } catch (err) { /* 选中失败不影响聚焦 */ }
+    if (hintEl) { hintEl.textContent = '粘贴失败，请手动长按输入框粘贴（Ctrl+V）'; hintEl.hidden = false; }
+    toast('请长按输入框，选择粘贴');
+  }
+
+  // 读剪贴板原文；读不到（无 API / 权限被拒）返回 null，与「空文本」区分开。
+  async function peekClipboard() {
+    try {
+      if (!navigator.clipboard || !navigator.clipboard.readText) return null;
+      return await navigator.clipboard.readText();
+    } catch (err) { return null; }
+  }
+
+  // 剪贴板为空 → 粘贴按钮变灰不可点。只有在权限已授予、能真正读到剪贴板时才自动判空；
+  // 权限未授予时无法静默读取（浏览器隐私限制），保持可点，点击时再请求权限。
+  async function refreshPasteBtn() {
+    const btn = $('#wizPaste');
+    if (!btn) return;
+    let granted = false;
+    try {
+      const p = await navigator.permissions.query({ name: 'clipboard-read' });
+      granted = p.state === 'granted';
+    } catch (err) { /* 部分浏览器不支持该权限查询 */ }
+    if (!granted) { btn.disabled = false; return; }
+    const t = await peekClipboard();
+    btn.disabled = !(t && t.trim());
+  }
+
+  /* ───── 外壳桥接：读写平台当前项目（localStorage，file:// 与 http 同源共享） ───── */
+  const SHELL_KEY = 'avp.shell.store.v1';
+  const SHELL_SCHEMA = 'ai-video-platform/shell.store';
+  let BRIDGE = null;
+  let bwTimer = 0;
+
+  function bridgeRead() {
+    try {
+      const s = JSON.parse(localStorage.getItem(SHELL_KEY) || 'null');
+      if (!s || s.schema !== SHELL_SCHEMA || !s.active) return null;
+      const p = s.projects && s.projects[s.active];
+      return p && p.values ? { store: s, project: p } : null;
+    } catch (e) { return null; }
+  }
+
+  function bridgeLoad() {
+    const b = bridgeRead();
+    if (!b) return false;
+    BRIDGE = b.project;
+    const next = AVP.defaults(reg);
+    for (const [k, v] of Object.entries(b.project.values)) if (map[k]) next[k] = AVP.coerce(map[k], v);
+    values = next;
+    if (cat.devices.some(d => d.id === b.project.device)) { device = b.project.device; $('#device').value = device; }
+    return true;
+  }
+
+  function bridgeWrite() {
+    const b = bridgeRead();
+    if (!b) return;
+    const p = b.project;
+    p.values = clone(values);
+    p.device = device;
+    p.updatedAt = new Date().toISOString();
+    if (p.state === 'configured') {
+      p.state = 'draft';
+      p.history = (p.history || []).concat([{ at: p.updatedAt, action: 'restart', label: '新起一轮', from: 'configured', to: 'draft', note: '参数面板改动' }]).slice(-40);
+    }
+    try { localStorage.setItem(SHELL_KEY, JSON.stringify(b.store)); } catch (e) { return; }
+    BRIDGE = p;
+    paintBridge();
+  }
+
+  function bridgeQueue() { if (!BRIDGE) return; clearTimeout(bwTimer); bwTimer = setTimeout(bridgeWrite, 250); }
+
+  // 跨页同步：小白面板（visinter）与全量面板写的是同一个 avp.shell.store.v1。
+  // storage 事件只在「另一个标签页/窗口」写时触发，自己写不会回调，所以不会自激死循环。
+  window.addEventListener('storage', (e) => {
+    if (!e || e.key !== SHELL_KEY) return;
+    const linkedNow = bridgeLoad();
+    paintBridge();
+    if (!linkedNow) return;
+    renderBoard();
+    recompute();
+    toast('检测到 VisInter 面板改动，258 参数已同步');
+  });
+
+  function paintBridge() {
+    const el = $('#fBridge');
+    if (!el) return;
+    el.textContent = BRIDGE ? '● 已联动外壳 · ' + BRIDGE.name : '○ 独立模式';
+    el.style.color = BRIDGE ? 'var(--acc)' : 'var(--text-dim2)';
+  }
+
+  /* ───── 小白五步向导：选风格 → 写一句话 → AI 处理 → 预览 → 作品库 ───── */
+  const WORKS_KEY = 'avp.works.v1', GUIDE_KEY = 'avp.guideSeen.v1';
+  let libTab = 'cine';
+  function loadExpertWorks() { return serverJobs; }
+  function updateLibCounts() {
+    const c = loadWorks().length, e = loadExpertWorks().length;
+    const set = (id, n) => { const el = $(id); if (el) el.textContent = n; };
+    set('#wizLibN', c); set('#libCineN', c); set('#libExpertN', e);
+  }
+  function renderLibPanel() {
+    updateLibCounts();
+    const list = libTab === 'expert' ? loadExpertWorks() : loadWorks();
+    const box = $('#libList');
+    $('#libPreview').hidden = true; $('#libPreview').innerHTML = '';
+    if (libTab === 'expert') { renderJobHistory(box); return; }
+    if (!list.length) { box.innerHTML = `<div class="wiz-empty">${libTab === 'expert' ? '专家库还没有作品。回工作台点「一键生成」。' : '电影库还没有作品。点顶部「一句话电影」生成。'}</div>`; return; }
+    box.innerHTML = list.map((w, i) => `
+      <div class="work-item">
+        <div class="wi-h"><i class="wi-emoji" data-emoji-ok>${w.kind === 'expert' ? '🎛' : (w.emoji || '🎬')}</i><span class="wi-style">${esc(w.styleName || (w.kind === 'expert' ? '专家生成' : '电影'))}</span>${w.kind === 'cine' ? '<span class="wi-mock">电影</span>' : ''}${w.kind === 'expert' ? '<span class="wi-mock">专家</span>' : ''}${w.mock ? '<span class="wi-mock">演示</span>' : ''}<span class="wi-time">${esc(w.createdAt)}</span></div>
+        <div class="wi-prompt" title="${esc(w.prompt || w.note || '')}">${esc(w.prompt || w.note || w.id)}</div>
+        <div class="wi-btns">
+          <button class="btn" data-lact="play" data-i="${i}">播放</button>
+          ${w.kind !== 'expert' ? `<button class="btn" data-lact="open" data-i="${i}">在向导中打开</button>` : `<button class="btn" data-lact="reuse" data-i="${i}">复用参数</button>`}
+          <button class="btn" data-lact="del" data-i="${i}">删除</button>
+        </div>
+      </div>`).join('');
+    box.querySelectorAll('[data-lact]').forEach(b => {
+      b.onclick = () => {
+        const cur = libTab === 'expert' ? loadExpertWorks() : loadWorks();
+        const w = cur[+b.dataset.i]; if (!w) return;
+        const act = b.dataset.lact;
+        if (act === 'del') { cur.splice(+b.dataset.i, 1); saveWorks(cur); renderLibPanel(); toast('已删除'); return; }
+        if (act === 'play') {
+          const pv = $('#libPreview'); pv.hidden = false;
+          pv.innerHTML = w.output ? `<video src="${apiBase()}/api/jobs/${w.id}/output" controls autoplay loop muted playsinline></video>` : '<div class="wiz-empty">该作品无成片（mock 演示或未完成）。</div>';
+          return;
+        }
+        if (act === 'reuse') { applyValues(w.values || {}, '专家库复用'); setMode('expert'); toast('已复用该作品的 258 参数'); return; }
+        if (act === 'open') { wizLastPrompt = w.prompt; wizJob = { id: w.id, mock: w.mock, output: w.output, durationMs: w.durationMs, state: 'succeeded', kind: w.kind || null, cineReport: w.cine || null }; cineJobId = w.id; showWizard(); renderPreview(wizJob); goStep(4); return; }
+      };
+    });
+  }
+  const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  let wizStep = 1, wizStyle = 'muse_cinematic', wizJob = null, wizEs = null, wizPoll = null;
+  let wizProvider = null, wizLastPrompt = '', wizRecNote = '', wizSavedId = null;
+  const PHASES = ['正在理解你的描述…', '正在选择最优参数…', '正在绘制画面…', '正在让画面动起来…', '正在检查画面质量…'];
+  let wizPhaseState = [0, 0, 0, 0, 0]; // 0 待办 1 进行中 2 完成
+  /* 电影模式（一句话 → 8 组打磨 → 选优 → i2v → 电影级后处理）。进度文案由后端逐字下发。 */
+  const CINE_PHASES = ['分析你的描述', '打磨 8 组关键帧', '8 组精品选最优', '图生视频', '电影级后处理', '成片就绪'];
+  const CINE_STAGE_IDX = { analyze: 0, keyframes: 1, pick: 2, i2v: 3, post: 4, done: 5 };
+  let wizMode = 'cine';
+  let wizMulti = false;
+  let wizRatio = '16:9';
+  let wizTheme = '';
+  function applyTheme(id) {
+    wizTheme = id || '';
+    const r = (AESTH.themes || []).find(t => t.id === id);
+    const note = $('#wizThemeNote');
+    if (r) {
+      // 氛围题材默认竖屏 9:16（方案口径）；用户仍可用比例开关覆盖
+      wizRatio = r.ratio || wizRatio;
+      $('#wizRatio').querySelectorAll('[data-ratio]').forEach(x => x.classList.toggle('on', x.dataset.ratio === wizRatio));
+      note.textContent = `${r.name}：${r.light} · ${r.color} · ${r.lens} · ${r.texture} · CFG ${r.params.cfg}/${r.params.steps}步 · ${r.ratio} · 声音 ${r.soundMood}`;
+    } else note.textContent = '';
+  }
+  let cinePhaseState = [0, 0, 0, 0, 0, 0];
+  let cineLive = [], cinePickState = null, cinePickTimer = null, cineJobId = null;
+
+  function renderCinePhases() {
+    $('#wizPhases').innerHTML = CINE_PHASES.map((t, i) => {
+      const s = cinePhaseState[i];
+      const mark = s === 2 ? '✓' : s === 1 ? '◇' : '·';
+      return `<div class="wphase ${s === 1 ? 'active' : s === 2 ? 'done' : ''}"><i>${mark}</i>${t}</div>`;
+    }).join('');
+  }
+  function setCinePhase(i, s) { cinePhaseState[i] = s; renderCinePhases(); }
+  function cineBar(stage, group) {
+    const base = { analyze: 4, keyframes: 8, pick: 76, i2v: 80, post: 90, done: 100 }[stage] || 4;
+    wizProgress(stage === 'keyframes' ? base + (group || 0) * 8 : base);
+  }
+  function auditForCandidate(c) {
+    const list = (wizJob && wizJob.cineReport && wizJob.cineReport.audit) || [];
+    return list.find(a => a.mediaType === 'image' && String(a.file || '').includes('g' + c.id + '.') ) || list.find(a => a.mediaType === 'image' && String(a.file || '').includes('s' + c.id + '-')) || null;
+  }
+  function renderCineGrid(sel, list, interactive) {
+    const box = $(sel);
+    if (!list || !list.length) { box.innerHTML = ''; return; }
+    box.innerHTML = list.map(c => {
+      const au = auditForCandidate(c);
+      const dec = au ? au.decision : null;
+      const chips = au && au.tags && au.tags.length ? `<span class="cc-tags">${au.tags.slice(0, 3).map(t => `<i>${esc(t)}</i>`).join('')}</span>` : '';
+      return `
+      <button type="button" class="cine-cand ${c.picked ? 'picked' : ''}" data-cid="${c.id}" title="${esc(c.name)} · ${c.total} 分${dec ? ' · 审核 ' + dec : ''}">
+        <img src="${apiBase()}/api/jobs/${cineJobId}/candidates/${c.id}" alt="${esc(c.name)} 关键帧" loading="lazy">
+        ${dec ? `<span class="cc-qa cc-qa-${dec}">${dec}</span>` : ''}
+        <span class="cc-meta"><span>${c.id} ${esc(c.name)}</span><span class="cc-score">${c.total}</span></span>
+        ${chips}
+      </button>`;
+    }).join('');
+    box.querySelectorAll('[data-cid]').forEach(b => {
+      b.onclick = () => {
+        const cid = +b.dataset.cid;
+        if (interactive && cinePickState && cinePickState.override == null) {
+          fetch(apiBase() + '/api/jobs/' + cineJobId + '/pick', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index: cid - 1 }) })
+            .then(r => r.json()).then(j => { if (j.error) toast(j.error.message); else toast('已改选第 ' + cid + ' 组'); })
+            .catch(e => toast('改选失败：' + e.message));
+        } else if (!interactive) {
+          showCineCandidate(cid);
+        }
+      };
+    });
+  }
+  function showCineCandidate(cid) {
+    const box = $('#wizPreview');
+    box.innerHTML = `<img src="${apiBase()}/api/jobs/${cineJobId}/candidates/${cid}" alt="候选关键帧 ${cid}" style="width:100%;border-radius:var(--r2);display:block">
+      <div class="wiz-actions"><button class="btn" id="cineBackVideo">返回成片视频</button></div>`;
+    $('#cineBackVideo').onclick = () => renderPreview(wizJob);
+    $('#cineCands').querySelectorAll('[data-cid]').forEach(b => b.classList.toggle('picked', +b.dataset.cid === cid));
+  }
+  function renderCineSub(j) {
+    const rep = j.cineReport; const box = $('#cineSub');
+    if (!rep) { box.hidden = true; return; }
+    box.hidden = false;
+    const subs = (rep.substitutions || []).map(s => `<li>${esc(s.spec)} → <span class="mono">${esc(s.actual)}</span>（${esc(s.reason)}）</li>`).join('');
+    const warns = (rep.warnings || []).map(w => `<li>${esc(w.text)}</li>`).join('');
+    const kb = rep.keyframeBaselineNote || {};
+    const sw = rep.styleWords || {}; const face = rep.face || {}; const samp = rep.sampling || {}; const prm = rep.params || {};
+    const lowConf = rep.analysis && rep.analysis.source === 'rules';
+    const audits = rep.audit || [];
+    const auditHtml = audits.length ? `<h4>审核报告（G0~G4 · 三态留痕）</h4>` + audits.map(a => `
+      <div class="audit-row">
+        <div class="ar-head"><span class="ar-dec cc-qa-${a.decision}">${a.decision}</span><span>${a.mediaType === 'image' ? '关键帧' : '视频'} · ${esc(a.tier || '')}${a.total != null ? ' · 总分 ' + a.total : ''}</span><span class="mono" style="color:var(--text-dim2)">${esc(a.thresholdVersion || '')}</span></div>
+        ${a.vetoHits && a.vetoHits.length ? `<div class="ar-reason">一票否决：${a.vetoHits.map(esc).join('、')}</div>` : ''}
+        ${a.tags && a.tags.length ? `<div class="ar-tags">${a.tags.map(t => `<i>${esc(t)}</i>`).join('')}</div>` : ''}
+        ${a.reason ? `<div class="ar-reason">${esc(a.reason)}</div>` : ''}
+        ${a.scores ? `<div class="ar-reason">技术 ${a.scores.tech ?? '—'} / 结构 ${a.scores.structure ?? '—'} / 一致 ${a.scores.consistency ?? '—'} / 审美 ${a.scores.aesthetic ?? '—'}（30/30/20/20）</div>` : ''}
+        ${a.decision === 'REVIEW' ? `<div class="ar-btns"><button class="btn" data-review="${a.id}" data-dec="PASS">改判通过</button><button class="btn" data-review="${a.id}" data-dec="REJECT">改判淘汰</button></div>` : ''}
+        ${a.reviewer ? `<div class="ar-reason">复核：${esc(a.reviewer)} → ${esc(a.decision)}</div>` : ''}
+      </div>`).join('') : '';
+    box.innerHTML = `<h4>电影级后处理 · 真实替代口径（不冒充 RIFE / ESRGAN）</h4><ul>${subs}</ul>
+      <h4>风格词库 / 人脸体系</h4><ul>
+        <li>风格 <span class="mono">${esc(sw.id || rep.styleId || '')}</span> 词库已逐字挂载${sw.pos ? '（POS ' + esc(sw.pos.slice(0, 60)) + '…）' : ''}</li>
+        <li>中国人脸：${face.mounted ? '已挂载（年龄 ' + esc(face.age || '') + '）' : '不挂载（二次元用自身脸部美学）'} · LoRA/FaceDetailer applicable:${face.tech ? face.tech.applicable : false}（${esc(face.tech ? face.tech.reason : '')}）</li>
+      </ul>
+      <h4>关键帧采样器基线</h4><ul><li>请求 ${esc((kb.requested && kb.requested.sampler) || samp.sampler || '')} / CFG ${kb.requested && kb.requested.cfg != null ? kb.requested.cfg : samp.cfg} / ${kb.requested && kb.requested.steps != null ? kb.requested.steps : samp.steps} 步 / ${esc(samp.size || '')} → applicable:${kb.applicable}（${esc(kb.reason || '')}）</li>
+      <li>8 组种子：<span class="mono">${esc((rep.seeds || []).join(','))}</span> · 运镜 ${esc((rep.camera && rep.camera.zh) || '')}</li></ul>
+      ${lowConf ? '<h4>解析置信低</h4><ul><li>分析退规则轨兜底（非 AI）：本次推进已由阻断确认卡留痕（confirmedByUser / 时间见作品库条目）。</li></ul>' : ''}
+      ${warns ? `<h4>如实告警</h4><ul>${warns}</ul>` : ''}
+      <h4>通路 / 状态</h4><ul><li>分析 ${esc((rep.analysis && rep.analysis.source) || '')} · 评审 model-opinion · i2v <span class="mono">${esc((rep.i2v && rep.i2v.request && rep.i2v.request.model) || '')}</span> · 选优 ${esc((rep.pick && rep.pick.source) || '')}</li>
+      <li>状态 <span class="mono">${esc(rep.status || '')}</span> · 重试合计 ${rep.retries || 0} 次 · 模型链 ${esc(Object.values(rep.modelChain || {}).join(' → '))}</li>
+      ${prm.sampler ? `<li>参数 JSON：${esc(prm.sampler)} / CFG ${prm.cfg} / ${prm.steps} 步 / ${esc(prm.size)} / LoRA ${prm.lora ? prm.lora.weight : ''}(applicable:${prm.lora ? prm.lora.applicable : false}) / ${prm.duration}s / 出 ${prm.fpsOut}fps / ${esc(prm.bitrate)}</li>` : ''}</ul>
+      ${rep.qa ? `<h4>QA 双闸（M6）</h4><ul><li>像素闸 ${rep.qa.pixel && rep.qa.pixel.pass ? '过' : '未过'}：sharp ${rep.qa.pixel ? rep.qa.pixel.sharpMean : ''} / flicker ${rep.qa.pixel ? rep.qa.pixel.flickerMean : ''} / flow ${rep.qa.pixel ? rep.qa.pixel.flowMean : ''} / 坏帧 ${rep.qa.pixel ? rep.qa.pixel.badFrames : ''}（基线实测标定）</li><li>审美闸 ${rep.qa.aesthetic && rep.qa.aesthetic.pass ? '过' : '未过'}（VL ${rep.qa.aesthetic ? rep.qa.aesthetic.total : ''} 分 model-opinion）· 总判定 <span class="mono">${rep.qa.pass ? 'PASS' : 'FAIL'}</span>${rep.qa.rejectReasons && rep.qa.rejectReasons.length ? ' · ' + esc(rep.qa.rejectReasons.join('；')) : ''}</li></ul>` : ''}
+      ${rep.gradePreset ? `<h4>filmic 调色预设（M8）</h4><ul><li><span class="mono">${esc(rep.gradePreset.id)}</span> · ACES近似+曝光匹配 ${rep.gradePreset.exposureMatched} · halation(gblur${rep.gradePreset.halation ? rep.gradePreset.halation.gblur : ''}+screen) · deflicker · gate weave ${rep.gradePreset.weave} · 可复用${rep.gradePreset.theme ? ' · 题材 ' + esc(rep.gradePreset.theme) : ''}</li></ul>` : ''}
+      ${rep.aesthetics ? `<h4>氛围题材配方（审美层）</h4><ul><li><b>${esc(rep.aesthetics.name)}</b> · 光影 ${esc(rep.aesthetics.light)}</li><li>色调 ${esc(rep.aesthetics.color)} · 镜头 ${esc(rep.aesthetics.lens)}</li><li>质感 ${esc(rep.aesthetics.texture)} · 声音 ${esc(rep.aesthetics.soundMood)} · 建议画幅 ${esc(rep.aesthetics.ratioSuggested)} · 请求时长 ${rep.aesthetics.durationRequested}s（i2v 上限 5s/镜）</li>${rep.aesthetics.params ? `<li>参数请求 CFG ${rep.aesthetics.params.cfg}/${rep.aesthetics.params.steps}步/${esc(rep.aesthetics.params.res)} · applicable:${rep.aesthetics.params.applicable}（${esc(rep.aesthetics.params.reason)}）</li>` : ''}</ul>` : ''}
+      ${rep.audio ? `<h4>声音（M9）</h4><ul><li>${rep.audio.silent ? '无声（混流失败已标记）' : esc(rep.audio.source) + (rep.audio.native ? '（原生）' : '（合成环境声，非原生音画同步）')}</li></ul>` : ''}
+      ${rep.shots && rep.shots.length ? `<h4>分镜表（M1）</h4><ul>${rep.shots.map(s => `<li>镜${s.no} · ${esc(s.subject)} · ${esc(s.shotSize)} · ${esc(s.camera)} · ${s.duration}s · ${esc(s.mood)}</li>`).join('')}</ul>` : ''}
+      ${rep.timeline ? `<h4>组接时间线（M7）</h4><ul><li>${rep.timeline.shots.map(s => `镜${s.no} ${esc(s.shotSize)} ${s.duration}s`).join(' → ')} · 转场 <span class="mono">${esc(rep.timeline.transition)}</span>${rep.timeline.crossfade ? '(' + rep.timeline.crossfade + 's)' : ''} · 总长 ${rep.timeline.totalDuration}s</li></ul>` : ''}
+      ${auditHtml}`;
+    box.querySelectorAll('[data-review]').forEach(b => { b.onclick = () => reviewAudit(j.id || cineJobId, b.dataset.review, b.dataset.dec); });
+  }
+  async function reviewAudit(jobId, auditId, decision) {
+    try {
+      const r = await fetch(apiBase() + '/api/jobs/' + jobId + '/review', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ auditId, decision, reason: '人工复核改判' }) });
+      const j = await r.json();
+      if (j.error) { toast(j.error.message); return; }
+      toast('已改判 ' + decision);
+      const full = await (await fetch(apiBase() + '/api/jobs/' + jobId)).json();
+      if (wizJob && wizJob.id === jobId) wizJob = full;
+      renderCineSub(full);
+    } catch (e) { toast('改判失败：' + e.message); }
+  }
+  async function startCineGenerate(prompt, resume) {
+    wizCleanup();
+    if (cinePickTimer) { clearInterval(cinePickTimer); cinePickTimer = null; }
+    wizLastPrompt = prompt; wizSavedId = null; cineLive = []; cinePickState = null;
+    goStep(3);
+    $('#wizErr').hidden = true; $('#wizBack2').hidden = true; $('#wizResume').hidden = true; $('#wizCancel').style.display = '';
+    $('#cineGridLive').innerHTML = ''; $('#cinePick').hidden = true;
+    cinePhaseState = [1, 0, 0, 0, 0, 0]; renderCinePhases(); wizProgress(2);
+    $('#wizEta').textContent = resume ? '从失败步续跑（复用已产出帧，不重复计费）...' : '正在分析你的描述...';
+    let job;
+    try {
+      const res = await fetch(apiBase() + '/api/jobs', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'cine', prompt, device, ...genQualitySelection(), style: wizStyle, resume: !!resume, multi: wizMulti, ratio: wizRatio, theme: wizTheme || undefined }) });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e.error && (e.error.code + ' ' + e.error.message)) || 'HTTP ' + res.status); }
+      job = await res.json();
+    } catch (e) {
+      const net = /failed to fetch|networkerror|load failed|err_connection/i.test(e.message || '');
+      wizFail(net
+        ? '后端未启动或已停止（' + e.message + '）。双击「启动平台.cmd」或运行 node tools/serve.mjs 启动后端，再点「从失败步重试」（已产出帧复用，不重复计费）。当前页面端口 ' + location.port + ' 需有后端在监听。'
+        : '受理失败（' + e.message + '）。电影模式需要本地后端 + DASHSCOPE_API_KEY（云端真出片，按量计费）。');
+      return;
+    }
+    cineJobId = job.id; wizJob = job;
+    subscribeCine(job.id);
+  }
+  function subscribeCine(id) {
+    wizEs = new EventSource(apiBase() + '/api/jobs/' + id + '/events');
+    const onState = (j) => {
+      wizJob = j;
+      if (j.state === 'queued' || j.state === 'running') {
+        const st = j.progress && j.progress.stage;
+        if (st && CINE_STAGE_IDX[st] != null) { for (let i = 0; i < CINE_STAGE_IDX[st]; i++) cinePhaseState[i] = 2; cinePhaseState[CINE_STAGE_IDX[st]] = 1; renderCinePhases(); cineBar(st, j.progress.group); }
+      }
+    };
+    wizEs.addEventListener('snapshot', ev => onState(JSON.parse(ev.data).job));
+    wizEs.addEventListener('state', ev => onState(JSON.parse(ev.data).job));
+    wizEs.addEventListener('progress', ev => {
+      const p = JSON.parse(ev.data);
+      if (p.text) $('#wizEta').textContent = p.text;
+      if (p.stage && CINE_STAGE_IDX[p.stage] != null) { for (let i = 0; i < CINE_STAGE_IDX[p.stage]; i++) cinePhaseState[i] = 2; cinePhaseState[CINE_STAGE_IDX[p.stage]] = 1; renderCinePhases(); cineBar(p.stage, p.group); }
+    });
+    wizEs.addEventListener('cine-group', ev => {
+      const g = JSON.parse(ev.data).group;
+      const i = cineLive.findIndex(x => x.id === g.id);
+      if (i >= 0) cineLive[i] = g; else cineLive.push(g);
+      renderCineGrid('#cineGridLive', cineLive, true);
+    });
+    wizEs.addEventListener('cine-pick', ev => {
+      const pick = JSON.parse(ev.data).pick;
+      cinePickState = pick;
+      const box = $('#cinePick');
+      if (pick.override != null) { box.hidden = false; box.innerHTML = `已改选第 <b>${pick.override + 1}</b> 组，继续图生视频…`; if (cinePickTimer) { clearInterval(cinePickTimer); cinePickTimer = null; } return; }
+      box.hidden = false;
+      const tick = () => {
+        const left = Math.max(0, Math.ceil((pick.at + pick.windowMs - Date.now()) / 1000));
+        box.innerHTML = `AI 选第 <b>${pick.defaultIndex + 1}</b> 组（总分最高）。<b>${left}s</b> 内点下方任意候选可改选，超时自动继续。`;
+        if (left <= 0 && cinePickTimer) { clearInterval(cinePickTimer); cinePickTimer = null; }
+      };
+      tick();
+      if (cinePickTimer) clearInterval(cinePickTimer);
+      cinePickTimer = setInterval(tick, 500);
+    });
+    wizEs.addEventListener('done', async () => {
+      if (cinePickTimer) { clearInterval(cinePickTimer); cinePickTimer = null; }
+      $('#cinePick').hidden = true;
+      try { const r = await fetch(apiBase() + '/api/jobs/' + id); cineFinish(await r.json()); }
+      catch (e) { cineFinish(wizJob); }
+    });
+    wizEs.onerror = () => {
+      if (wizEs) { wizEs.close(); wizEs = null; }
+      wizPoll = setInterval(async () => {
+        try {
+          const r = await fetch(apiBase() + '/api/jobs/' + id);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json();
+          onState(j);
+          if (j.cineLive) { cineLive = j.cineLive; renderCineGrid('#cineGridLive', cineLive, false); }
+          if (!['queued', 'running'].includes(j.state)) cineFinish(j);
+        } catch (e2) { wizFail('进度流与轮询均断开（' + e2.message + '），任务可能仍在后端运行。'); }
+      }, 2500);
+    };
+  }
+  async function cineFinish(j) {
+    wizCleanup();
+    if (cinePickTimer) { clearInterval(cinePickTimer); cinePickTimer = null; }
+    $('#cinePick').hidden = true;
+    wizJob = j;
+    if (j.state !== 'succeeded') {
+      const em = j.error ? (j.error.code + ' · ' + j.error.message) : '';
+      wizFail('电影任务' + (j.state === 'canceled' ? '已取消' : '失败') + (em ? '：' + em : '') + (j.error && j.error.code === 'DS_NO_API_KEY' ? '。设置 DASHSCOPE_API_KEY 后重启后端即可真出片。' : ''));
+      return;
+    }
+    // 槽位分析在服务端完成：回来是规则轨（非 AI）就在「入库 / 下一步」之前拦一次
+    const ana = j.cineReport && j.cineReport.analysis;
+    let lowConf = { lowConf: null, at: null };
+    if (ana && ana.source === 'rules') {
+      const ans = await LOWCONF.show(lowConfCtxFromCine(ana, j.cineReport));
+      if (!ans.confirmed) {
+        // 成片已经产生（钱已经花了）：照样入库但标「低置信未确认」，且不推进到第四步
+        saveWork(j, { lowConf: 'declined', lowConfAt: ans.at });
+        goStep(2);
+        toast('已返回修改描述：本次成片存作品库并标「低置信未确认」，没有推进到预览下一步');
+        $('#wizPrompt').focus();
+        return;
+      }
+      lowConf = { lowConf: 'confirmed', at: ans.at };
+    }
+    cinePhaseState = [2, 2, 2, 2, 2, 2]; renderCinePhases(); wizProgress(100);
+    saveWork(j, lowConf);
+    renderPreview(j);
+    const cands = (j.cineReport && j.cineReport.candidates) || j.cineLive || [];
+    $('#cineCands').hidden = !cands.length;
+    renderCineGrid('#cineCands', cands, false);
+    renderCineSub(j);
+    goStep(4);
+  }
+
+  const wizPreset = () => MUSE.presets.find(p => p.id === wizStyle) || MUSE.presets[0];
+  function loadWorks() { try { return JSON.parse(localStorage.getItem(WORKS_KEY) || '[]'); } catch (e) { return []; } }
+  function saveWorks(list) { try { localStorage.setItem(WORKS_KEY, JSON.stringify(list.slice(0, 30))); } catch (e) { toast('本机存储不可用：' + e.message); } }
+
+  function renderStyleStrip() {
+    $('#styleStrip').innerHTML = MUSE.presets.map(p => `
+      <button class="style-card ${wizStyle === p.id ? 'on' : ''}" data-style="${p.id}" title="${esc(p.desc)} · ${esc(p.mapping_note)}">
+        <i class="sc-emoji">${p.emoji}</i><b>${p.name}</b>
+      </button>`).join('');
+    $('#styleStrip').querySelectorAll('[data-style]').forEach(b => {
+      b.onclick = () => {
+        selectStyle(b.dataset.style, true);
+        if (!$('#guideMask').hidden && guideI === 0) guideShow(1);
+      };
+    });
+  }
+
+  function syncWizardStyle(id) {
+    wizStyle = id;
+    renderStyleStrip();
+    const p = wizPreset();
+    $('#wizPrompt').placeholder = p.example;
+    $('#wizExample').title = '示例：' + p.example + '（点一下填入）';
+    $('#wizStyleChip').innerHTML = `当前风格：<b>${p.emoji} ${p.name}</b> · <button id="wizReselect">重新选择</button>`;
+    $('#wizReselect').onclick = () => goStep(1);
+  }
+
+  function selectStyle(id, advance) {
+    applyMuse(id, !advance);
+    if (advance) { goStep(2); $('#wizPrompt').focus(); }
+  }
+
+  function goStep(n) {
+    wizStep = n;
+    [1, 2, 3, 4].forEach(i => { $('#wstep' + i).hidden = String(i) !== String(n); });
+    $('#wstepLib').hidden = n !== 'lib';
+    $('#wizRail').querySelectorAll('[data-wstep]').forEach(b => {
+      const s = +b.dataset.wstep;
+      b.classList.toggle('on', s === n);
+      b.classList.toggle('done', typeof n === 'number' && s < n);
+    });
+    if (n === 'lib') renderLib();
+    if (n === 2) $('#wizPrompt').focus();
+  }
+
+  function renderPhases() {
+    $('#wizPhases').innerHTML = PHASES.map((t, i) => {
+      const s = wizPhaseState[i];
+      const mark = s === 2 ? '✓' : s === 1 ? '◇' : '·';
+      const suffix = i === 4 && s === 2 ? '（参数合规检查 · engine 护栏）' : '';
+      return `<div class="wphase ${s === 1 ? 'active' : s === 2 ? 'done' : ''}"><i>${mark}</i>${t}${suffix}</div>`;
+    }).join('');
+  }
+  function setPhase(i, s) { wizPhaseState[i] = s; renderPhases(); }
+  function wizProgress(pct) { $('#wizBarFill').style.width = Math.min(100, Math.max(0, pct)) + '%'; }
+
+  function wizCleanup() {
+    if (wizEs) { wizEs.close(); wizEs = null; }
+    if (wizPoll) { clearInterval(wizPoll); wizPoll = null; }
+  }
+
+  function wizFail(msg) {
+    wizCleanup();
+    const e = $('#wizErr'); e.hidden = false; e.textContent = msg;
+    $('#wizCancel').style.display = 'none';
+    $('#wizBack2').hidden = false;
+    $('#wizResume').hidden = !(wizMode === 'cine' && wizLastPrompt);
+  }
+
+  function wizOnJob(j) {
+    wizJob = j;
+    const pct = j.progress && j.progress.percent != null ? j.progress.percent : 0;
+    if (j.state === 'queued' || j.state === 'running') {
+      wizProgress(Math.max(8, pct * 0.92));
+      if (pct < 55) setPhase(2, 1);
+      else if (pct < 95) { setPhase(2, 2); setPhase(3, 1); }
+      else { setPhase(3, 2); setPhase(4, 1); }
+    }
+  }
+
+  function wizFinish(j) {
+    wizCleanup();
+    wizJob = j;
+    if (j.state !== 'succeeded') {
+      const em = j.error ? (j.error.code + ' · ' + j.error.message) : '';
+      wizFail('任务' + (j.state === 'canceled' ? '已取消' : '失败') + (em ? '：' + em : '') + (j.error && j.error.code === 'DS_NO_API_KEY' ? '。设置 DASHSCOPE_API_KEY（setx 后重启 Qoder）即可真出片。' : ''));
+      return;
+    }
+    wizPhaseState = [2, 2, 2, 2, 2]; renderPhases(); wizProgress(100);
+    saveWork(j);
+    renderPreview(j);
+    goStep(4);
+  }
+
+  function subscribeWiz(id) {
+    wizEs = new EventSource(apiBase() + '/api/jobs/' + id + '/events');
+    wizEs.addEventListener('snapshot', (ev) => wizOnJob(JSON.parse(ev.data).job));
+    wizEs.addEventListener('state', (ev) => wizOnJob(JSON.parse(ev.data).job));
+    wizEs.addEventListener('progress', (ev) => {
+      const p = JSON.parse(ev.data);
+      if (wizJob) wizOnJob({ ...wizJob, progress: { percent: p.percent == null ? null : p.percent, stage: p.stage } });
+    });
+    wizEs.addEventListener('done', (ev) => wizFinish(JSON.parse(ev.data).job || wizJob));
+    wizEs.onerror = () => {
+      if (wizEs) { wizEs.close(); wizEs = null; }
+      wizPoll = setInterval(async () => {
+        try {
+          const r = await fetch(apiBase() + '/api/jobs/' + id);
+          if (!r.ok) throw new Error('HTTP ' + r.status);
+          const j = await r.json();
+          wizOnJob(j);
+          if (!['queued', 'running'].includes(j.state)) wizFinish(j);
+        } catch (e2) { wizFail('进度流与轮询均断开（' + e2.message + '），任务可能仍在后端运行，可稍后到作品库查看。'); }
+      }, 2000);
+    };
+  }
+
+  async function startWizardGenerate(opts = {}) {
+    const prompt = opts.prompt != null ? opts.prompt : $('#wizPrompt').value.trim();
+    if (!prompt) { toast('先写一句话描述（或点示例填入）'); goStep(2); return; }
+    if (wizMode === 'cine') return startCineGenerate(prompt);
+    // 先解析、再决定推不推进：规则轨（非 AI）时先弹阻断确认卡，不确认就不开跑
+    let rec = null;
+    if (!opts.skipRecommend) {
+      try {
+        const rres = await fetch(apiBase() + '/api/recommend', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ prompt, device, model_id: modelTouched ? activeModel : undefined }),
+        });
+        if (rres.ok) rec = await rres.json();
+      } catch (e) { /* 推荐不可达不阻断：风格预设参数已就位，下面统一报 jobs 的错 */ }
+      if (!rec || rec.source !== 'qwen') {
+        const meta = rec
+          ? { source: rec.source || 'rules', reason: rec.reason || '', presetName: (rec.preset && rec.preset.name) || '', core: rec.core || {}, advN: Object.keys(rec.advanced_overrides || {}).length, aiCode: (rec.ai && rec.ai.error && rec.ai.error.code) || '', transportNote: '' }
+          : { source: 'none', reason: '推荐后端不可达，沿用当前风格预设参数（非 AI）', presetName: wizPreset().name, core: {}, advN: 0, aiCode: 'RECOMMEND_UNREACHABLE', transportNote: '' };
+        const ans = await LOWCONF.show(lowConfCtxFromRec(meta, '向导 · 生成视频'));
+        if (!ans.confirmed) { goStep(2); toast('已返回修改描述：没有提交任务，参数保持原样'); $('#wizPrompt').focus(); return; }
+        opts.confirmNote = ' · 低置信确认 confirmedByUser: true @ ' + ans.at;
+      }
+    }
+    wizCleanup();
+    wizLastPrompt = prompt; wizSavedId = null;
+    if (cinePickTimer) { clearInterval(cinePickTimer); cinePickTimer = null; }
+    $('#cineGridLive').innerHTML = ''; $('#cinePick').hidden = true;
+    goStep(3);
+    $('#wizErr').hidden = true; $('#wizBack2').hidden = true; $('#wizResume').hidden = true; $('#wizCancel').style.display = '';
+    wizPhaseState = [1, 0, 0, 0, 0]; renderPhases(); wizProgress(2);
+    $('#wizEta').textContent = wizProvider && wizProvider.mode === 'real'
+      ? '预计等待约 30~60 秒（estimate，非实测）'
+      : '演示链路 · 约几秒（真出片约 30~60 秒，estimate）';
+    try {
+      if (!opts.skipRecommend) {
+        setPhase(0, 2); setPhase(1, 1);
+        if (rec && rec.values) {
+          const overlayNote = ensureModelOverlay(rec);
+          applyValues(rec.values, rec.source === 'qwen' ? 'AI推荐·Qwen' : 'AI推荐·规则轨');
+          applyCharacter(rec.character);
+          wizRecNote = (rec.source === 'qwen' ? 'Qwen AI 推荐' : '规则推荐（非 AI：' + ((rec.ai && rec.ai.error && rec.ai.error.code) || '无 key') + '，已确认按规则轨继续）') + (overlayNote ? ' · ' + overlayNote : '');
+        } else {
+          wizRecNote = '推荐后端不可达，沿用当前风格预设参数（非 AI，已确认按规则轨继续）';
+        }
+        setPhase(1, 2);
+      } else {
+        setPhase(0, 2); setPhase(1, 2);
+        wizRecNote = '换一版：沿用上一版推荐，只换随机种子';
+      }
+      setPhase(2, 1); wizProgress(8);
+      const res = await fetch(apiBase() + '/api/jobs', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ values, device, engine: $('#genEngine').value || 'wan22', ...genQualitySelection(), note: '电影向导 · ' + prompt.slice(0, 60) + (opts.confirmNote || '') }),
+      });
+      if (!res.ok) { const e = await res.json().catch(() => ({})); throw new Error((e.error && (e.error.code + ' ' + e.error.message)) || 'HTTP ' + res.status); }
+      subscribeWiz((await res.json()).id);
+    } catch (e) {
+      wizFail('后端不可达（' + e.message + '）：生成视频需要本地后端，未伪造任何结果。双击 启动平台.cmd 或运行 node tools/serve.mjs 后重试。');
+    }
+  }
+
+  function renderPreview(j) {
+    const box = $('#wizPreview');
+    if (j.mock === true || !j.output) {
+      box.innerHTML = ''; // 不再显示黄色演示告警框；mock 状态在下方 meta 行以小字如实标注
+    } else {
+      box.innerHTML = `<video src="${apiBase()}/api/jobs/${j.id}/output" autoplay loop muted controls playsinline></video>`;
+      const v = box.querySelector('video');
+      v.addEventListener('error', () => {
+        box.insertAdjacentHTML('beforeend', '<div class="wiz-err">成片文件无法播放（可能已被清理）。产物路径：' + esc(j.output) + '</div>');
+      });
+    }
+    const p = wizPreset();
+    const warns = resolved.warnings.length;
+    $('#wizMeta').innerHTML = `风格 ${p.emoji} ${p.name} · 提示词「${esc(wizLastPrompt)}」${j.mock === true ? ' · <span class="wiz-mock-tag">mock 演示 · 无真实视频</span>' : ''}<br>${esc(wizRecNote)} · 参数合规检查：${warns ? warns + ' 条护栏提示（见专家模式）' : '无护栏告警'} · 显存 ${(report.vram.ratio * 100).toFixed(0)}%（estimate）`;
+    $('#wizSavedNote').textContent = wizSavedId === j.id ? '已自动存入作品库（默认保存，无需操作）' : '';
+    const crep = j.cineReport || j.cine || null;
+    if (crep) {
+      cineJobId = j.id;
+      const cands = crep.candidates || [];
+      $('#cineCands').hidden = !cands.length;
+      renderCineGrid('#cineCands', cands, false);
+      renderCineSub({ cineReport: crep });
+    } else { $('#cineCands').hidden = true; $('#cineSub').hidden = true; }
+  }
+
+  function cineSummary(j) {
+    const rep = j.cineReport || j.cine;
+    if (!rep) return null;
+    // 作品库回放只留展示所需的精简口径，不存 8 组×重试整份提示词（localStorage 容量有限）。
+    return {
+      candidates: rep.candidates || null, pick: rep.pick || null, warnings: rep.warnings || [],
+      analysis: rep.analysis || null, substitutions: rep.substitutions || [],
+      keyframeBaselineNote: rep.keyframeBaselineNote || null,
+      i2v: rep.i2v ? { request: { model: rep.i2v.request && rep.i2v.request.model }, camera: rep.i2v.camera || null, measured: rep.i2v.measured || null } : null,
+      styleId: rep.styleId || null, styleWords: rep.styleWords || null, face: rep.face || null,
+      sampling: rep.sampling || null, seeds: rep.seeds || null, camera: rep.camera || null,
+      params: rep.params || null, modelChain: rep.modelChain || null, retries: rep.retries || 0, status: rep.status || null,
+      shots: rep.shots || null, qa: rep.qa || null, gradePreset: rep.gradePreset || null, audio: rep.audio || null,
+      timeline: rep.timeline || null, mode: rep.mode || 'single', ratio: rep.ratio || null,
+      audit: rep.audit || null, compliance: rep.compliance || null, aesthetics: rep.aesthetics || null,
+    };
+  }
+  function saveWork(j, lowConf) {
+    const p = wizPreset();
+    const list = loadWorks();
+    const lc = lowConf || {};
+    list.unshift({
+      id: j.id, prompt: wizLastPrompt, styleId: wizStyle, styleName: p.name, emoji: p.emoji,
+      createdAt: new Date().toISOString().slice(0, 16).replace('T', ' '),
+      mock: j.mock === true, output: j.output || null, durationMs: j.durationMs || null, values: clone(values),
+      kind: j.kind || null, cine: cineSummary(j),
+      // 低置信留痕：confirmedByUser 只在确认卡点「按规则轨继续」后为 true
+      lowConf: lc.lowConf || null, confirmedByUser: lc.lowConf === 'confirmed', lowConfAt: lc.at || null,
+    });
+    saveWorks(list);
+    wizSavedId = j.id;
+    updateLibCounts();
+  }
+
+  function renderLib() {
+    const list = loadWorks();
+    updateLibCounts();
+    $('#wizLibList').innerHTML = list.length ? list.map((w, i) => {
+      const emoji = w.emoji || (MUSE.presets.find(p => p.id === w.styleId) || MUSE.presets[0]).emoji;
+      return `<div class="work-item">
+        <div class="wi-h"><i class="wi-emoji">${emoji}</i><span class="wi-style">${esc(w.styleName)}</span>${w.kind === 'cine' ? '<span class="wi-mock">电影</span>' : ''}${w.cine && w.cine.status ? `<span class="wi-mock">${esc(w.cine.status)}</span>` : ''}${w.lowConf === 'declined' ? '<span class="wi-mock">低置信未确认</span>' : w.lowConf === 'confirmed' ? '<span class="wi-mock">规则轨已确认</span>' : ''}${w.mock ? '<span class="wi-mock">演示</span>' : ''}<span class="wi-time">${esc(w.createdAt)}</span></div>
+        <div class="wi-prompt" title="${esc(w.prompt)}">${esc(w.prompt)}</div>
+        <div class="wi-btns">
+          <button class="btn" data-act="play" data-i="${i}">播放 / 查看</button>
+          <button class="btn" data-act="reuse" data-i="${i}">复用参数</button>
+          <button class="btn" data-act="style" data-i="${i}">复用这个风格</button>
+          <button class="btn" data-act="download" data-i="${i}">下载视频</button>
+          <button class="btn" data-act="del" data-i="${i}">删除</button>
+        </div>
+      </div>`;
+    }).join('') : '<div class="wiz-empty">还没有作品。回到第一步选个风格，写一句话就能生成。</div>';
+    $('#wizLibList').querySelectorAll('[data-act]').forEach(b => {
+      b.onclick = () => {
+        const list2 = loadWorks();
+        const w = list2[+b.dataset.i];
+        if (!w) return;
+        const act = b.dataset.act;
+        if (act === 'del') { list2.splice(+b.dataset.i, 1); saveWorks(list2); renderLib(); toast('已删除'); return; }
+        if (act === 'play') {
+          wizLastPrompt = w.prompt; wizRecNote = '作品库回放';
+          wizJob = { id: w.id, mock: w.mock, output: w.output, durationMs: w.durationMs, state: 'succeeded', kind: w.kind || null, cineReport: w.cine || null };
+          cineJobId = w.id;
+          renderPreview(wizJob); goStep(4); return;
+        }
+        if (act === 'reuse') {
+          applyValues(w.values, '作品库·' + w.styleName);
+          wizStyle = w.styleId; syncWizardStyle(w.styleId);
+          $('#wizPrompt').value = w.prompt;
+          goStep(2); toast('已复用当时的 258 参数与提示词'); return;
+        }
+        if (act === 'style') {
+          selectStyle(w.styleId, false);
+          $('#wizPrompt').value = '';
+          goStep(1); toast('风格已配好 258 参数，写一句新提示词即可'); return;
+        }
+        if (act === 'download') {
+          if (w.mock || !w.output) { toast('演示产物没有可下载的真实视频'); return; }
+          const a = document.createElement('a');
+          a.href = apiBase() + '/api/jobs/' + w.id + '/output';
+          a.download = 'avp-' + w.id + '.mp4';
+          a.click();
+          toast('已开始下载（真出片产物）');
+        }
+      };
+    });
+  }
+
+  /* ── 首次访问引导遮罩 ── */
+  const GUIDE_STEPS = [
+    { sel: '#styleStrip', step: 1, title: '先点一个你喜欢的风格', text: '电影感、二次元、赛博朋克……点一个卡片，258 个参数自动配好，直接进入下一步。' },
+    { sel: '#wizPrompt', step: 2, title: '用一句话描述你想看到的画面', text: '说人话就行，比如「雪夜里小木屋亮着灯」。点输入框下面的示例可以直接填入。' },
+    { sel: '#wizGenBtn', step: 2, title: '点「生成视频」', text: 'AI 自动调参出片，你只需要等。完成后可以预览、换一版，或存入作品库。' },
+  ];
+  let guideI = 0;
+  function guideShow(i) {
+    guideI = i;
+    const g = GUIDE_STEPS[i];
+    goStep(g.step);
+    const r = $(g.sel).getBoundingClientRect();
+    const spot = $('#guideSpot');
+    spot.style.left = (r.left - 6) + 'px'; spot.style.top = (r.top - 6) + 'px';
+    spot.style.width = (r.width + 12) + 'px'; spot.style.height = (r.height + 12) + 'px';
+    $('#guideTitle').textContent = g.title;
+    $('#guideText').textContent = g.text;
+    $('#guideNext').textContent = i === GUIDE_STEPS.length - 1 ? '开始使用' : '下一步';
+    const card = $('#guideCard');
+    const below = r.bottom + 14;
+    card.style.left = Math.max(12, Math.min(r.left, window.innerWidth - 344)) + 'px';
+    card.style.top = (below + 130 > window.innerHeight ? Math.max(12, r.top - 140) : below) + 'px';
+    $('#guideMask').hidden = false;
+  }
+  function guideEnd() {
+    $('#guideMask').hidden = true;
+    try { localStorage.setItem(GUIDE_KEY, '1'); } catch (e) { /* 隐私模式等场景不阻断 */ }
+    goStep(1);
+  }
+
+  // 移动端步骤条 = 可拖拽悬浮 dock：手柄拖动改位置（localStorage 记忆），双击回默认。
+  // 桌面端步骤条仍是侧栏（grip 隐藏），此逻辑不生效。
+  function initRailDrag() {
+    const rail = $('#wizRail');
+    const grip = $('#wizRailGrip');
+    if (!rail || !grip) return;
+    const KEY = 'avp.wizrail.pos.v1';
+    const isDock = () => getComputedStyle(rail).position === 'fixed';
+    const setPos = (x, y) => { rail.style.left = x + 'px'; rail.style.top = y + 'px'; rail.style.bottom = 'auto'; };
+    const clampPos = (x, y) => {
+      const r = rail.getBoundingClientRect();
+      return [
+        Math.max(4, Math.min(x, window.innerWidth - r.width - 4)),
+        Math.max(4, Math.min(y, window.innerHeight - r.height - 4)),
+      ];
+    };
+    if (isDock()) {
+      try {
+        const p = JSON.parse(localStorage.getItem(KEY) || 'null');
+        if (p && typeof p.x === 'number' && typeof p.y === 'number') setPos(...clampPos(p.x, p.y));
+      } catch (err) { /* 位置损坏则用默认 */ }
+    }
+    let drag = null;
+    grip.addEventListener('pointerdown', (e) => {
+      if (!isDock()) return;
+      e.preventDefault();
+      const r = rail.getBoundingClientRect();
+      drag = { dx: e.clientX - r.left, dy: e.clientY - r.top };
+      try { grip.setPointerCapture(e.pointerId); } catch (err) { /* 捕获失败仍可拖 */ }
+    });
+    grip.addEventListener('pointermove', (e) => {
+      if (!drag) return;
+      setPos(...clampPos(e.clientX - drag.dx, e.clientY - drag.dy));
+    });
+    const end = () => {
+      if (!drag) return;
+      drag = null;
+      const r = rail.getBoundingClientRect();
+      try { localStorage.setItem(KEY, JSON.stringify({ x: r.left, y: r.top })); } catch (err) { /* 隐私模式不阻断 */ }
+    };
+    grip.addEventListener('pointerup', end);
+    grip.addEventListener('pointercancel', end);
+    grip.addEventListener('dblclick', () => {
+      rail.style.left = ''; rail.style.top = ''; rail.style.bottom = '';
+      try { localStorage.removeItem(KEY); } catch (err) { /* 忽略 */ }
+    });
+  }
+
+  function initWizard() {
+    initRailDrag();
+    renderStyleStrip();
+    selectStyle('muse_cinematic', false); // 默认选中电影感（最通用），静默套用
+    updateLibCounts();
+    $('#wizExample').onclick = () => { $('#wizPrompt').value = wizPreset().example.replace(/^例：/, ''); $('#wizPrompt').focus(); $('#wizPasteHint').hidden = true; };
+    $('#wizClear').onclick = () => { const ta = $('#wizPrompt'); ta.value = ''; ta.focus(); $('#wizPasteHint').hidden = true; ta.dispatchEvent(new Event('input', { bubbles: true })); };
+    $('#wizPaste').onclick = async () => {
+      const ta = $('#wizPrompt');
+      const hint = $('#wizPasteHint');
+      hint.hidden = true;
+      let text;
+      try {
+        text = await readClipboard();
+      } catch (err) {
+        pasteFallback(ta, hint); // 权限被拒 / 非 HTTPS：聚焦选中 + 红色提示，引导手动粘贴
+        return;
+      }
+      if (!text || !text.trim()) { $('#wizPaste').disabled = true; toast('剪贴板是空的'); return; }
+      ta.focus();
+      insertAtCursor(ta, String(text).replace(/\s+$/, ''));
+      refreshPasteBtn();
+    };
+    // 原生 Ctrl+V / 长按粘贴：不拦截，粘贴成功后收起红色提示并刷新按钮可用态。
+    $('#wizPrompt').addEventListener('paste', () => { $('#wizPasteHint').hidden = true; setTimeout(refreshPasteBtn, 0); });
+    // 剪贴板判空只在能真正读取时生效：窗口/输入框获焦、页面回到前台时刷新按钮可用态。
+    window.addEventListener('focus', refreshPasteBtn);
+    document.addEventListener('visibilitychange', () => { if (!document.hidden) refreshPasteBtn(); });
+    $('#wizPrompt').addEventListener('focus', refreshPasteBtn);
+    refreshPasteBtn();
+    $('#wizGenBtn').onclick = () => startWizardGenerate();
+    $('#wizMode').querySelectorAll('[data-mode]').forEach(b => {
+      b.onclick = () => {
+        wizMode = b.dataset.mode;
+        $('#wizMode').querySelectorAll('[data-mode]').forEach(x => x.classList.toggle('on', x === b));
+        $('#wizGenBtn').textContent = wizMode === 'cine' ? (wizMulti ? '生成多镜短片' : '生成电影') : '生成视频';
+        $('#wizShotMode').style.display = wizMode === 'cine' ? '' : 'none';
+        $('#wizRatio').style.display = wizMode === 'cine' ? '' : 'none';
+      };
+    });
+    $('#wizRatio').querySelectorAll('[data-ratio]').forEach(b => {
+      b.onclick = () => {
+        wizRatio = b.dataset.ratio;
+        $('#wizRatio').querySelectorAll('[data-ratio]').forEach(x => x.classList.toggle('on', x === b));
+      };
+    });
+    $('#wizTheme').innerHTML = '<option value="">无（通用电影感）</option>' + (AESTH.themes || []).map(t => `<option value="${t.id}">${esc(t.name)}</option>`).join('');
+    $('#wizTheme').onchange = (e) => applyTheme(e.target.value);
+    $('#wizShotMode').querySelectorAll('[data-shots]').forEach(b => {
+      b.onclick = () => {
+        wizMulti = b.dataset.shots === '3';
+        $('#wizShotMode').querySelectorAll('[data-shots]').forEach(x => x.classList.toggle('on', x === b));
+        if (wizMode === 'cine') $('#wizGenBtn').textContent = wizMulti ? '生成多镜短片' : '生成电影';
+      };
+    });
+    $('#wizGenBtn').textContent = wizMode === 'cine' ? '生成电影' : '生成视频';
+    $('#wizPrompt').onkeydown = (e) => { if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) startWizardGenerate(); };
+    $('#wizCancel').onclick = async () => {
+      if (!wizJob) return;
+      try { await fetch(apiBase() + '/api/jobs/' + wizJob.id + '/cancel', { method: 'POST' }); } catch (e) { toast('取消失败：' + e.message); }
+    };
+    $('#wizBack2').onclick = () => goStep(2);
+    $('#wizResume').onclick = () => startCineGenerate(wizLastPrompt, true);
+    $('#wizSave').onclick = () => {
+      if (!wizJob) return;
+      if (wizSavedId !== wizJob.id) saveWork(wizJob);
+      $('#wizSavedNote').textContent = '已存入作品库（左侧「作品库」可查看 / 复用）';
+      toast('已保存到作品库');
+    };
+    $('#wizReroll').onclick = () => {
+      ['kf.seed', 'mo.shake_seed'].forEach(k => { if (map[k]) values[k] = AVP.coerce(map[k], Math.floor(Math.random() * 2147483647)); });
+      recompute();
+      startWizardGenerate({ prompt: wizLastPrompt, skipRecommend: true });
+    };
+    $('#wizTweak').onclick = () => { setMode('expert'); toast('已展开参数工作台：改完点「一键生成」按新参数出片'); };
+    $('#wizSkip').onclick = () => setMode('expert');
+    $('#wizLibBtn').onclick = () => goStep('lib');
+    $('#wizRail').querySelectorAll('[data-wstep]').forEach(b => {
+      b.onclick = () => {
+        const s = +b.dataset.wstep;
+        if (s === 1) goStep(1);
+        else if (s === 2) goStep(2);
+        else if (s === 3 && wizJob && ['queued', 'running'].includes(wizJob.state)) goStep(3);
+        else if (s === 4 && wizJob) { renderPreview(wizJob); goStep(4); }
+      };
+    });
+    $('#guideNext').onclick = () => (guideI + 1 < GUIDE_STEPS.length ? guideShow(guideI + 1) : guideEnd());
+    $('#guideSkip').onclick = guideEnd;
+    // 后端 provider 探测：只用于预计等待时间口径，失败不阻断（生成时会如实报错）
+    fetch(apiBase() + '/api/health').then(r => r.json()).then(h => { wizProvider = h.provider; }).catch(() => { wizProvider = null; });
+  }
+
+  /* ───── 启动 ───── */
+  $('#fVer').textContent = reg.version;
+  $('#fCount').textContent = reg.counts.total;
+  $('#fLayers').textContent = `${layerCount.core}/${layerCount.common}/${layerCount.advanced}`;
+  initDevice(); initMisc(); initWizard();
+  const linked = bridgeLoad();
+  renderPresetBar(); renderModelSelect(); renderMine(); renderRail(); renderBoard(); recompute();
+  $('#aiPrompt').placeholder = (modelById(activeModel) || {}).placeholder || $('#aiPrompt').placeholder;
+  paintBridge();
+  setMode('expert'); // 默认专家工作台；小白模式已移除，向导经顶部「一句话电影」按钮进入
+  let firstVisit = false;
+  try { firstVisit = !localStorage.getItem(GUIDE_KEY); } catch (e) { /* 存储不可用则不弹引导 */ }
+  if (firstVisit) { showWizard(); guideShow(0); }
+  if (linked) toast(`已联动外壳项目「${BRIDGE.name}」· 改动会写回平台`);
+  refreshGenJobs();
+
+  // 自检钩子：给自动化测试用（不影响界面）
+  window.__AVPUI = {
+    get values() { return values; },
+    get report() { return report; },
+    get mode() { return mode; },
+    get overrides() { return [...overrides]; },
+    get baseline() { return baseline && baseline.label; },
+    setParam, recompute, setMode, applyMuse,
+    models: {
+      select: applyModel, patches: modelPatches, configs: MODELS.models,
+      get active() { return activeModel; }, get touched() { return modelTouched; },
+    },
+    get bridge() { return BRIDGE && { id: BRIDGE.id, name: BRIDGE.name, state: BRIDGE.state }; },
+    bridgeWrite,
+    setDevice(id) { device = id; $('#device').value = id; recompute(); renderBoard(); bridgeQueue(); },
+    setStage(id) { stageFilter = id; renderRail(); renderBoard(); },
+    setExpert(v) { if (v) setMode('expert'); else showWizard(); },
+    setSearch(q) { search = q; $('#search').value = q; renderBoard(); },
+    recommendLocal(prompt) { const r = localRecommend(prompt); showRecommend(r, '本地规则轨（测试钩子）'); return r; },
+    visibleRows() { return [...rows.keys()]; },
+    generate,
+    get genJob() { return genJob; },
+    wizard: {
+      goStep, selectStyle, start: startWizardGenerate, guideShow, guideEnd, renderLib,
+      get step() { return wizStep; }, get job() { return wizJob; }, get style() { return wizStyle; },
+      get phases() { return [...wizPhaseState]; }, get prompt() { return wizLastPrompt; },
+      works: loadWorks,
+    },
+  };
+
+  /* ───── 关键帧两阶段：生成候选 → 五维选优 → 图生视频 ───── */
+  (function () {
+    var KF = { id: null, timer: 0, sel: -1, busy: false };
+    function kfEl(id) { return document.getElementById(id); }
+    function kfSay(t, tone) {
+      var n = kfEl('kfState');
+      if (!n) return;
+      n.textContent = t;
+      n.style.color = tone === 'bad' ? 'var(--bad-ink)' : tone === 'ok' ? 'var(--ok)' : 'var(--text-dim)';
+    }
+    function kfScores(c) {
+      if (!c || !c.scores) return '';
+      var s = c.scores;
+      return 'Sface ' + s.Sface + ' · Ssharp ' + s.Ssharp + ' · Sstyle ' + s.Sstyle + ' · Scomp ' + s.Scomp + ' · Sbad ' + s.Sbad;
+    }
+    function kfRender(rec) {
+      var grid = kfEl('kfGrid');
+      if (!grid) return;
+      var cands = rec.candidates || [];
+      var sel = rec.selected ? cands.findIndex(function (c) { return c.file === rec.selected; }) : -1;
+      KF.sel = sel;
+      grid.innerHTML = cands.map(function (c, i) {
+        var picked = i === sel;
+        var bad = c.degenerate || c.accept === false;
+        return '<div data-kfi="' + i + '" style="border:2px solid ' + (picked ? 'var(--acc)' : 'var(--line)') + ';border-radius:var(--r2);overflow:hidden;cursor:pointer;background:var(--panel2)">'
+          + '<img alt="candidate ' + i + '" src="' + apiBase() + '/api/keyframes/' + encodeURIComponent(rec.id) + '/frame/' + i + '" style="width:100%;display:block;aspect-ratio:16/10;object-fit:cover">'
+          + '<div style="padding:5px 7px;font:var(--fz-xs)/1.5 var(--mono);color:' + (bad ? 'var(--bad-ink)' : 'var(--text-dim)') + '">'
+          + (picked ? '✔ 已选中 · ' : '') + '总分 ' + (c.total == null ? '—' : c.total) + (bad ? ' · 淘汰' : '')
+          + '<br>' + kfScores(c) + '</div></div>';
+      }).join('');
+      Array.prototype.forEach.call(grid.querySelectorAll('[data-kfi]'), function (elx) {
+        elx.addEventListener('click', function () {
+          var i = Number(elx.getAttribute('data-kfi'));
+          fetch(apiBase() + '/api/keyframes/' + encodeURIComponent(rec.id) + '/pick', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ index: i }),
+          }).then(function (r) { return r.json(); }).then(function (d) {
+            if (d.error) { kfSay('改选失败：' + d.error.code, 'bad'); return; }
+            kfRender(d);
+            kfEl('kfSel').textContent = '已手动选定：' + (d.selected || '').split(/[\\/]/).pop();
+            kfEl('kfVideo').disabled = false;
+          }).catch(function (e) { kfSay('改选失败：' + e.message, 'bad'); });
+        });
+      });
+      if (sel >= 0) {
+        kfEl('kfSel').textContent = (rec.selected_by === 'user' ? '已手动选定：' : '已自动选定最优：') + (rec.selected || '').split(/[\\/]/).pop();
+        kfEl('kfVideo').disabled = false;
+      } else {
+        kfEl('kfSel').textContent = '未选定关键帧（全部候选被拒）';
+        kfEl('kfVideo').disabled = true;
+      }
+    }
+    function kfPoll() {
+      clearTimeout(KF.timer);
+      if (!KF.id) return;
+      fetch(apiBase() + '/api/keyframes/' + encodeURIComponent(KF.id)).then(function (r) { return r.json(); }).then(function (rec) {
+        if (rec.error && !rec.status) { kfSay('查询失败：' + rec.error.code, 'bad'); return; }
+        if (rec.status === 'generating' || rec.status === 'selected' && !(rec.candidates || []).length) {
+          kfSay(rec.stage === 'scoring' ? '打分选优中…' : '候选生成中…');
+          KF.timer = setTimeout(kfPoll, 5000);
+          return;
+        }
+        if (rec.status === 'selected') {
+          kfSay('已选定关键帧', 'ok');
+          kfRender(rec);
+          return;
+        }
+        if (rec.status === 'rejected') { kfSay('全部候选低于阈值，已阻止进入视频', 'bad'); kfRender(rec); return; }
+        if (rec.status === 'failed') { kfSay('生图失败：' + ((rec.error && rec.error.code) || 'KF_FAILED'), 'bad'); return; }
+        KF.timer = setTimeout(kfPoll, 5000);
+      }).catch(function () { KF.timer = setTimeout(kfPoll, 6000); });
+    }
+    function kfGenerate() {
+      if (KF.busy) return;
+      var prompt = (document.getElementById('aiPrompt') || {}).value || '';
+      prompt = String(prompt).trim();
+      if (!prompt) { kfSay('先在上方提示词框写描述', 'bad'); return; }
+      KF.busy = true;
+      kfEl('kfGen').disabled = true;
+      kfSay('提交中…');
+      fetch(apiBase() + '/api/keyframes', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ prompt: prompt, count: Number((kfEl('kfCount') || {}).value || 4), width: 640, height: 384 }),
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        KF.busy = false;
+        kfEl('kfGen').disabled = false;
+        if (d.error) { kfSay('提交失败：' + d.error.code + ' ' + (d.error.message || ''), 'bad'); return; }
+        KF.id = d.id;
+        kfEl('kfSel').textContent = '未选定关键帧';
+        kfEl('kfVideo').disabled = true;
+        kfSay('候选生成中…');
+        kfPoll();
+      }).catch(function (e) { KF.busy = false; kfEl('kfGen').disabled = false; kfSay('提交失败：' + e.message, 'bad'); });
+    }
+    function kfVideo() {
+      if (!KF.id) return;
+      kfSay('提交视频…');
+      fetch(apiBase() + '/api/keyframes/' + encodeURIComponent(KF.id) + '/video', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ seconds: 5, output_fps: 60 }),
+      }).then(function (r) { return r.json(); }).then(function (d) {
+        if (d.error) { kfSay('视频提交被拦截：' + d.error.code + ' ' + (d.error.message || ''), 'bad'); return; }
+        kfSay('视频生成中 · ' + d.prompt_id, 'ok');
+        kfEl('kfVideo').disabled = true;
+      }).catch(function (e) { kfSay('视频提交失败：' + e.message, 'bad'); });
+    }
+    document.addEventListener('click', function (ev) {
+      var t = ev.target;
+      if (!t) return;
+      if (t.id === 'kfGen') kfGenerate();
+      else if (t.id === 'kfVideo') kfVideo();
+    });
+  })();
+
+
+  /* BYOK 面板挂载：提示词取 AI 输入框；首帧取"关键帧已选定"的那张（转 dataURL） */
+  (function () {
+    if (!window.AVPByok) return;
+    var host = document.getElementById('byokPanel');
+    if (!host) return;
+    window.__byok = window.AVPByok.mount(host, {
+      getPrompt: function () {
+        var n = document.getElementById('aiPrompt');
+        return n ? n.value : '';
+      },
+      getFirstFrameDataUrl: async function () {
+        try {
+          var id = window.__kfSelectedId;
+          var idx = window.__kfSelectedIndex;
+          if (!id || idx == null) return null;
+          var r = await fetch(apiBase() + '/api/keyframes/' + encodeURIComponent(id) + '/frame/' + idx);
+          if (!r.ok) return null;
+          var blob = await r.blob();
+          return await new Promise(function (res) { var fr = new FileReader(); fr.onload = function () { res(fr.result); }; fr.readAsDataURL(blob); });
+        } catch (e) { return null; }
+      },
+    });
+  })();
+})();
+</script>
+</body>
+</html>

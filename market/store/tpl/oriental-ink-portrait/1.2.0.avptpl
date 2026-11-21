@@ -1,0 +1,247 @@
+{
+  "schema": "ai-video-platform/template",
+  "format": 1,
+  "id": "oriental-ink-portrait",
+  "name": "东方古风人物特写",
+  "version": "1.2.0",
+  "author": "云盘工坊",
+  "license": "paid",
+  "registry_version": "0.1.0",
+  "created": "2026-11-16T09:00:00.000Z",
+  "tags": [
+    "古风",
+    "人物",
+    "特写",
+    "工笔",
+    "国风"
+  ],
+  "stage_focus": [
+    "character",
+    "keyframe",
+    "look"
+  ],
+  "cover_params": [
+    "ch.style",
+    "kf.composition",
+    "kf.dof",
+    "lk.paper_texture"
+  ],
+  "values": {
+    "ch.age": 28,
+    "ch.consistency": 0.95,
+    "ch.expression_count": 6,
+    "ch.eye_highlight": 68,
+    "ch.fabric_texture": 74,
+    "ch.face_shape": "瓜子",
+    "ch.hair_detail": 78,
+    "ch.hair_style": "古风发髻",
+    "ch.line_weight": 22,
+    "ch.lora_style_1": 0.82,
+    "ch.outfit_1": "月白立领对襟长衫，暗纹云锦，宽袖",
+    "ch.outfit_2": "藕荷色马面裙",
+    "ch.pose_count": 2,
+    "ch.prompt_prefix": "masterpiece, best quality, consistent character, fine brushwork, ",
+    "ch.ref_images": 4,
+    "ch.screen_tone": 8,
+    "ch.style": "工笔",
+    "ch.subject": "一位28岁古典女子，鹅蛋脸细眉凤目，发髻斜插一支白玉簪，月白立领对襟长衫，站于回廊窗下",
+    "ex.bitrate": 18,
+    "ex.codec": "H.265",
+    "ex.resolution": "1440p",
+    "ex.transition": "淡入淡出",
+    "kf.cfg": 5.2,
+    "kf.cn_weight": 0.62,
+    "kf.color_temp": 4600,
+    "kf.composition": "大留白",
+    "kf.dof": 58,
+    "kf.ipadapter_weight": 0.88,
+    "kf.light_ratio": 3.4,
+    "kf.negative_space": 34,
+    "kf.refine_denoise": 0.42,
+    "kf.refine_scale": 1.6,
+    "kf.refine_steps": 14,
+    "kf.steps": 28,
+    "kf.usm_amount": 0.3,
+    "lk.contrast": 108,
+    "lk.film_halation": 14,
+    "lk.grain": 18,
+    "lk.ink_bleed": 6,
+    "lk.lut_strength": 62,
+    "lk.paper_texture": 14,
+    "lk.saturation": 96,
+    "lk.subtitle_font": "毛笔楷",
+    "lk.subtitle_style": "书法",
+    "lk.vignette": 32,
+    "mo.breath_amp": 34,
+    "mo.cloth_sway": 52,
+    "mo.flow_stabilize": 62,
+    "mo.fx_bloom_light": 36,
+    "mo.fx_dust": 18,
+    "mo.fx_fog": 26,
+    "mo.hair_sway": 66,
+    "mo.i2v_strength": 0.42,
+    "mo.mask_area": 22,
+    "mo.mode": "局部i2v",
+    "sb.closeup_ratio": 72,
+    "sb.duration": 30,
+    "sb.emotion_curve": 58,
+    "sb.grid_count": 18,
+    "sb.medium_ratio": 21,
+    "sb.narration_ratio": 18,
+    "sb.rhythm": "慢",
+    "sb.shot_scale": "特写",
+    "sb.wide_ratio": 7,
+    "vo.bgm_strength": 30,
+    "vo.emotion": "平静",
+    "vo.pause_insert": 240,
+    "vo.speed": 0.92,
+    "vo.voice_id": "白桦"
+  },
+  "checksum": "djb2:7c3014b2",
+  "lineage": {
+    "derived_from": [],
+    "parent_checksum": null,
+    "origin": "manual"
+  },
+  "compat": {
+    "min_platform": "0.1.0",
+    "max_tested": "0.1.0",
+    "platform": "ai-video-platform"
+  },
+  "pricing": {
+    "mode": "paid",
+    "price_cny": 36
+  },
+  "signature": {
+    "algo": "HMAC-SHA256",
+    "key_id": "bcbe68321eca99c8",
+    "value": "d84251b275498a45af4c6c2058f82bd6ef39d303236594221c7ec67add94c74b",
+    "signed_at": "2026-11-16T09:00:00.000Z",
+    "issuer": "market/build_samples.js",
+    "scope": "payload = 模板对象去掉 signature 字段后按 key 递归排序的 JSON"
+  },
+  "estimate_meta": {
+    "device": "T0",
+    "peak_mib": 6114,
+    "usable_mib": 6900,
+    "ratio": 0.886,
+    "state": "ok",
+    "dominant": "keyframe",
+    "shot_sec": 181,
+    "episode_sec": 3298,
+    "quality": 80,
+    "cost_episode_yuan": 0.0769
+  },
+  "workflow_ref": {
+    "kind": "inline",
+    "format": "comfyui-api",
+    "path": "workflow",
+    "synthetic": true,
+    "registry_version": "0.1.0",
+    "nodes": 4,
+    "params": 6,
+    "targets": [
+      "CLIP Text Encode",
+      "Character Builder",
+      "EmptyLatentImage",
+      "KSampler"
+    ],
+    "bindings": [
+      {
+        "key": "ch.subject",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.face_detail",
+        "stage": "character",
+        "node": "1",
+        "target": "CLIP Text Encode",
+        "widget": "text"
+      },
+      {
+        "key": "ch.age",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "age"
+      },
+      {
+        "key": "ch.face_shape",
+        "stage": "character",
+        "node": "2",
+        "target": "Character Builder",
+        "widget": "face_shape"
+      },
+      {
+        "key": "kf.resolution",
+        "stage": "keyframe",
+        "node": "3",
+        "target": "EmptyLatentImage",
+        "widget": "width"
+      },
+      {
+        "key": "kf.steps",
+        "stage": "keyframe",
+        "node": "4",
+        "target": "KSampler",
+        "widget": "steps"
+      }
+    ]
+  },
+  "workflow": {
+    "1": {
+      "class_type": "CLIPTextEncode",
+      "inputs": {
+        "text": "一位28岁古典女子，鹅蛋脸细眉凤目，发髻斜插一支白玉簪，月白立领对襟长衫，站于回廊窗下"
+      },
+      "_meta": {
+        "title": "CLIP Text Encode",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "2": {
+      "class_type": "CharacterBuilder",
+      "inputs": {
+        "age": 28,
+        "face_shape": "瓜子"
+      },
+      "_meta": {
+        "title": "Character Builder",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "3": {
+      "class_type": "EmptyLatentImage",
+      "inputs": {
+        "width": 1536
+      },
+      "_meta": {
+        "title": "EmptyLatentImage",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    },
+    "4": {
+      "class_type": "KSampler",
+      "inputs": {
+        "steps": 28
+      },
+      "_meta": {
+        "title": "KSampler",
+        "synthetic": true,
+        "source": "market/workflow.js"
+      }
+    }
+  },
+  "build": {
+    "engine": "core/engine.js",
+    "preset_schema": "ai-video-platform/preset",
+    "preset_format": 1,
+    "packer": "market/pack.js@1"
+  }
+}

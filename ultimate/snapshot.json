@@ -1,0 +1,245 @@
+{
+  "generatedAt": "2026-11-19T15:15:55.287Z",
+  "engines": [
+    {
+      "id": "wan22",
+      "name": "Wan2.2",
+      "label": "Wan2.2（本地开源 · 现有底座）",
+      "vae": {
+        "video": "wan2.2_vae",
+        "audio": null
+      },
+      "features": [
+        "ipadapter",
+        "facedetailer",
+        "reference_lock",
+        "controlnet"
+      ],
+      "quant": {
+        "8g": "preserve",
+        "12g": "preserve",
+        "automatic": false
+      },
+      "selfcheck": {
+        "status": "inferred",
+        "at": null
+      }
+    },
+    {
+      "id": "minimax_h3",
+      "name": "MiniMax H3",
+      "label": "MiniMax H3（本地开源 · 第二底座）",
+      "vae": {
+        "video": "minimax_h3_video_vae_int8_convrot.safetensors",
+        "audio": "minimax_h3_audio_vae_fp32.safetensors"
+      },
+      "features": [
+        "reference_lock_native",
+        "audio_vae",
+        "video_audio_joint"
+      ],
+      "quant": {
+        "8g": "preserve",
+        "12g": "preserve",
+        "automatic": false
+      },
+      "selfcheck": {
+        "status": "inferred",
+        "at": null
+      }
+    }
+  ],
+  "isolation": {
+    "ok": null,
+    "note": "构建不修改引擎数据；隔离验证请运行自检",
+    "probe": {}
+  },
+  "vram": {
+    "plan": {
+      "tier": "unknown",
+      "quant": "preserve",
+      "fp16": null,
+      "auto_quantization": false,
+      "split_load": true,
+      "offload": "on_demand",
+      "reason": "显存未知 → 保持已安装权重精度 + 按需卸载；仍须质量准入检查"
+    },
+    "fp16": {
+      "max_mib": null,
+      "quant": "preserve",
+      "split_load": false,
+      "offload": "none",
+      "fp16": null,
+      "auto_quantization": false,
+      "reason": "可用 24000MiB → 保持已安装权重精度；不保证显存足够"
+    }
+  },
+  "plan": {
+    "engine": "wan22",
+    "task_id": "task_mwnozyfl_8497",
+    "stats": {
+      "nodes": 130,
+      "edges": 131,
+      "per_module": {
+        "input_precheck": 20,
+        "text_encode": 15,
+        "latent_init": 15,
+        "sampler_core": 25,
+        "vae_decode": 20,
+        "scoring": 20,
+        "archive_split": 15
+      },
+      "missing_modules": [],
+      "min_nodes_ok": true,
+      "packing_violations": 0,
+      "engine": "wan22",
+      "mapped_executable_nodes": 12
+    },
+    "vram": {
+      "tier": "unknown",
+      "quant": "preserve",
+      "fp16": null,
+      "auto_quantization": false,
+      "split_load": true,
+      "offload": "on_demand",
+      "reason": "显存未知 → 保持已安装权重精度 + 按需卸载；仍须质量准入检查"
+    },
+    "execution": {
+      "comfy_ready": true,
+      "mapped_nodes": 12,
+      "planned_nodes": 130,
+      "save_latent": true,
+      "quality_errors": []
+    },
+    "params_digest": "a1482dd2c614bee1",
+    "dir": "D:\\缓存\\avp\\repair-check-yG4Ukf\\avp\\experiments\\exp_2026-11-19T15-15-55-284Z"
+  },
+  "bayes": {
+    "engine": "wan22",
+    "iters": 0,
+    "converged": false,
+    "best": {
+      "F": null,
+      "params": {}
+    },
+    "weights": {
+      "w1": 0.35,
+      "w2": 0.35,
+      "w3": 0.2,
+      "w4": 0.1
+    },
+    "evaluator": "pending",
+    "curve": []
+  },
+  "abc": {
+    "csv": "",
+    "only_variable": "质量采样参数组",
+    "variables_locked": [
+      "分辨率",
+      "原生帧率",
+      "帧数",
+      "种子",
+      "拓扑"
+    ],
+    "rows": [
+      {
+        "id": "A",
+        "label": "等待质量模式原生对照样片",
+        "F": null,
+        "digest": ""
+      },
+      {
+        "id": "B",
+        "label": "等待质量模式原生对照样片",
+        "F": null,
+        "digest": ""
+      },
+      {
+        "id": "C",
+        "label": "等待质量模式原生对照样片",
+        "F": null,
+        "digest": ""
+      }
+    ]
+  },
+  "ablation": {
+    "param": "kf.steps",
+    "rows": [
+      {
+        "value": 16,
+        "F": null
+      },
+      {
+        "value": 20,
+        "F": null
+      },
+      {
+        "value": 25,
+        "F": null
+      }
+    ],
+    "bars": "未执行；不读取旧极速实验作为当前质量证据"
+  },
+  "score": null,
+  "post": null,
+  "gates": {
+    "gates": [
+      {
+        "id": "link",
+        "label": "基准链路连通自检",
+        "pass": true,
+        "fatal": true,
+        "detail": {
+          "nodes": 130,
+          "modules": [
+            "input_precheck",
+            "text_encode",
+            "latent_init",
+            "sampler_core",
+            "vae_decode",
+            "scoring",
+            "archive_split"
+          ],
+          "packing": 0
+        }
+      },
+      {
+        "id": "scorer",
+        "label": "打分器相关性预校验",
+        "pass": false,
+        "fatal": true,
+        "detail": "未提供打分结果"
+      },
+      {
+        "id": "dim",
+        "label": "参数降维校验",
+        "pass": true,
+        "fatal": false,
+        "detail": {
+          "optimizable": 3,
+          "total": 258
+        }
+      },
+      {
+        "id": "converge",
+        "label": "贝叶斯收敛校验",
+        "pass": false,
+        "fatal": false,
+        "detail": "无寻优结果"
+      },
+      {
+        "id": "separation",
+        "label": "双层收益分离校验",
+        "pass": false,
+        "fatal": true,
+        "detail": "未提供双版本路径"
+      }
+    ],
+    "all_pass": false,
+    "fatal_failed": [
+      "scorer",
+      "separation"
+    ]
+  },
+  "note": "构建仅展示已有质量策略数据，不运行代理寻优、不生成或评分视频；旧极速实验文件原样保留，但不作为本次质量验收证据。原生评分与增强状态从任务API读取。"
+}

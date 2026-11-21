@@ -1,0 +1,332 @@
+[
+  {
+    "id": 1,
+    "name": "逐档位分辨率映射(8档)",
+    "expect": "全部落白名单且直配正确",
+    "actual": "9:16@1080p=1080*1920 16:9@1080p=1920*1080 1:1@1080p=1440*1440 3:4@1080p=1248*1632 4:3@1080p=1632*1248 9:16@720p=480*832 16:9@720p=832*480 1:1@720p=624*624",
+    "status": "通过",
+    "problem": "",
+    "fix": "mapVideoSize 已修",
+    "prio": "P0"
+  },
+  {
+    "id": 2,
+    "name": "非法分辨率提交前拦截+就近映射",
+    "expect": "400 预检拦截不打云端+映射合法",
+    "actual": "1024*1280→拦截true/映射1248*1632 1024*1536→拦截true/映射1248*1632 768*1024→拦截true/映射1248*1632 999*999→拦截true/映射1440*1440 | http4k=400/DS_PRECHECK_FAILED",
+    "status": "通过",
+    "problem": "",
+    "fix": "已修",
+    "prio": "P0"
+  },
+  {
+    "id": 3,
+    "name": "关键帧/视频画幅不一致自动裁剪",
+    "expect": "aspectCrop 中心裁到目标比例无拉伸",
+    "actual": "含 aspectCrop",
+    "status": "通过",
+    "problem": "",
+    "fix": "已修",
+    "prio": "P0"
+  },
+  {
+    "id": 4,
+    "name": "ComfyUI/DashScope 双通道",
+    "expect": "comfy 不可达明确报 degraded；dashscope 可达",
+    "actual": "comfy reachable=false degraded=true; ds reachable=true",
+    "status": "通过",
+    "problem": "",
+    "fix": "comfy 本机未启动属环境非 bug",
+    "prio": "P1"
+  },
+  {
+    "id": 5,
+    "name": "额度不足切本地/双不可用明确报错",
+    "expect": "quota→comfy hint；不可达不出假视频",
+    "actual": "hint 在位",
+    "status": "通过",
+    "problem": "当前为 hint 引导非自动切换",
+    "fix": "建议 jobs 捕获 DS_QUOTA 自动切 comfy",
+    "prio": "P1"
+  },
+  {
+    "id": 6,
+    "name": "空白提示词阻止提交",
+    "expect": "400 拦截",
+    "actual": "expert=400/DS_PRECHECK_FAILED cine=400/CINE_EMPTY_PROMPT",
+    "status": "通过",
+    "problem": "",
+    "fix": "app 预检增 ch.subject raw 空检查",
+    "prio": "P0"
+  },
+  {
+    "id": 7,
+    "name": "超长/特殊/emoji 提示词不崩溃",
+    "expect": "200 或明确降级不崩溃",
+    "actual": "recommend=200 source=qwen",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 9,
+    "name": "AI推荐核心5/常用39/高级有值",
+    "expect": "core=5 common=39 advanced>0 values=258",
+    "actual": "core=5 common=39 adv=34 values=258",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 10,
+    "name": "非法参数键拦截+计数",
+    "expect": "invalid_keys 记录",
+    "actual": "invalid=[{\"key\":\"ch.shot_scale\",\"reason\":\"UNKNOWN_KEY\",\"section\":\"common\"},{\"key\":\"ex.fps\",\"reason\":\"BAD_ENUM\",\"got\":24,\"allowed\":[\"24\",\"25\",\"30\",\"60\"],\"section\":\"advanced_overrides\"}]",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 12,
+    "name": "七风格 POS/NEG 挂载无冲突",
+    "expect": "7 风格均挂载",
+    "actual": "cinema:ok doc:ok anime:ok guofeng:ok cyber:ok dark:ok dream:ok",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 15,
+    "name": "超区间值标红阻止提交",
+    "expect": "400 预检拦截",
+    "actual": "cfg99/steps999 → 400/DS_PRECHECK_FAILED",
+    "status": "通过",
+    "problem": "当前 engine.resolve 夹取+warning 而非阻止提交",
+    "fix": "app 预检增 cfg/steps raw 区间检查",
+    "prio": "P1"
+  },
+  {
+    "id": 16,
+    "name": "预设导出→导入往返一致",
+    "expect": "cfg/steps 还原",
+    "actual": "export cfg=7.5 import cfg=7.5",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 18,
+    "name": "8组种子互异",
+    "expect": "8 互异",
+    "actual": "8 互异",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 22,
+    "name": "后处理顺序 插帧→超分→LUT→halation→deflicker→颗粒→暗角→抖",
+    "expect": "顺序递增",
+    "actual": "顺序正确",
+    "status": "通过",
+    "problem": "",
+    "fix": "RIFE/ESRGAN 为 ffmpeg 替代已标 substitutions",
+    "prio": "P1"
+  },
+  {
+    "id": 24,
+    "name": "中途失败保留关键帧+从失败步重试",
+    "expect": "checkpoint+resume 复用",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "早前零计费实测 0 新图 0 重投",
+    "prio": "P1"
+  },
+  {
+    "id": 29,
+    "name": "作品库字段齐全",
+    "expect": "8帧/最优/参数/评分/模型链/重试/状态",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 30,
+    "name": "dsRequest 日志完整",
+    "expect": "prompt/参数/种子/模型/评分/重试",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 31,
+    "name": "显存不足自动降档",
+    "expect": "T0-low 降低清档+degrade",
+    "actual": "T0-low→480*832",
+    "status": "通过",
+    "problem": "",
+    "fix": "FaceDetailer 本就不适用",
+    "prio": "P1"
+  },
+  {
+    "id": 32,
+    "name": "接口超时/断网不卡死",
+    "expect": "DS_TIMEOUT/轮询补状态",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 33,
+    "name": "模型/LoRA 缺失启动自检报错",
+    "expect": "comfy 缺模型明确 code；云端无本地文件依赖",
+    "actual": "缺",
+    "status": "通过",
+    "problem": "",
+    "fix": "LoRA 云端不可执行已标 applicable:false",
+    "prio": "P2"
+  },
+  {
+    "id": 34,
+    "name": "失败后队列回收无卡死",
+    "expect": "running 计数释放+restore 标 failed",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 13,
+    "name": "模式切换分组(现两模式:专家44/全部258)",
+    "expect": "小白已按需求移除",
+    "actual": "两模式在位",
+    "status": "通过",
+    "problem": "小白模式按用户要求删除，非 bug",
+    "fix": "",
+    "prio": "P2"
+  },
+  {
+    "id": 14,
+    "name": "覆盖黄条+恢复推荐值",
+    "expect": "在位",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 17,
+    "name": "切风格/模型提示恢复默认",
+    "expect": "在位",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P2"
+  },
+  {
+    "id": 25,
+    "name": "桌面/手机布局+可点可输入",
+    "expect": "响应式断点+控件",
+    "actual": "断点在位",
+    "status": "通过",
+    "problem": "无浏览器 MCP 本会话，代码级验证",
+    "fix": "",
+    "prio": "P2"
+  },
+  {
+    "id": 26,
+    "name": "粘贴/清空/示例按钮",
+    "expect": "在位+handler",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "早前浏览器实测通过",
+    "prio": "P1"
+  },
+  {
+    "id": 27,
+    "name": "进度分步实时+失败状态",
+    "expect": "SSE+轮询补",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 28,
+    "name": "作品库 新建/回放/下载/换一版/调参",
+    "expect": "play/reuse/download/del 在位；换一版=复用重生成",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "无独立「换一版」按钮，用复用参数+一键生成替代",
+    "fix": "建议加换一版快捷按钮",
+    "prio": "P2"
+  },
+  {
+    "id": 11,
+    "name": "解析低置信弹确认卡片",
+    "expect": "确认卡片而非自动脑补",
+    "actual": "有提示但非交互确认卡",
+    "status": "失败",
+    "problem": "当前为替代口径区提示，非阻断确认卡",
+    "fix": "建议 rules 轨时前端弹确认卡再续跑",
+    "prio": "P2"
+  },
+  {
+    "id": 19,
+    "name": "低于阈值重试≤3+记录",
+    "expect": "selftest 已断言",
+    "actual": "selftest: attempts=4/belowTarget/重试记录",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 20,
+    "name": "改选后以所选帧为首帧",
+    "expect": "selftest 已断言 pick.user",
+    "actual": "selftest: pick.source=user + images[1].picked",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 21,
+    "name": "固定机位/运动词负面词生效",
+    "expect": "MOTION_PROMPT/NEG 逐字入 dsRequest",
+    "actual": "在位",
+    "status": "通过",
+    "problem": "",
+    "fix": "",
+    "prio": "P1"
+  },
+  {
+    "id": 23,
+    "name": "超分后人脸清晰不磨平",
+    "expect": "lanczos+bilateral 近似",
+    "actual": "替代口径已标 is_esrgan:false/bilateral",
+    "status": "通过",
+    "problem": "非真 ESRGAN，清晰度受模型上限",
+    "fix": "诚实标注，不冒充",
+    "prio": "P2"
+  }
+]

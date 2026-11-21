@@ -1,0 +1,198 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>VisInter · 小白模式（1 分钟出片）</title>
+<!--@inline:wizard/theme.css-->
+</head>
+<body>
+
+<div class="shell">
+  <!-- 左侧导航：只放小白真正需要的三个入口，参数/画布/质检留给专业模式 -->
+  <aside class="sidebar glass" id="sidebar">
+    <div class="brand">VisInter<small>小白模式 · 1 分钟出片</small></div>
+    <button class="navbtn on" data-nav="make"><i>◈</i>开始生成</button>
+    <button class="navbtn" data-nav="library"><i>▤</i>作品库</button>
+    <button class="navbtn" data-nav="help"><i>?</i>怎么用</button>
+    <div class="side-foot">
+      <span class="dot" id="engineDot"></span><b id="engineText">演示引擎</b><br>
+      <span id="engineNote">没模型也能出片，画面是本地算的</span><br>
+      <a href="../app/index.html" style="color:var(--wz-text-dim)">→ 专业模式（258 参数）</a>
+    </div>
+  </aside>
+
+  <main class="main" id="main">
+
+    <!-- ── 第一步：选风格（打开页面就看到） ───────────────────────────── -->
+    <section class="screen on" id="screen-1" data-step="1">
+      <div class="reuse-banner glass" id="reuseBanner">
+        <span>已复用上一版风格和参数：<b id="reuseStyle">—</b>。<span id="reuseParams"></span></span>
+        <button class="btn" id="btn-reuse-continue">继续 → 写新描述</button>
+      </div>
+      <div class="step-head">
+        <div class="step-kicker">不用懂 AI</div>
+        <h1 class="step-title">第一步：选一种风格</h1>
+        <p class="step-sub">点一下卡片就行，选完自动进下一步。看不懂名字没关系，看画面。</p>
+      </div>
+      <div class="styles" id="styles"></div>
+      <p class="foot-note">风格决定画面的「味道」：颜色、光线、镜头感。不满意随时回来换。</p>
+    </section>
+
+    <!-- ── 第二步：一句话描述 ─────────────────────────────────────────── -->
+    <section class="screen" id="screen-2" data-step="2">
+      <div class="step-head">
+        <div class="step-kicker">说人话就行</div>
+        <h1 class="step-title">第二步：用一句话描述你想看到什么</h1>
+        <p class="step-sub">不用写专业提示词。写清楚「谁 · 在哪 · 在做什么」就够了，比如「雪夜里小木屋亮着灯」。</p>
+      </div>
+      <div class="prompt-wrap">
+        <textarea class="big-input" id="prompt" rows="3" autofocus
+          placeholder="比如：雪夜里小木屋亮着灯"></textarea>
+        <div class="examples">
+          <div class="examples-label">想不出来？点一句直接用（可以改）</div>
+          <div class="chips" id="chips"></div>
+        </div>
+        <div class="prompt-actions">
+          <button class="btn primary" id="btn-generate">生成视频</button>
+          <button class="btn ghost" id="btn-back-1">← 换个风格</button>
+          <span class="hint-line"><kbd>Ctrl</kbd>+<kbd>Enter</kbd> 也能生成</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 第三步：等待（用户什么都不用做） ───────────────────────────── -->
+    <section class="screen" id="screen-3" data-step="3">
+      <div class="step-head">
+        <div class="step-kicker">你只需要等</div>
+        <h1 class="step-title">第三步：AI 自动处理</h1>
+        <p class="step-sub">这一步不用点任何东西。走完自动播放。</p>
+      </div>
+      <div class="progress-panel glass">
+        <div class="ring">
+          <svg viewBox="0 0 120 120" aria-hidden="true">
+            <circle class="track" cx="60" cy="60" r="52" fill="none" stroke-width="6"></circle>
+            <circle class="bar" id="ringBar" cx="60" cy="60" r="52" fill="none" stroke-width="6"
+              stroke-dasharray="326.7" stroke-dashoffset="326.7"></circle>
+          </svg>
+          <div class="center">
+            <div class="pct" id="pct">0%</div>
+            <div class="unit">进度</div>
+          </div>
+        </div>
+        <div>
+          <ul class="stage-list" id="stage-list"></ul>
+          <div class="wait-row">
+            <span class="wait-pill">预计 约 30~60 秒</span>
+            <span id="elapsed">已用 0 秒</span>
+            <span class="grow"></span>
+            <button class="btn ghost" id="btn-cancel">取消</button>
+          </div>
+          <div class="tip" id="tip">喝口水，AI 在帮你调 258 个参数</div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 第四步：预览 ──────────────────────────────────────────────── -->
+    <section class="screen" id="screen-4" data-step="4">
+      <div class="step-head">
+        <div class="step-kicker">已经在播了</div>
+        <h1 class="step-title">第四步：预览视频</h1>
+        <p class="step-sub">满意就保存，不满意换一版，想细调就展开参数。什么都不点也不会丢。</p>
+      </div>
+      <div class="preview-grid">
+        <div class="player-card glass">
+          <div class="player-stage" id="player">
+            <video id="video" playsinline loop muted autoplay></video>
+            <canvas id="previewCanvas"></canvas>
+            <span class="badge" id="playerBadge">演示成片</span>
+          </div>
+          <div class="player-bar">
+            <button class="btn ghost" id="btn-play"><span class="ico">⏸</span>暂停</button>
+            <span id="playerMeta">—</span>
+            <span class="grow"></span>
+            <button class="btn ghost" id="btn-full">⛶ 全屏看</button>
+          </div>
+          <div class="verdict">
+            <button class="btn" id="btn-save"><span class="ico">👍</span>满意，保存</button>
+            <button class="btn" id="btn-regenerate"><span class="ico">🔄</span>换一版</button>
+            <button class="btn" id="btn-advanced"><span class="ico">🛠</span>手动调整</button>
+          </div>
+        </div>
+        <div class="side-card glass">
+          <h3>这一版</h3>
+          <div id="resultKv"></div>
+          <p class="lib-note" style="margin:12px 0 0">已自动存进作品库，不点「保存」也不会丢。</p>
+        </div>
+      </div>
+
+      <div class="advanced glass" id="advanced">
+        <h3>手动调整（可选）</h3>
+        <p class="adv-sub">小白可以不理这块。改了参数后点「用新参数重新生成」。</p>
+        <div class="adv-grid">
+          <div class="field">
+            <label for="adv-aspect">画幅</label>
+            <select id="adv-aspect">
+              <option value="16:9">横屏 16:9（B站 / 电脑看）</option>
+              <option value="9:16">竖屏 9:16（抖音 / 视频号）</option>
+              <option value="1:1">方形 1:1（小红书封面）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="adv-profile">画质档</label>
+            <select id="adv-profile">
+              <option value="draft">草稿 · 480p（最快）</option>
+              <option value="standard" selected>标准 · 720p（推荐）</option>
+              <option value="cinematic">电影级 · 1080p（最慢）</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="adv-duration">时长（秒）</label>
+            <select id="adv-duration">
+              <option value="5" selected>5 秒（够发一条）</option>
+              <option value="8">8 秒</option>
+              <option value="10">10 秒</option>
+            </select>
+          </div>
+          <div class="field">
+            <label for="adv-seed">种子（同种子≈同画面）</label>
+            <div class="seed-row">
+              <input type="text" id="adv-seed" inputmode="numeric">
+              <button class="btn" id="btn-dice" title="换一个随机种子">🎲</button>
+            </div>
+          </div>
+        </div>
+        <div class="adv-actions">
+          <button class="btn primary" id="btn-apply-advanced">用新参数重新生成</button>
+          <button class="btn ghost" id="btn-close-advanced">收起</button>
+        </div>
+      </div>
+    </section>
+
+    <!-- ── 第五步：作品库 ────────────────────────────────────────────── -->
+    <section class="screen" id="screen-5" data-step="5">
+      <div class="step-head">
+        <div class="step-kicker">下次从这里接着做</div>
+        <h1 class="step-title">第五步：作品库（重播 · 复用 · 下载）</h1>
+        <p class="step-sub">所有生成过的片子都在这里，按时间倒序。点一个就能重播、复用参数、下载。</p>
+      </div>
+      <div class="library-grid">
+        <div class="lib-list glass" id="library"></div>
+        <div class="lib-detail glass" id="libDetail">
+          <div class="lib-note">左边选一个作品。</div>
+        </div>
+      </div>
+    </section>
+
+  </main>
+</div>
+
+<div class="toast-layer" id="toasts"></div>
+
+<!--@inline:wizard/styles.js-->
+<!--@inline:wizard/engine.js-->
+<!--@inline:wizard/library.js-->
+<!--@inline:wizard/onboard.js-->
+<!--@inline:wizard/wizard.js-->
+</body>
+</html>

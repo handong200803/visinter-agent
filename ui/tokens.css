@@ -1,0 +1,356 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   tokens.css —— 平台唯一视觉令牌源
+   ───────────────────────────────────────────────────────────────────────
+   定位：「暗黑玻璃拟态 · 冷银基调」。深黑 #08080a 上悬浮两团冷色光晕
+   （左上蓝灰、右下紫灰），所有卡片/面板/输入/弹窗是一层半透明白玻璃：
+   光从玻璃后面透出来，边缘靠 1px 亮线勾勒，hover 上浮并泛一圈冷光。
+
+   为什么要有这个文件：
+     七套界面此前各持一份配色。令牌集中到一处之后，全平台只有一种视觉人格，
+     并且「像不像暗黑玻璃」这件事变成了可被 lint 校验的硬指标（tools/lint_ui.mjs）。
+
+   四条硬规矩（违反即 lint 失败）：
+     1. 玻璃面统一：背景 rgba(255,255,255,.06)、边框 rgba(255,255,255,.12)、
+        圆角 16px、blur(20px) saturate(1.4)、黑阴影 + 顶部 1px 内亮线。
+     2. 冷银唯一强调：--acc #C8CDD4，高亮 #EEF1F5。光晕只许冷色
+        （蓝灰/紫灰/银，通道差 ≤ 64 且蓝≥红），禁止暖色荧光与 AI 紫。
+     3. hover 三件套：背景提亮到 .10、边框提亮到 .25、上浮 3px + 冷光
+        0 0 20px rgba(180,200,230,.15)。循环动画只给铸造粒子/烟雾加载器。
+     4. 碑铭字体保留：平台名与卡片标题走 --serif 宽字距；正文 --sans
+        小字号松行高；数字一律 tabular-nums。颗粒层保留（胶片感）。
+
+   使用方式：
+     单文件产物要求双击 file:// 可用 → 不允许运行时 @import。
+     各 HTML 的 :root 必须**逐字复制**本文件的变量块；lint 会比对变量名与取值。
+     通用玻璃类 .glass-card / .glass-btn / .glass-input 在本文件底部，
+     组件直接挂类，不要各写一份玻璃配方。移动端 blur 自动降到 12px。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* 碑铭衬线：Cinzel（SIL OFL，本地 woff2，见 assets/fonts/LICENSE-Cinzel.txt）。
+   中文无 Cinzel 字形，自然落到宋体/思源宋体——碑铭感靠字距与字重，不靠假字体。 */
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-400.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Cinzel";
+  font-style: normal;
+  font-weight: 700;
+  font-display: swap;
+  src: url("../assets/fonts/cinzel-latin-700.woff2") format("woff2");
+}
+
+:root {
+  /* ── 玻璃明度阶梯：半透明白膜叠在深黑上，冷光晕从后面透出来 ──────
+     越靠近内容越亮。--panel 是标准玻璃面，--panel2 是膜内凹槽。 */
+  --bg:        #08080a;   /* 应用底（双光晕的落点） */
+  --bg-deep:   #0a0a0d;   /* 画布凹槽（节点图、时间轴）：比玻璃面更暗 */
+  --panel:     rgba(255, 255, 255, 0.06);   /* 标准玻璃面 */
+  --panel2:    rgba(255, 255, 255, 0.04);   /* 输入框 / 膜内凹槽 */
+  --panel3:    rgba(255, 255, 255, 0.10);   /* 悬停态 */
+  --panel4:    rgba(255, 255, 255, 0.14);   /* 按下 / 选中填充 */
+
+  /* ── 分隔线：玻璃边缘的亮线（1px 半透明白）───────────────────── */
+  --line:      rgba(255, 255, 255, 0.12);   /* 常规玻璃边框 */
+  --line2:     rgba(255, 255, 255, 0.18);   /* 强分隔 / 输入框边框 */
+  --line3:     rgba(255, 255, 255, 0.25);   /* hover / 焦点边框 */
+
+  /* ── 文字（三级，绝不用纯白：纯白在暗底上光晕扩散）────────────── */
+  --text:      #d4d8de;   /* 主文本 */
+  --text-dim:  #7a8089;   /* 次要说明 */
+  --text-dim2: #565c66;   /* 占位 / 禁用 */
+
+  /* ── 唯一强调色：冷银。高亮 #eef1f5，像光扫过玻璃边缘 ─────────── */
+  --acc:       #c8cdd4;
+  --acc-hover: #eef1f5;
+  --acc-dim:   #8a9099;
+  --acc-fill:  rgba(200, 205, 212, 0.10);  /* 选中行底色 */
+
+  /* ── 语义状态（降饱和；血红只作错误信号，不铺大面）──────────────
+     --bad 太暗不能作文字色，错误文案用 --bad-ink，边框/填充用 --bad。 */
+  --ok:        #7d9b84;
+  --warn:      #b3985a;
+  --bad:       #6b2020;
+  --bad-ink:   #c98080;
+  --ok-fill:   rgba(125, 155, 132, 0.12);
+  --warn-fill: rgba(179, 152, 90, 0.12);
+  --bad-fill:  rgba(107, 32, 32, 0.16);
+
+  /* ── 端口/类型色（节点图专用，仅连线与 3-4px 圆点；全部压成灰调）── */
+  --t-model:   #8d84a0;   /* 模型 */
+  --t-latent:  #a08489;   /* 潜空间 */
+  --t-image:   #a09678;   /* 图像 */
+  --t-number:  #7f948c;   /* 数值 */
+  --t-text:    #84909f;   /* 文本 */
+
+  /* ── 字号（正文小字号 + 松行高；碑铭标题另走 --serif 放大）────── */
+  --fz-xs: 10.5px;
+  --fz-s:  11.5px;
+  --fz:    12.5px;
+  --fz-l:  13.5px;
+  --fz-xl: 15px;
+  --lh:    1.6;
+
+  /* ── 间距（4 的倍数）─────────────────────────────────────────── */
+  --sp1: 4px;  --sp2: 8px;  --sp3: 12px;  --sp4: 16px;  --sp5: 24px;
+
+  /* ── 圆角（玻璃 16 / 按钮与输入 12 / 小件 8）──────────────────── */
+  --r:   8px;
+  --r2:  12px;
+  --r3:  16px;       /* 卡片 / 面板 / 弹窗 */
+  --r-pill: 999px;   /* 只用于状态点、计数徽标 */
+
+  /* ── 阴影与光：黑阴影托底 + 顶部内亮线；冷光只给 hover/焦点 ────── */
+  --shadow-pop: 0 8px 32px rgba(0, 0, 0, 0.3);
+  --shadow-inset: inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --glow: 0 0 0 1px rgba(255, 255, 255, 0.25), 0 0 20px rgba(180, 200, 230, 0.15);
+  --glow-soft: 0 0 20px rgba(180, 200, 230, 0.08);
+  --glass: rgba(255, 255, 255, 0.06);   /* 导航/顶栏/侧栏的玻璃底 */
+
+  /* ── 玻璃配方（通用类共用；移动端 --glass-blur 自动降档）───────── */
+  --glass-blur: blur(20px) saturate(1.4);
+  --glass-blur-lite: blur(12px) saturate(1.3);
+  --glass-hover: rgba(255, 255, 255, 0.10);
+  --glass-line-hover: rgba(255, 255, 255, 0.25);
+  --glow-cool: rgba(180, 200, 230, 0.15);
+  /* 环境光：玻璃必须「有东西可透」。0.16 的光晕压在 #08080a 上只剩 #1a1d24，
+     肉眼等于平黑——玻璃层再正确也读不出来。这里提到 0.30/0.26，
+     合成后左上≈#262d39（蓝灰）、右下≈#241f2c（紫灰），仍远低于卡片明度。 */
+  --amb-blue: rgba(108, 132, 172, 0.30);   /* 左上蓝灰环境光 */
+  --amb-purple: rgba(132, 112, 168, 0.26); /* 右下紫灰环境光 */
+  --amb-core: rgba(226, 232, 240, 0.05);   /* 中景冷白核心光，给玻璃一层极淡的迎光面 */
+  --vignette: radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  --sheen: linear-gradient(158deg, rgba(255, 255, 255, 0.055) 0%, rgba(255, 255, 255, 0) 46%);
+
+  /* ── 动效（状态切换 90-140ms；入场与铸造加载走 --t-slow）───────── */
+  --t-fast: 90ms;
+  --t:      140ms;
+  --t-slow: 320ms;
+  --ease:   cubic-bezier(0.2, 0, 0.2, 1);
+  --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+
+  /* ── 过渡别名（迁移垫片，不是设计决策）───────────────────────── */
+  --dim:   #7a8089;
+  --dim2:  #565c66;
+  --acc2:  #eef1f5;
+
+  /* ── 字体 ─────────────────────────────────────────────────────
+     数字一律 tabular-nums：参数面板全是会跳动的数字，等宽数字能避免整行抖动。 */
+  --sans: -apple-system, "Segoe UI", "Microsoft YaHei UI", "PingFang SC",
+          "Hiragino Sans GB", "Source Han Sans SC", sans-serif;
+  --mono: ui-monospace, "Cascadia Mono", "SF Mono", Consolas, "Liberation Mono", monospace;
+  --serif: "Cinzel", "Palatino Linotype", "Book Antiqua", Georgia,
+           "Noto Serif SC", "Source Han Serif SC", "STSong", "SimSun", serif;
+}
+
+/* ── 基础层：七个界面共用的最小复位与排版基调 ───────────────────── */
+/* 底：深黑 + 两团冷色径向光晕（左上蓝灰 / 右下紫灰）+ 中景冷白核光 + 边缘压暗。
+   fixed 不随滚动漂移。光晕是玻璃的「景」——没有它们，blur 透出来的只是一片死黑。 */
+html {
+  background-color: var(--bg);
+  background-image:
+    radial-gradient(78% 62% at 6% -4%, var(--amb-blue) 0%, rgba(108, 132, 172, 0) 68%),
+    radial-gradient(70% 58% at 104% 102%, var(--amb-purple) 0%, rgba(132, 112, 168, 0) 68%),
+    radial-gradient(60% 46% at 50% 34%, var(--amb-core) 0%, rgba(226, 232, 240, 0) 70%),
+    radial-gradient(120% 92% at 50% 50%, rgba(0, 0, 0, 0) 42%, rgba(0, 0, 0, 0.55) 100%);
+  background-repeat: no-repeat;
+  background-attachment: fixed;
+}
+body {
+  background: transparent;
+  color: var(--text);
+  font: var(--fz)/var(--lh) var(--sans);
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+/* 胶片颗粒：极细噪点铺满视口，不拦截指针；4% 透明度只够"感觉到"不够"看到" */
+body::after {
+  content: "";
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  pointer-events: none;
+  opacity: 0.045;
+  mix-blend-mode: overlay;
+  background: url("../assets/grain.png") repeat;
+  background-size: 160px 160px;
+}
+
+/* ── 通用玻璃类：组件直接挂类，配方只此一份 ─────────────────────── */
+.glass-card {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 可交互玻璃卡：hover 提亮 + 上浮 3px + 冷光（风格卡/作品卡/模板卡） */
+.glass-card.hoverable {
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.glass-card.hoverable:hover {
+  background: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+.glass-btn {
+  background: rgba(255, 255, 255, 0.10);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: background var(--t) var(--ease), border-color var(--t) var(--ease),
+              box-shadow var(--t) var(--ease), color var(--t) var(--ease);
+}
+.glass-btn:hover {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: var(--glass-line-hover);
+  color: var(--acc-hover);
+  box-shadow: 0 0 20px var(--glow-cool);
+}
+.glass-input {
+  background: var(--panel2);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+  color: var(--text);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  transition: border-color var(--t) var(--ease), box-shadow var(--t) var(--ease),
+              background var(--t) var(--ease);
+}
+.glass-input:focus {
+  outline: none;
+  border-color: var(--glass-line-hover);
+  background: rgba(255, 255, 255, 0.07);
+  box-shadow: var(--glow);
+}
+.glass-input::placeholder { color: var(--text-dim2); }
+
+/* 移动端：blur 降到 12px，避免大面积毛玻璃拖垮帧率 */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+}
+
+/* 碑铭体：平台名、卡片标题、章节题字共用 */
+.serif {
+  font-family: var(--serif);
+  letter-spacing: 0.14em;
+  font-weight: 700;
+}
+
+/* 数字等宽：所有数值读数都用它 */
+.num, kbd, code, .mono {
+  font-family: var(--mono);
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+}
+
+/* 焦点环：冷银描边 + 一圈极淡冷光，键盘可达 */
+:focus-visible {
+  outline: 1px solid var(--acc);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 3px rgba(180, 200, 230, 0.12);
+}
+
+/* 滚动条：细、暗、玻璃亮线 thumb，hover 提亮；不用系统默认蓝条 */
+* { scrollbar-width: thin; scrollbar-color: var(--line2) transparent; }
+*::-webkit-scrollbar { width: 8px; height: 8px; }
+*::-webkit-scrollbar-thumb { background: var(--line2); border-radius: var(--r); }
+*::-webkit-scrollbar-thumb:hover { background: var(--acc-dim); }
+*::-webkit-scrollbar-track { background: transparent; }
+*::-webkit-scrollbar-corner { background: transparent; }
+
+/* 选区：银的低透明填充，不用系统蓝 */
+::selection { background: var(--acc-fill); color: var(--acc-hover); }
+
+/* ── 玻璃族第二批：弹窗 / 浮条 / 侧栏 / 凹槽 / 胶囊 ──────────────────
+   同一套配方，只是圆角与投影档位不同。组件直接挂类，别再复写 blur。 */
+.glass-modal {
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+.glass-toast {
+  background: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+/* 悬浮工具条：画布顶部/参数板顶部那种横条，圆角 16 贴在内容之上 */
+.glass-toolbar {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏 / 导航栏：从贴边条改成悬浮玻璃板（margin 16 + 圆角 16） */
+.glass-rail {
+  background: var(--glass);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 凹槽：画布底、代码块、时间轴这类「玻璃板里的暗面」，不铺毛玻璃 */
+.glass-well {
+  background: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+}
+.glass-chip {
+  background: var(--panel2);
+  border: 1px solid var(--line2);
+  border-radius: var(--r2);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+}
+
+/* 玻璃卡顶部迎光：一层极淡的白到透明的斜向渐变，让平面看出弧面 */
+.glass-card, .glass-modal, .glass-rail, .panel {
+  background-image: var(--sheen);
+  background-repeat: no-repeat;
+}
+
+/* ── 无 backdrop-filter 的浏览器：把膜加厚一档，至少不塌成纯黑 ──────── */
+@supports not ((-webkit-backdrop-filter: blur(1px)) or (backdrop-filter: blur(1px))) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar { background-color: rgba(255, 255, 255, 0.10); }
+  .glass-toast { background-color: rgba(255, 255, 255, 0.14); }
+}
+
+/* ── 移动端：blur 降到 12px；小控件直接关掉毛玻璃，省一次合成 ────────── */
+@media (max-width: 900px) {
+  :root { --glass-blur: blur(12px) saturate(1.3); }
+  .glass-btn, .glass-chip, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(255, 255, 255, 0.09);
+  }
+}
+
+/* ── 尊重系统设置：减少动效 / 减少透明 ─────────────────────────────── */
+@media (prefers-reduced-motion: reduce) {
+  .glass-card.hoverable:hover, .glass-btn:hover { transform: none; }
+}
+@media (prefers-reduced-transparency: reduce) {
+  .glass-card, .glass-modal, .glass-rail, .glass-toolbar, .glass-toast, .glass-chip, .glass-btn, .glass-input {
+    -webkit-backdrop-filter: none;
+    backdrop-filter: none;
+    background-color: rgba(24, 26, 30, 0.92);
+  }
+}

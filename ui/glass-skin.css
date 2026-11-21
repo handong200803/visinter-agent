@@ -1,0 +1,280 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   glass-skin.css —— 玻璃映射层（最后一遍）
+   ───────────────────────────────────────────────────────────────────────
+   定位：ui/tokens.css 定义「玻璃是什么」，本文件负责「把各页已经写好的
+   组件选择器映射到那套配方上」。页面源件里只留自己的结构与排版，不再各写
+   一份 background/border/blur/shadow。
+
+   为什么单独一层而不是逐组件改：
+     七个页面 + 帧检视器共 543KB 源，卡片族有 40 多个类名，逐个改一遍既容易
+     漏、又会在下一次改令牌时全部失配。映射层只做增量：圆角补齐、hover 三件套、
+     侧栏悬浮、弹窗居中、控件玻璃化。谁想加新卡片，挂 .glass-card 即可。
+
+   注入位置：每个页面 <style> 的最后一行（构建期替换 /*__SKIN__*\/）。
+     放在最后 = 同权重规则里一定赢，所以整份文件不需要一个 !important。
+
+   三条规矩：
+     1. 只写「页面自己的类名 → 玻璃配方」，不新增色值，全部走 var()。
+     2. 不改布局栅格（列宽/行高/顺序由各页自持）；只加外边距让它浮起来。
+     3. 循环动画、彩色光晕、纯白文字一律不写（tools/lint_ui.mjs 会拦）。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ── 1. 悬浮侧栏：贴边条 → 悬浮玻璃板（margin 16 / 圆角 16 / blur 20）── */
+#sidenav,
+nav#rail,
+#pRail,
+aside,
+.aside {
+  margin: var(--sp4) 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--glass);      /* 膜必须由本层给：页面侧多为 transparent，靠 skin 兜底 */
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 侧栏内部滚到底时的圆角不露直角 */
+#sidenav, nav#rail, #pRail, aside { overflow-y: auto; }
+
+/* ── 2. 圆角补齐：还停在 12px 的卡片族一律抬到 16px ───────────────── */
+.card,
+.style-card,
+.ai-card,
+.gen-card,
+.work-item,
+.opt,
+.honest,
+.summary,
+.reco,
+.prow,
+.np-row,
+.legend,
+.tip,
+#toast,
+.toast,
+.loaded,
+.errcard,
+.svc,
+.node,
+.wp,
+.stage-chip,
+.field,
+.empty {
+  border-radius: var(--r3);
+}
+
+/* 输入框：规范要求 16px（按钮 12px，别混） */
+select,
+input[type="text"],
+input[type="search"],
+input[type="number"],
+input[type="password"],
+input[type="url"],
+textarea {
+  border-radius: var(--r3);
+}
+
+/* ── 3. hover 三件套：提亮 + 亮边 + 上浮 3px + 一圈冷光 ────────────── */
+.card,
+.style-card,
+.work-item,
+.opt,
+.np-row,
+.loaded {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease),
+              transform var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+.card:hover,
+.style-card:hover,
+.work-item:hover,
+.opt:hover,
+.np-row:hover,
+.loaded:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+  transform: translateY(-3px);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* 提示块不是可点目标：.honest / .summary / .svc 只提亮，不上浮（跟着鼠标跳会很脏） */
+.honest,
+.summary,
+.svc {
+  transition: background-color var(--t) var(--ease), border-color var(--t) var(--ease);
+}
+.honest:hover,
+.summary:hover,
+.svc:hover {
+  background-color: var(--glass-hover);
+  border-color: var(--glass-line-hover);
+}
+
+/* 列表行 / 参数行：只在膜内提亮，不上浮（上浮会让 258 行变成果冻） */
+.row:hover,
+.list .row:hover,
+.prow:hover,
+.tier-head:hover,
+.wstep:hover,
+.rail-item:hover,
+.nav-item:hover,
+.wi-acts:hover {
+  background-color: var(--glass-hover);
+}
+
+/* ── 4. 悬浮工具条 / 弹窗 / Toast ─────────────────────────────────── */
+/* 画布顶部与参数板顶部的横条：同一条玻璃，圆角 16 */
+#canvasTop,
+.canvas-tools,
+.toolbar,
+.board-head,
+.main-h,
+.viewhead {
+  border-radius: var(--r3);
+}
+#canvasTop,
+.canvas-tools,
+.toolbar {
+  background-color: var(--glass);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+
+/* 弹窗：居中 + 玻璃 + 16px；遮罩压暗但不铺纯黑 */
+.wiz,
+.modal,
+.dialog,
+.panel-pop {
+  background-color: var(--panel);
+  background-image: var(--sheen);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+/* 弹层遮罩只负责压暗与居中，毛玻璃档位交给页面自己（app 用 10px）。
+   这里若再写一份 blur(2px)，同权重且 skin 在后，会把页面的遮罩糊没了。 */
+#wizard,
+#forgeOverlay {
+  display: grid;
+  place-items: center;
+}
+
+/* Toast：玻璃胶囊，居中偏下 */
+#toast,
+.toast {
+  background-color: var(--glass-hover);
+  border: 1px solid var(--glass-line-hover);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 5. 画布：区域是深色凹槽，节点与属性面板是玻璃 ────────────────── */
+#nodeWrap {
+  margin: 0 var(--sp4) var(--sp4);
+  border: 1px solid var(--line);
+  border-radius: var(--r3);
+  background-color: var(--bg-deep);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.04), inset 0 0 0 1px rgba(0, 0, 0, 0.35);
+  overflow: hidden;
+}
+#nodeWrap .legend,
+#nodeWrap .node,
+#estimator {
+  background-color: var(--panel);
+  border: 1px solid var(--line);
+  -webkit-backdrop-filter: var(--glass-blur);
+  backdrop-filter: var(--glass-blur);
+  box-shadow: var(--shadow-pop), var(--shadow-inset);
+}
+#nodeWrap .node:hover {
+  border-color: var(--glass-line-hover);
+  box-shadow: var(--shadow-pop), var(--shadow-inset), 0 0 20px var(--glow-cool);
+}
+
+/* ── 6. 表单控件：滑块轨道是膜内凹槽，拇指是一颗冷银 ─────────────── */
+input[type="range"] {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 18px;
+  background: transparent;
+}
+input[type="range"]::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--panel4);
+  box-shadow: inset 0 1px 0 rgba(0, 0, 0, 0.35);
+}
+input[type="range"]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 13px; height: 13px;
+  margin-top: -4.5px;
+  border-radius: 50%;
+  background: var(--acc);
+  border: 1px solid var(--acc-hover);
+  box-shadow: 0 0 10px var(--glow-cool);
+  transition: background-color var(--t) var(--ease), box-shadow var(--t) var(--ease);
+}
+input[type="range"]:hover::-webkit-slider-thumb { background: var(--acc-hover); }
+input[type="range"]::-moz-range-track {
+  height: 4px; border-radius: var(--r-pill); background: var(--panel4);
+}
+input[type="range"]::-moz-range-thumb {
+  width: 12px; height: 12px; border-radius: 50%;
+  background: var(--acc); border: 1px solid var(--acc-hover);
+}
+
+/* ── 7. 细节：风格图标去彩（emoji 只作字形，不作彩色贴纸）─────────── */
+.sc-emoji,
+.wi-emoji,
+.style-ico {
+  filter: grayscale(0.72) contrast(0.94);
+  opacity: 0.92;
+}
+
+/* 底部口径条 / 状态栏：细玻璃条，不做大圆角 */
+#statusbar,
+.statusbar,
+footer {
+  background-color: var(--glass);
+  -webkit-backdrop-filter: var(--glass-blur-lite);
+  backdrop-filter: var(--glass-blur-lite);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.06);
+}
+
+/* 代码块 / 日志：膜内凹槽，别铺毛玻璃（长文本 blur 很贵） */
+.code,
+pre,
+.gout {
+  background-color: var(--bg-deep);
+  border: 1px solid var(--line);
+  border-radius: var(--r2);
+}
+
+/* ── 8. 窄屏：侧栏取消外边距，改为贴边全宽；卡片不再上浮 ─────────── */
+@media (max-width: 900px) {
+  #sidenav,
+  nav#rail,
+  #pRail,
+  aside,
+  .aside {
+    margin: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
+  .card:hover,
+  .style-card:hover,
+  .work-item:hover,
+  .opt:hover,
+  .honest:hover,
+  .summary:hover,
+  .np-row:hover,
+  .loaded:hover,
+  .svc:hover {
+    transform: none;
+  }
+  #nodeWrap { margin: 0; border-radius: 0; }
+}

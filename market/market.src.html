@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>模板市场 · VisInter-Agent v0.1</title>
+<style>
+/*__TOKENS__*/
+
+/*__UI__*/
+/*__SKIN__*/
+
+/* ═══════════════════════════════════════════════════════════════════════
+   市场模块局部样式
+   ───────────────────────────────────────────────────────────────────────
+   只加结构与密度，不引入任何色值：颜色全部走 tokens 的六个令牌。
+   规矩与 docs/09-design-system.md 一致——靠 1px 线与明度差分层次，不用阴影与渐变。
+   ═══════════════════════════════════════════════════════════════════════ */
+
+.app { --col: 332px; }
+
+/* 左栏：模板行是两行制（名称 + 版本/标签/评分），行高比默认 28 略高仍属密排区间 */
+.list .row.mk-row { min-height: 34px; align-items: center; }
+.mk-row .t { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.mk-row .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.mk-row .meta {
+  display: flex; align-items: baseline; gap: 5px;
+  font-size: var(--fz-xs); color: var(--text-dim2); overflow: hidden; white-space: nowrap;
+}
+.mk-row .meta .sep { color: var(--line3); }
+.mk-row .meta .tag { color: var(--text-dim); overflow: hidden; text-overflow: ellipsis; }
+.mk-row .meta .rate { color: var(--text); font-variant-numeric: tabular-nums; }
+.mk-row .ico svg { display: block; }
+.aside-h .calc { font-variant-numeric: tabular-nums; color: var(--text-dim2); }
+
+/* 右栏：tabs 是膜内凹槽（module-ui 给），内容区独立滚动（外层不再滚，避免双滚动条） */
+.main-b.mk { padding: 0; overflow: hidden; display: flex; flex-direction: column; }
+/* 内容左右 16：与 .tabs 凹槽、.main-h 玻璃条的列线对齐（骨架的 --sp4） */
+.main-b.mk > .tabbody { flex: 1; min-height: 0; overflow: auto; padding: var(--sp3) var(--sp4); }
+.main-h .title { display: flex; flex-direction: column; gap: 1px; min-width: 0; }
+.main-h h2 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.main-h .sub { font-size: var(--fz-xs); color: var(--text-dim); }
+
+/* 键值表加一点密度：dt 固定列宽，长值换行不撑破 */
+.kv.tight { grid-template-columns: 78px minmax(0, 1fr); gap: 3px var(--sp3); }
+.kv.tight dt { align-self: start; }
+.kv dd .mono { font-size: var(--fz-xs); }
+/* 价格行 / 读数行：行首那个数值就是这一栏的卖点，提到冷银高亮档；
+   单位与括号说明仍是 .hint，层级靠明度差而不是字号跳变 */
+.kv.tight dd > .num:first-child { color: var(--acc-hover); font-variant-numeric: tabular-nums; }
+
+.panel-h .spacer { flex: 1; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--sp1) 5px; }
+.chips .badge { height: 18px; }
+.badge .code { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text-dim2); }
+.badge .code + i { font-style: normal; }
+
+/* 评分方块：8px 方点，外套 12px 点击区（键盘可达，视觉仍是小方块） */
+.stars { display: inline-flex; align-items: center; gap: 2px; }
+.star-hit {
+  width: 12px; height: 12px; padding: 0; border: 0; background: transparent;
+  display: inline-flex; align-items: center; justify-content: center; cursor: pointer;
+}
+.star { width: 8px; height: 8px; border: 1px solid var(--line2); background: var(--panel2); border-radius: var(--r); }
+.star.on { background: var(--acc); border-color: var(--acc); }
+.star-hit:hover .star { border-color: var(--line3); }
+.star-hit[disabled] { cursor: not-allowed; opacity: .45; }
+
+.main-f .rate-line { display: flex; align-items: center; gap: var(--sp2); flex-wrap: wrap; }
+.main-f .scope { margin-top: 3px; }
+.main-f .scope .sep { color: var(--line3); padding: 0 var(--sp1); }
+
+/* 覆盖参数表：值列可换行，key 列等宽字体 */
+.tbl.mk-params { table-layout: fixed; }
+.tbl.mk-params th, .tbl.mk-params td { height: auto; padding: 3px var(--sp2); vertical-align: top; }
+.tbl.mk-params .c-key { width: 27%; }
+.tbl.mk-params .c-name { width: 15%; }
+.tbl.mk-params .c-stage { width: 11%; }
+.tbl.mk-params .c-val { width: 18%; }
+.tbl.mk-params .c-def { width: 18%; }
+.tbl.mk-params .c-dir { width: 11%; }
+.tbl.mk-params td.v { overflow-wrap: anywhere; word-break: break-word; }
+.tbl.mk-params td.v.long { color: var(--text-dim); }
+.tbl.mk-params .k { font-family: var(--mono); font-size: var(--fz-xs); color: var(--text); overflow-wrap: anywhere; }
+.tbl.mk-params .cover-mark { margin-left: 5px; }
+.tbl.mk-params tr.is-cover td { background: var(--panel2); }
+.tbl.mk-params tr.is-cover:hover td { background: var(--panel3); }
+.dir-up { color: var(--ok); }
+.dir-down { color: var(--warn); }
+.dir-same { color: var(--text-dim2); }
+.dir-diff { color: var(--text-dim); }
+/* 错误文字走 --bad-ink：--bad (#6b2020) 只够做边框/填充，当文字色在 #08080a 上读不出来 */
+.dir-noreg { color: var(--bad-ink); }
+
+.tab-note { margin: 0 0 var(--sp2); display: flex; gap: var(--sp2); align-items: baseline; flex-wrap: wrap; }
+.code.mk-raw { max-height: none; }
+.sig-line { display: flex; gap: var(--sp2); align-items: center; flex-wrap: wrap; }
+.sig-line .hint { flex: 1 1 240px; }
+
+/* ── 窄屏（≤900）：骨架把侧栏改成贴边条带、卡片不再上浮；这里只把内容内边距收回 12 ── */
+@media (max-width: 900px) {
+  .main-b.mk > .tabbody { padding: var(--sp3); }
+}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="topbar">
+    <a class="btn mini ghost" data-backlink href="../app/index.html" title="返回平台工作台（各模块页共用的回程路）">← 工作台</a>
+    <div class="brand"><b>模板市场</b><span>VisInter-Agent v0.1</span></div>
+    <span class="crumbs">工作台<i>/</i>模板市场</span>
+    <span class="spacer"></span>
+    <span class="badge acc" id="topCount"><span class="dot acc"></span><span class="num">0</span> 个模板</span>
+    <button class="btn" id="btnExport" title="按 market/store.js 的 defaultIndex + entryOf 字段结构，导出一份带本地安装与评分状态的索引 JSON">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M6 1.5v6M3.5 5 6 7.5 8.5 5M2 9.5h8"/></svg>
+      导出索引
+    </button>
+    <button class="btn" id="btnRefresh" title="快照是构建期固化的：window.__SNAP 由 tools/build_module.mjs 内联进本文件。改了 .avptpl 包必须重跑 node tools/snap_market.mjs 与 node tools/build_module.mjs market，页内刷新只重读当前构建里已有的那份快照。">
+      <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><path d="M10 6a4 4 0 1 1-1.2-2.8M10 1.5V4H7.5"/></svg>
+      刷新快照
+    </button>
+  </header>
+
+  <div class="body">
+    <aside class="aside">
+      <div class="aside-h">模板列表<span class="spacer"></span><span class="calc">按排名分</span></div>
+      <div class="aside-b" id="listBox"></div>
+    </aside>
+
+    <main class="main">
+      <div class="main-h" id="mainHead"></div>
+      <div class="main-b mk">
+        <div class="tabs" role="tablist" id="tabBar">
+          <button class="tab" role="tab" data-tab="overview" aria-selected="true">概览</button>
+          <button class="tab" role="tab" data-tab="params" aria-selected="false">覆盖参数</button>
+          <button class="tab" role="tab" data-tab="raw" aria-selected="false">原始包</button>
+        </div>
+        <div class="tabbody" id="tabBody" role="tabpanel"></div>
+      </div>
+      <div class="main-f" id="footBar">
+        <div class="rate-line">
+          <span class="hint">本地评分</span>
+          <div class="stars" id="stars" role="group" aria-label="本地评分，1 到 5 分"></div>
+          <span class="hint" id="rateNow">未评分</span>
+          <span class="hint">这是本地自评分，不是市场真实安装量</span>
+        </div>
+        <div class="hint scope" id="scopeLine"></div>
+      </div>
+    </main>
+  </div>
+
+  <footer class="statusbar">
+    <span id="srcLine">数据来源 market/snapshot.json · 生成时间 — · 排序口径 installs×1+avg×2+count×0.5</span>
+    <span class="spacer"></span>
+    <span id="statRight"></span>
+  </footer>
+</div>
+
+<script>
+/*__SNAP__*/
+(function () {
+  'use strict';
+
+  var K_INSTALLED = 'avp.market.installed';
+  var K_RATINGS = 'avp.market.ratings';
+
+  var state = {
+    snap: null,
+    templates: [],
+    installed: [],
+    ratings: {},
+    selected: null,
+    tab: 'overview',
+    readAt: ''
+  };
+
+  /* ── 小工具 ─────────────────────────────────────────────────────────── */
+  function esc(s) {
+    return String(s === null || s === undefined ? '' : s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+  function num(n, d) {
+    if (typeof n !== 'number' || !isFinite(n)) return '—';
+    return d === null || d === undefined ? String(n) : n.toFixed(d);
+  }
+  function stamp() {
+    var d = new Date();
+    var p = function (v) { return v < 10 ? '0' + v : String(v); };
+    return p(d.getHours()) + ':' + p(d.getMinutes()) + ':' + p(d.getSeconds());
+  }
+  function dayStr(iso) {
+    if (!iso || typeof iso !== 'string') return '—';
+    var s = iso.replace('T', ' ');
+    var m = /^(\d{4}-\d{2}-\d{2}) (\d{2}:\d{2})/.exec(s);
+    return m ? m[1] + ' ' + m[2] : iso;
+  }
+  function bytes(n) {
+    if (typeof n !== 'number' || !isFinite(n) || n <= 0) return '—';
+    return n >= 1024 ? (n / 1024).toFixed(1) + ' KB' : n + ' B';
+  }
+  function secs(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return '—';
+    if (n < 120) return n + ' 秒';
+    return (n / 60).toFixed(1) + ' 分';
+  }
+  function miB(n) {
+    if (typeof n !== 'number' || !isFinite(n)) return '—';
+    return n >= 1024 ? (n / 1024).toFixed(1) + ' GiB' : n + ' MiB';
+  }
+  function clip(s, max) {
+    var t = String(s === null || s === undefined ? '' : s);
+    return t.length > max ? t.slice(0, max) + '…' : t;
+  }
+
+  /* ── localStorage：file:// 下也可能被浏览器策略关掉，关掉就不崩，退化成内存态 ── */
+  function lsGet(k, dflt) {
+    try {
+      var v = window.localStorage.getItem(k);
+      return v === null || v === undefined ? dflt : v;
+    } catch (e) { return dflt; }
+  }
+  function lsSet(k, v) {
+    try { window.localStorage.setItem(k, v); return true; } catch (e) { return false; }
+  }
+  function loadInstalled() {
+    try {
+      var a = JSON.parse(lsGet(K_INSTALLED, '[]'));
+      if (!Array.isArray(a)) return [];
+      var out = [];
+      for (var i = 0; i < a.length; i++) if (typeof a[i] === 'string' && out.indexOf(a[i]) < 0) out.push(a[i]);
+      return out;
+    } catch (e) { return []; }
+  }
+  function loadRatings() {
+    try {
+      var o = JSON.parse(lsGet(K_RATINGS, '{}'));
+      return (o && typeof o === 'object' && !Array.isArray(o)) ? o : {};
+    } catch (e) { return {}; }
+  }
+
+  /* ── 排名分：口径来自 market/store.js 的 RANK_W，权重由快照带过来 ───── */
+  var W = { installs: 1, avg: 2, count: 0.5 };
+  if (window.__SNAP && window.__SNAP.rank_w) W = window.__SNAP.rank_w;
+
+  function isInstalled(id) { return state.installed.indexOf(id) >= 0; }
+
+  /** 生效评分：本地有就给本地（左边栏立即可见），没有再退回仓库索引里的真实评分 */
+  function ratingOf(t) {
+    var local = state.ratings[t.id];
+    if (local && typeof local.avg === 'number' && local.avg > 0) {
+      return { avg: local.avg, count: typeof local.count === 'number' ? local.count : 1, local: true, my: local.my || 0 };
+    }
+    var r = (t.store && t.store.rating) || { avg: 0, count: 0 };
+    return { avg: r.avg || 0, count: r.count || 0, local: false, my: 0 };
+  }
+  function rankOf(t) {
+    var r = ratingOf(t);
+    var inst = t.store && typeof t.store.installs === 'number' ? t.store.installs : 0;
+    return inst * W.installs + r.avg * W.avg + r.count * W.count;
+  }
+
+  var LICENSE_CN = { free: '免费', paid: '付费', revenue_share: '分成' };
+  var STATE_CN = { ok: '余量充足', warn: '偏紧', block: '不可行' };
+  var DIR_CN = { up: '↑ 高于', down: '↓ 低于', same: '相同', diff: '≠ 不同', noreg: '注册表未收录' };
+  var DIR_CLS = { up: 'dir-up', down: 'dir-down', same: 'dir-same', diff: 'dir-diff', noreg: 'dir-noreg' };
+
+  function tplById(id) {
+    for (var i = 0; i < state.templates.length; i++) if (state.templates[i].id === id) return state.templates[i];
+    return null;
+  }
+  function sorted() {
+    var arr = state.templates.slice();
+    arr.sort(function (a, b) { return (rankOf(b) - rankOf(a)) || String(a.id).localeCompare(String(b.id)); });
+    return arr;
+  }
+  function selected() { return state.selected ? tplById(state.selected) : null; }
+
+  var ICO = '<svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true">' +
+    '<rect x="1.75" y="1.75" width="8.5" height="8.5"/><path d="M4 4h4M4 6h4M4 8h2"/></svg>';
+
+  /* ── 左栏 ───────────────────────────────────────────────────────────── */
+  function rowHtml(t) {
+    var r = ratingOf(t);
+    var tag = (t.tags && t.tags.length) ? t.tags[0] : '无标签';
+    var badge = isInstalled(t.id) ? '<span class="badge ok">已安装</span>' : '<span class="badge">可安装</span>';
+    return '<div class="row mk-row" role="option" tabindex="0" data-id="' + esc(t.id) + '" aria-selected="' + (t.id === state.selected ? 'true' : 'false') + '">' +
+      '<span class="ico">' + ICO + '</span>' +
+      '<span class="t"><span class="nm">' + esc(t.name) + '</span>' +
+        '<span class="meta">' +
+          '<span>v' + esc(t.version) + '</span><span class="sep">·</span>' +
+          '<span class="tag">' + esc(tag) + '</span><span class="sep">·</span>' +
+          '<span class="rate" title="排名分 ' + num(rankOf(t), 2) + '（安装量 ' + num(t.store ? t.store.installs : 0) + ' · 评分 ' + num(r.avg) + ' × ' + num(r.count) + ' 人）">' +
+            num(r.avg, 1) + (r.local ? ' 本' : '') +
+          '</span>' +
+        '</span>' +
+      '</span>' +
+      badge +
+      '</div>';
+  }
+
+  function emptySnapshotHtml() {
+    return '<div class="empty"><b>快照里没有模板包</b>' +
+      '<span>页面数据全部来自构建期快照 market/snapshot.json，快照里 0 个模板就没有可显示的条目。</span>' +
+      '<span class="mono">node tools/snap_market.mjs</span>' +
+      '<span>重新生成快照后执行 <span class="mono">node tools/build_module.mjs market</span> 再刷本页。</span>' +
+      '<span class="hint">包放在 <span class="mono">market/samples/*.avptpl</span>（单文件 JSON，正文可读）。</span></div>';
+  }
+
+  function renderList() {
+    var box = document.getElementById('listBox');
+    if (!state.templates.length) {
+      box.innerHTML = '<div class="list"><div class="empty-row">快照里没有模板包 —— 跑 node tools/snap_market.mjs 重新生成；包放在 market/samples/*.avptpl</div></div>';
+      return;
+    }
+    var all = sorted();
+    var inst = [], avail = [];
+    for (var i = 0; i < all.length; i++) (isInstalled(all[i].id) ? inst : avail).push(all[i]);
+
+    var html = '<div class="list" role="listbox" aria-label="模板列表">';
+    html += '<div class="sect">已安装 · <span class="num">' + inst.length + '</span></div>';
+    if (!inst.length) {
+      html += '<div class="empty-row">还没有安装任何模板 —— 从下面「可安装」里选中一条，点主栏的「安装」；记录写在 localStorage 的 avp.market.installed。</div>';
+    } else {
+      for (var a = 0; a < inst.length; a++) html += rowHtml(inst[a]);
+    }
+    html += '<div class="sect">可安装 · <span class="num">' + avail.length + '</span></div>';
+    if (!avail.length) {
+      html += '<div class="empty-row">快照里的模板已全部安装。卸载后会自动回到这一段。</div>';
+    } else {
+      for (var b = 0; b < avail.length; b++) html += rowHtml(avail[b]);
+    }
+    html += '</div>';
+    box.innerHTML = html;
+  }
+
+  /* ── 顶栏计数与状态条 ───────────────────────────────────────────────── */
+  function renderChrome() {
+    var n = state.templates.length;
+    var sigOk = 0, rows = 0;
+    for (var i = 0; i < state.templates.length; i++) {
+      if (state.templates[i].signature && state.templates[i].signature.verify && state.templates[i].signature.verify.ok) sigOk++;
+      rows += (state.templates[i].coverage || []).length;
+    }
+    document.getElementById('topCount').innerHTML = '<span class="dot acc"></span><span class="num">' + n + '</span> 个模板';
+
+    var gen = state.snap ? (state.snap.generated_at_local || dayStr(state.snap.generated_at)) : '—';
+    var src = document.getElementById('srcLine');
+    src.innerHTML = '数据来源 market/snapshot.json · 生成时间 ' + esc(gen) +
+      ' · 排序口径 installs×1+avg×2+count×0.5';
+    if (state.snap && state.snap.generated_at) src.title = 'generated_at ' + state.snap.generated_at + (state.readAt ? ' · 页内重读 ' + state.readAt : '');
+
+    document.getElementById('statRight').innerHTML =
+      '<span class="num">' + n + '</span> 个模板 · <span class="num">' + rows + '</span> 条覆盖参数 · 验签通过 <span class="num">' + sigOk + '/' + n + '</span>' +
+      (state.readAt ? ' · 已重读快照 ' + esc(state.readAt) : '');
+  }
+
+  /* ── 详情头 + 操作按钮 ──────────────────────────────────────────────── */
+  function renderHead() {
+    var head = document.getElementById('mainHead');
+    var t = selected();
+    if (!t) {
+      head.innerHTML = '<div class="title"><h2>模板市场</h2><span class="sub">左栏没有可选项</span></div><span class="spacer"></span>' +
+        '<button class="btn" id="btnInstall" disabled>安装</button>';
+      return;
+    }
+    var inst = isInstalled(t.id);
+    var sub = 'v' + t.version + ' · ' + (t.author || '未署名') + ' · ' + (LICENSE_CN[t.license] || t.license || '许可未知') +
+      ' · ' + (t.stage_focus ? t.stage_focus.length : 0) + ' 个板块';
+    head.innerHTML = '<div class="title"><h2>' + esc(t.name) + '</h2><span class="sub">' + esc(sub) + '</span></div>' +
+      '<span class="spacer"></span>' +
+      (inst ? '<span class="badge ok"><span class="dot ok"></span>已安装</span>' : '') +
+      (inst
+        ? '<button class="btn" id="btnInstall">卸载</button>'
+        : '<button class="btn acc" id="btnInstall">安装</button>');
+  }
+
+  /* ── 评分条（始终可见，不随 tab 走）────────────────────────────────── */
+  function renderStars() {
+    var box = document.getElementById('stars');
+    var t = selected();
+    var now = document.getElementById('rateNow');
+    var my = (t && state.ratings[t.id] && state.ratings[t.id].my) ? state.ratings[t.id].my : 0;
+    var html = '';
+    for (var i = 1; i <= 5; i++) {
+      html += '<button class="star-hit" data-score="' + i + '" ' + (t ? '' : 'disabled ') +
+        (my === i ? 'aria-pressed="true"' : 'aria-pressed="false"') +
+        ' aria-label="打 ' + i + ' 分" title="给当前模板打 ' + i + ' 分（写入 localStorage 的 avp.market.ratings）">' +
+        '<i class="star' + (my >= i ? ' on' : '') + '"></i></button>';
+    }
+    box.innerHTML = html;
+    if (!t) {
+      now.textContent = '无可评模板';
+    } else if (my) {
+      var r = ratingOf(t);
+      now.innerHTML = '本地 <span class="num">' + num(r.avg, 1) + '</span> 分 · <span class="num">' + num(r.count) + '</span> 票';
+    } else {
+      var rr = ratingOf(t);
+      now.innerHTML = '仓库 <span class="num">' + num(rr.avg, 1) + '</span> 分 · <span class="num">' + num(rr.count) + '</span> 人';
+    }
+    var scope = document.getElementById('scopeLine');
+    scope.innerHTML = '排名分 = 安装量×' + num(W.installs) + ' + 平均分×' + num(W.avg) + ' + 评分数×' + num(W.count) +
+      '<span class="sep">|</span>安装量与本机未评分时的平均分来自 market/store/index.json' +
+      '<span class="sep">|</span>本地安装只改本地状态，不增加仓库安装量';
+  }
+
+  /* ── 概览页 ─────────────────────────────────────────────────────────── */
+  function kv(pairs) {
+    var out = '<dl class="kv tight">';
+    for (var i = 0; i < pairs.length; i++) out += '<dt>' + pairs[i][0] + '</dt><dd>' + pairs[i][1] + '</dd>';
+    return out + '</dl>';
+  }
+  function panel(title, extra, body) {
+    return '<div class="panel"><div class="panel-h">' + title + (extra ? '<span class="spacer"></span>' + extra : '') +
+      '</div><div class="panel-b">' + body + '</div></div>';
+  }
+  function badge(kind, text, dot) {
+    return '<span class="badge ' + kind + '">' + (dot ? '<span class="dot ' + kind + '"></span>' : '') + text + '</span>';
+  }
+
+  function overviewHtml(t) {
+    var reg = state.snap ? state.snap.registry : null;
+    var regVer = reg ? reg.version : '';
+    var stageNames = {};
+    var stages = reg ? (reg.stages || []) : [];
+    for (var s = 0; s < stages.length; s++) stageNames[stages[s].id] = stages[s];
+
+    /* 1. 基本信息 */
+    var stageChips = '';
+    var focus = t.stage_focus_named || [];
+    if (!focus.length) {
+      stageChips = '<span class="hint">stage_focus 为空</span>';
+    } else {
+      for (var f = 0; f < focus.length; f++) {
+        var one = focus[f];
+        var known = stageNames[one.id];
+        stageChips += '<span class="badge' + (known ? '' : ' bad') + '">' +
+          '<span class="code">' + esc(one.code || '?') + '</span><i>' + esc(known ? known.name : (one.id + ' 注册表无此板块')) + '</i></span>';
+      }
+    }
+    var tagChips = (t.tags && t.tags.length)
+      ? '<span class="chips">' + t.tags.map(function (x) { return '<span class="badge">' + esc(x) + '</span>'; }).join('') + '</span>'
+      : '<span class="hint">无标签</span>';
+    var basic = kv([
+      ['名称', esc(t.name)],
+      ['版本', 'v' + esc(t.version)],
+      ['作者', esc(t.author || '未署名')],
+      ['许可', esc(LICENSE_CN[t.license] || t.license || '—') + ' <span class="hint">' + esc(t.license || '') + '</span>'],
+      ['标签', tagChips + ' <span class="hint">共 ' + num(t.tags ? t.tags.length : 0) + ' 个</span>'],
+      ['创建时间', '<span title="' + esc(t.created) + '">' + esc(dayStr(t.created)) + '</span>'],
+      ['包文件', '<span class="mono">' + esc(t.file) + '</span>'],
+      ['包体积', '<span class="num">' + esc(bytes(t.size_bytes)) + '</span>'],
+      ['checksum', '<span class="mono">' + esc(t.checksum) + '</span>']
+    ]) + '<div style="margin-top:8px;display:flex;gap:6px;align-items:center;flex-wrap:wrap"><span class="hint">板块主张</span>' +
+      '<span class="chips">' + stageChips + '</span></div>';
+
+    /* 2. 兼容性 */
+    var compat = t.compat || {};
+    var sameReg = compat.registry_version === regVer;
+    var overTested = compat.max_tested && regVer && cmpVer(regVer, compat.max_tested) > 0;
+    var compatBody = kv([
+      ['引擎平台', '<span class="mono">' + esc(compat.platform || '—') + '</span>'],
+      ['打包注册表', '<span class="mono">' + esc(compat.registry_version || '—') + '</span>'],
+      ['当前注册表', '<span class="mono">' + esc(regVer || '—') + '</span>'],
+      ['最低平台', '<span class="mono">' + esc(compat.min_platform || '—') + '</span>'],
+      ['实测上限', '<span class="mono">' + esc(compat.max_tested || '—') + '</span>']
+    ]) + '<div class="chips" style="margin-top:8px">' +
+      (sameReg ? badge('ok', '注册表版本一致', true) : badge('bad', '注册表版本不一致：安装会被 verify 拒绝', true)) +
+      (overTested ? badge('warn', '当前平台高于作者实测版本，可用但需复核估算', true) : '') +
+      '</div>';
+
+    /* 3. 定价 */
+    var pr = t.pricing || {};
+    var share = pr.share ? ('作者 ' + num(pr.share.creator_pct) + '% / 平台 ' + num(pr.share.platform_pct) + '%') : '—';
+    var priceBody = kv([
+      ['模式', esc(LICENSE_CN[pr.mode] || pr.mode || '—') + ' <span class="hint">' + esc(pr.mode || '') + '</span>'],
+      ['自报价', pr.price_cny === null || pr.price_cny === undefined ? '—' : '<span class="num">' + num(pr.price_cny) + '</span> <span class="hint">元</span>'],
+      ['质量分档', esc(pr.band || '—') + ' <span class="hint">质量分 ' + num(pr.rule_quality) + ' · 档上限 ' + num(pr.band_max) + ' · 档基价 ' + num(pr.band_price) + ' 元</span>'],
+      ['规则建议', pr.suggestion ? ('<span class="num">' + num(pr.suggestion.price_cny) + '</span> <span class="hint">元（pack.suggestPrice 现算）</span>') : '—'],
+      ['分成', esc(share)]
+    ]) + (pr.basis ? '<div class="hint" style="margin-top:6px">分成基数：' + esc(pr.basis) + '</div>' : '') +
+      '<div class="chips" style="margin-top:8px">' +
+      (pr.matches_rule ? badge('ok', '自报价与定价规则一致', true) : badge('warn', '自报价与规则建议不同（以包内报价为准）', true)) +
+      '</div>';
+
+    /* 4. 签名 */
+    var sig = t.signature || {};
+    var v = sig.verify || { ok: false, reason: 'unknown' };
+    var sigState = !sig.present ? badge('warn', '未签名', true) : (v.ok ? badge('ok', '摘要一致', true) : badge('bad', '验签未通过', true));
+    var sigBody = '<div class="sig-line">' + sigState + '<span class="hint">' + esc(sig.reason_text || '') + '</span></div>' +
+      kv([
+        ['算法', '<span class="mono">' + esc(sig.algo || '—') + '</span>'],
+        ['key_id', '<span class="mono">' + esc(sig.key_id || '—') + '</span>'],
+        ['签名时间', esc(dayStr(sig.signed_at))],
+        ['签发声明', '<span class="mono">' + esc(sig.issuer || '—') + '</span>'],
+        ['密钥来源', esc(sig.secret_source || '仓库里没有可用密钥')]
+      ]) +
+      '<div class="hint" style="margin-top:6px">验签只证明「文件内容与签名时的内容逐字节一致」，不证明签发方身份：演示密钥写在仓库里，谁都能重签。</div>';
+
+    /* 5. 血缘 */
+    var lin = t.lineage || {};
+    var from = lin.resolved || [];
+    var linHtml;
+    if (!from.length) {
+      linHtml = '<div class="hint">derived_from 为空 —— 没有上游模板，按原创处理。</div>';
+    } else {
+      linHtml = '<div class="chips">';
+      for (var d = 0; d < from.length; d++) {
+        linHtml += '<span class="badge">' + esc(from[d].id) + (from[d].name ? '<i class="hint"> · ' + esc(from[d].name) + '</i>' : '<i class="hint"> · 本地快照无此包</i>') + '</span>';
+      }
+      linHtml += '</div>';
+    }
+    var lineageBody = linHtml + kv([
+      ['parent_checksum', '<span class="mono">' + esc(lin.parent_checksum || 'null') + '</span>'],
+      ['origin', '<span class="mono">' + esc(lin.origin || '—') + '</span>']
+    ]);
+
+    /* 6. 估算 */
+    var em = t.estimate_meta || null;
+    var devName = em ? em.device : '—';
+    if (em && state.snap && state.snap.devices) {
+      for (var q = 0; q < state.snap.devices.length; q++) if (state.snap.devices[q].id === em.device) devName = em.device + ' · ' + state.snap.devices[q].name;
+    }
+    var estBody = em ? (kv([
+      ['设备档', esc(devName)],
+      ['峰值显存', '<span class="num">' + miB(em.peak_mib) + '</span> <span class="hint">/ ' + miB(em.usable_mib) + ' 可用</span>'],
+      ['占用比', '<span class="num">' + (em.ratio * 100).toFixed(1) + '%</span>'],
+      ['显存档位', esc(STATE_CN[em.state] || em.state) + ' <span class="hint">' + esc(em.state) + '</span>'],
+      ['主导板块', '<span class="mono">' + esc(stageNames[em.dominant] ? stageNames[em.dominant].name : em.dominant) + '</span>'],
+      ['单格耗时', '<span class="num">' + esc(secs(em.shot_sec)) + '</span>'],
+      ['单集耗时', '<span class="num">' + esc(secs(em.episode_sec)) + '</span>'],
+      ['质量分', '<span class="num">' + num(em.quality) + '</span>'],
+      ['单集成本', '<span class="num">' + num(em.cost_episode_yuan, 3) + '</span> <span class="hint">元</span>']
+    ]) + '<div class="hint" style="margin-top:6px">数字来自打包时的 engine.estimate 快照，本页不重算。</div>')
+      : '<div class="hint">包内没有 estimate_meta：市场列表无法直接显示显存与耗时。</div>';
+
+    /* 7. 仓库状态 */
+    var st = t.store || {};
+    var repoBody = kv([
+      ['安装量', '<span class="num">' + num(st.installs) + '</span>'],
+      ['仓库评分', '<span class="num">' + num(st.rating ? st.rating.avg : 0, 1) + '</span> <span class="hint">分 · ' + num(st.rating ? st.rating.count : 0) + ' 人</span>'],
+      ['排名分', '<span class="num">' + num(st.rank, 2) + '</span>'],
+      ['索引记录', st.in_repo ? '<span class="mono">' + esc(st.file || '—') + '</span>' : '<span class="hint">索引里没有这条（安装量按 0 计）</span>'],
+      ['最后更新', esc(dayStr(st.updated_at))]
+    ]);
+
+    /* 8. 结构校验 */
+    var pv = t.pack_verify || { ok: false, errors: [], warnings: [] };
+    var pvChips = '';
+    for (var e = 0; e < (pv.errors || []).length; e++) pvChips += badge('bad', esc(pv.errors[e]), false);
+    for (var w2 = 0; w2 < (pv.warnings || []).length; w2++) pvChips += badge('warn', esc(pv.warnings[w2]), false);
+    var pvBody = '<div class="sig-line">' +
+      (pv.ok ? badge('ok', 'pack.verify 通过', true) : badge('bad', 'pack.verify 未通过', true)) +
+      '<span class="hint">结构 / registry 版本 / checksum / 值域 / 定价自洽，五项一起判</span></div>' +
+      '<div class="chips" style="margin-top:8px">' + (pvChips || '<span class="hint">无告警</span>') + '</div>';
+
+    return '<div class="grid2">' +
+      panel('基本信息', badge('acc', 'id ' + esc(t.id)), basic) +
+      panel('兼容性', '', compatBody) +
+      panel('定价', esc(pr.mode || ''), priceBody) +
+      panel('签名', '', sigBody) +
+      panel('血缘', '', lineageBody) +
+      panel('估算', '', estBody) +
+      panel('仓库状态', '', repoBody) +
+      panel('结构校验', '', pvBody) +
+      '</div>';
+  }
+
+  function cmpVer(a, b) {
+    var pa = String(a || '0.0.0').split('.'), pb = String(b || '0.0.0').split('.');
+    for (var i = 0; i < 3; i++) {
+      var x = parseInt(pa[i], 10) || 0, y = parseInt(pb[i], 10) || 0;
+      if (x !== y) return x > y ? 1 : -1;
+    }
+    return 0;
+  }
+
+  /* ── 覆盖参数页 ─────────────────────────────────────────────────────── */
+  function paramVal(v, isNum) {
+    var cls = 'v' + (isNum ? ' num' : '');
+    var text;
+    if (typeof v === 'boolean') text = v ? 'true' : 'false';
+    else if (v === null || v === undefined) text = '—';
+    else text = String(v);
+    var longCls = text.length > 34 ? ' long' : '';
+    var shown = esc(clip(text, 90));
+    return '<td class="' + cls + longCls + '" title="' + esc(text) + '">' + shown + '</td>';
+  }
+
+  function paramsHtml(t) {
+    var rows = t.coverage || [];
+    var coverCount = 0;
+    for (var i = 0; i < rows.length; i++) if (rows[i].is_cover) coverCount++;
+    var note = '<div class="tab-note"><span class="hint">values 共 <span class="num">' + rows.length + '</span> 条差异 · 其中 cover_params <span class="num">' + coverCount + '</span> 条（底色标出）</span>' +
+      '<span class="hint">↑ 表示模板值高于注册表默认，↓ 表示低于，≠ 表示枚举/文本不同，相同表示与默认一致</span></div>';
+
+    if (!rows.length) {
+      return note + '<div class="empty"><b>这个模板没有参数差异</b><span>包内 values 为空，等同默认参数，列表里看不出卖点。</span></div>';
+    }
+    var html = note + '<table class="tbl mk-params"><thead><tr>' +
+      '<th class="c-key">参数 key</th><th class="c-name">中文名</th><th class="c-stage">板块</th>' +
+      '<th class="c-val">模板值</th><th class="c-def">注册表默认</th><th class="c-dir">差异</th></tr></thead><tbody>';
+    for (var r = 0; r < rows.length; r++) {
+      var row = rows[r];
+      var keyCell = '<td class="v"><span class="k">' + esc(row.key) + '</span>' +
+        (row.is_cover ? '<span class="badge acc cover-mark">封面</span>' : '') + '</td>';
+      var nameCell = '<td class="v">' + (row.in_registry ? esc(row.label || '—') : '<span class="dir-noreg">注册表未收录</span>') + '</td>';
+      var stageCell = '<td class="v">' + (row.stage_name ? esc(row.stage_name) : '<span class="hint">—</span>') + '</td>';
+      var t1 = paramVal(row.tpl, typeof row.tpl === 'number');
+      var t2 = row.in_registry ? paramVal(row.def, typeof row.def === 'number') : '<td class="v hint">无默认值</td>';
+      var dirCell = '<td class="v"><span class="' + (DIR_CLS[row.dir] || '') + '">' + esc(DIR_CN[row.dir] || row.dir) + '</span></td>';
+      html += '<tr class="' + (row.is_cover ? 'is-cover' : '') + '">' + keyCell + nameCell + stageCell + t1 + t2 + dirCell + '</tr>';
+    }
+    html += '</tbody></table>';
+
+    var miss = t.cover_params_missing || [];
+    if (miss.length) {
+      html += '<div class="hint" style="margin-top:8px">cover_params 里有 ' + miss.length + ' 条没出现在 values（与默认值相同，卡片上看不出差异）：' +
+        miss.map(function (m) { return '<span class="mono">' + esc(m.key) + '</span>'; }).join('、') + '</div>';
+    }
+    return html;
+  }
+
+  /* ── 原始包页 ───────────────────────────────────────────────────────── */
+  function rawHtml(t) {
+    var note = '<div class="tab-note"><span class="hint">' + esc(t.file) + ' · 原文 <span class="num">' + num(t.manifest_chars) + '</span> 字符' +
+      (t.manifest_truncated ? ' · <b>已截断</b>到前 5200 字符（完整正文见文件本身）' : ' · 未截断，全文照贴') + '</span></div>';
+    return note + '<pre class="code mk-raw">' + esc(t.manifest_json || '') + '</pre>';
+  }
+
+  /* ── 详情渲染 ───────────────────────────────────────────────────────── */
+  function renderDetail() {
+    var body = document.getElementById('tabBody');
+    var t = selected();
+    if (!t) {
+      body.innerHTML = state.templates.length ? '<div class="empty"><b>没有选中模板</b><span>左栏点一行即可。</span></div>' : emptySnapshotHtml();
+      return;
+    }
+    if (t.error) {
+      body.innerHTML = '<div class="empty"><b>这个包没能解析</b><span class="mono">' + esc(t.file) + '</span><span>' + esc(t.error) + '</span>' +
+        '<span>重新跑 <span class="mono">node tools/snap_market.mjs</span> 看具体报错。</span></div>';
+      return;
+    }
+    if (state.tab === 'params') body.innerHTML = paramsHtml(t);
+    else if (state.tab === 'raw') body.innerHTML = rawHtml(t);
+    else body.innerHTML = overviewHtml(t);
+  }
+
+  function renderTabs() {
+    var tabs = document.querySelectorAll('#tabBar .tab');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].setAttribute('aria-selected', tabs[i].getAttribute('data-tab') === state.tab ? 'true' : 'false');
+    }
+  }
+
+  function renderAll() {
+    renderChrome();
+    renderHead();
+    renderList();
+    renderTabs();
+    renderDetail();
+    renderStars();
+  }
+
+  /* ── 交互 ───────────────────────────────────────────────────────────── */
+  function select(id) {
+    state.selected = id;
+    renderHead();
+    renderList();
+    renderDetail();
+    renderStars();
+  }
+
+  document.getElementById('listBox').addEventListener('click', function (ev) {
+    var row = ev.target;
+    while (row && row !== this && !(row.getAttribute && row.getAttribute('data-id'))) row = row.parentNode;
+    if (row && row.getAttribute && row.getAttribute('data-id')) select(row.getAttribute('data-id'));
+  });
+  document.getElementById('listBox').addEventListener('keydown', function (ev) {
+    if (ev.key !== 'Enter' && ev.key !== ' ') return;
+    var row = ev.target;
+    if (!row || !row.getAttribute || !row.getAttribute('data-id')) return;
+    ev.preventDefault();
+    select(row.getAttribute('data-id'));
+  });
+
+  document.getElementById('tabBar').addEventListener('click', function (ev) {
+    var b = ev.target;
+    while (b && b !== this && !(b.getAttribute && b.getAttribute('data-tab'))) b = b.parentNode;
+    if (!b || !b.getAttribute) return;
+    var tab = b.getAttribute('data-tab');
+    if (!tab) return;
+    state.tab = tab;
+    renderTabs();
+    renderDetail();
+  });
+
+  document.getElementById('mainHead').addEventListener('click', function (ev) {
+    var b = ev.target;
+    while (b && b !== this && b.id !== 'btnInstall') b = b.parentNode;
+    if (!b || b.id !== 'btnInstall') return;
+    var t = selected();
+    if (!t) return;
+    var idx = state.installed.indexOf(t.id);
+    if (idx >= 0) {
+      state.installed.splice(idx, 1);
+      lsSet(K_INSTALLED, JSON.stringify(state.installed));
+    } else {
+      state.installed.push(t.id);
+      lsSet(K_INSTALLED, JSON.stringify(state.installed));
+    }
+    renderHead();
+    renderList();
+    renderDetail();
+    renderStars();
+    renderChrome();
+  });
+
+  document.getElementById('stars').addEventListener('click', function (ev) {
+    var b = ev.target;
+    while (b && b !== this && !(b.getAttribute && b.getAttribute('data-score'))) b = b.parentNode;
+    if (!b || !b.getAttribute) return;
+    var score = parseInt(b.getAttribute('data-score'), 10);
+    var t = selected();
+    if (!t || !score) return;
+    var cur = state.ratings[t.id] || { avg: 0, count: 0, sum: 0, my: 0 };
+    var count = Math.max(1, cur.count || 1);
+    var sum = (cur.sum || 0) - (cur.my || 0) + score;
+    state.ratings[t.id] = { avg: +(sum / count).toFixed(2), count: count, sum: sum, my: score };
+    lsSet(K_RATINGS, JSON.stringify(state.ratings));
+    renderStars();
+    renderList();
+    renderDetail();
+    renderChrome();
+  });
+
+  /* 导出索引：结构照 market/store.js 的 defaultIndex + entryOf，另带本地安装与评分 */
+  document.getElementById('btnExport').addEventListener('click', function () {
+    var now = new Date().toISOString();
+    var items = [];
+    var all = sorted();
+    for (var i = 0; i < all.length; i++) {
+      var t = all[i];
+      if (t.error) continue;
+      var r = ratingOf(t);
+      var st = t.store || {};
+      items.push({
+        id: t.id,
+        name: t.name,
+        version: t.version,
+        author: t.author,
+        license: t.license,
+        registry_version: t.registry_version,
+        tags: t.tags || [],
+        stage_focus: t.stage_focus || [],
+        price_cny: t.pricing ? t.pricing.price_cny : 0,
+        checksum: t.checksum,
+        estimate_meta: t.estimate_meta || null,
+        signed: !!(t.signature && t.signature.present),
+        file: 'tpl/' + t.id + '.avptpl',
+        size_bytes: t.size_bytes,
+        installs: st.installs || 0,
+        rating: { count: r.count, sum: +(r.avg * r.count).toFixed(2), avg: r.avg },
+        raters: state.ratings[t.id] ? { local: state.ratings[t.id].my } : {},
+        installed_at: isInstalled(t.id) ? (st.installed_at || now) : null,
+        updated_at: now,
+        rank: +rankOf(t).toFixed(3),
+        local: { installed: isInstalled(t.id), rated: !!state.ratings[t.id] }
+      });
+    }
+    var doc = {
+      schema: 'ai-video-platform/market-index',
+      version: 1,
+      updated: now,
+      items: items,
+      exported_by: 'market/index.html',
+      snapshot_generated_at: state.snap ? state.snap.generated_at : null,
+      rank_w: W,
+      note: '本地导出：安装量与仓库评分来自 market/store/index.json，rating 为本地自评分，不写入市场。'
+    };
+    var text = JSON.stringify(doc, null, 2) + '\n';
+    try {
+      var blob = new Blob([text], { type: 'application/json' });
+      var url = URL.createObjectURL(blob);
+      var a = document.createElement('a');
+      a.href = url;
+      a.download = 'market-index.json';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(function () { URL.revokeObjectURL(url); }, 4000);
+      state.readAt = stamp();
+      renderChrome();
+    } catch (e) {
+      window.alert('导出失败：' + e.message);
+    }
+  });
+
+  /* 刷新快照：只重读构建期固化的 window.__SNAP，说明写在按钮 title 上 */
+  document.getElementById('btnRefresh').addEventListener('click', function () {
+    boot(window.__SNAP);
+    state.readAt = stamp();
+    renderAll();
+  });
+
+  /* ── 启动 ───────────────────────────────────────────────────────────── */
+  function pickDefault() {
+    var all = sorted();
+    return all.length ? all[0].id : null;
+  }
+
+  function boot(snap) {
+    state.snap = (snap && snap.templates) ? snap : null;
+    state.templates = state.snap ? state.snap.templates.filter(function (t) { return t && t.id; }) : [];
+    if (state.snap && state.snap.rank_w) W = state.snap.rank_w;
+    state.installed = loadInstalled();
+    state.ratings = loadRatings();
+    if (!state.selected || !tplById(state.selected)) state.selected = pickDefault();
+    renderAll();
+  }
+
+  boot(window.__SNAP);
+
+  /* 键盘：F5 之外不做全局键；列表行 Tab 可达，tabs 是 button，评分是 button */
+})();
+</script>
+</body>
+</html>
