@@ -30,96 +30,164 @@ a{color:var(--accent);text-decoration:none;border-bottom:1px dotted var(--accent
 <hr>
 <h2>摘要</h2>
 <p><strong>背景</strong>：AI 视频生成的质量评估普遍依赖图像统计类代理指标（锐度、结构稳定性、构图能量等）。这类指标被广泛用于参数搜索与产物筛选，但其与人类感知的一致性缺乏系统检验。</p>
-<p><strong>方法</strong>：本文在 8GB 显存环境下部署 MiniMax H3 与 Wan2.2 双引擎，构建了一套四维加权评分器，并在 21 条样本（8 条人工确认可用的真实片段，13 条由 4 类确定性退化滤镜构造的坏样本）上检验其判别能力；随后提出并验证一种基于高频采样的退化检测修正。</p>
+<p><strong>方法</strong>：本文在 8GB 显存环境下部署 MiniMax H3 与 Wan2.2 双引擎，构建了一套四维加权评分器，并在 21 条样本（8 条人工确认可用的真实片段，13 条由 4 类确定性退化滤镜构造的坏样本）上检验其判别能力；随后提出并验证一种基于高频采样的退化检测修正，并在此结论之上实现了一套完整的生成—评估—增强系统。</p>
 <p><strong>结果</strong>：原评分器的排序准确率为 47.6%（13 条坏样本中 11 条压过至少一条好样本），与随机猜测无显著差异。引入三判据退化检测后，排序准确率升至 61.9%，AUC 由 0.625 升至 0.755，效应量 Cohen's d 由 0.557 升至 1.22。检测器对真实采样器错配产物与近乎纯色样本的检出率均为 100%，对重度模糊为 33%，对人工柔和噪声为 0%（该情形视觉本不显著，未检出属预期行为）。</p>
-<p><strong>结论</strong>：现有图像统计类代理指标在 AI 视频质量判别上可能不具备有效信息量；引入独立退化判据可显著改善判别能力，但仍未达到可直接用于质量保证的水平（AUC 0.755）。本文同时给出完整系统实现与可复现脚本。</p>
-<p><strong>关键词</strong>：AI 视频生成；质量评估；代理指标失效；退化检测；可复现性</p>
+<p><strong>结论</strong>：现有图像统计类代理指标在 AI 视频质量判别上可能不具备有效信息量；引入独立退化判据可显著改善判别能力，但仍未达到可直接用于质量保证的水平（AUC 0.755）。系统层面，本文给出五层架构与 21 项能力的完整实现，全部可通过公开脚本复现。</p>
+<p><strong>关键词</strong>：AI 视频生成；质量评估；代理指标失效；退化检测；系统架构；可复现性</p>
 <hr>
 <h2>1 引言</h2>
 <h3>1.1 问题</h3>
 <p>2026 年 11 月，在一次本地视频生成实验中，一条因采样器配置错误而产出整屏噪声的片段，在同一评分器下得到 0.6808 分，而同期一条经人工确认可用的片段为 0.3544 分。噪声样本得分高出 1.9 倍。</p>
 <p>该现象的直接后果是：以该评分为目标函数进行参数优化，将系统性地导向质量更差的方向。这不是参数配置错误，而是评估工具与评估目标不一致。</p>
 <h3>1.2 研究问题</h3>
-<p>本文试图回答三个问题：</p>
-<ol><li>该失效是个例还是结构性的？</li><li>能否在不改变原有评分口径的前提下修正？</li><li>修正后的评分器可信到什么程度？</li></ol>
+<ol><li>该失效是个例还是结构性的？</li><li>能否在不改变原有评分口径的前提下修正？</li><li>修正后的评分器可信到什么程度？</li><li>在评估结论不绝对可靠的前提下，系统应如何设计才不至于放大错误？</li></ol>
 <h3>1.3 贡献</h3>
-<ul><li>给出失效机制的成因分析（两项结构性缺陷）</li><li>提出基于 320×180 高频采样的三判据退化检测，并在 21 样本基准上验证</li><li>报告一项负结果：检测器对人工柔和噪声无响应，且该行为是正确的</li><li>给出完整系统实现与 5 条可独立复跑的验证命令</li></ul>
+<ul><li>失效机制的成因分析（两项结构性缺陷）</li><li>基于 320×180 高频采样的三判据退化检测，并在 21 样本基准上验证</li><li>一项负结果：检测器对人工柔和噪声无响应，且该行为是正确的</li><li>一套五层架构的完整实现，其中多项设计源自"评估不可全信"这一前提</li><li>5 条可独立复跑的验证命令</li></ul>
 <hr>
 <h2>2 相关工作与背景</h2>
-<p>图像/视频质量评估长期存在两类路线：<strong>全参考指标</strong>（PSNR、SSIM）需要原始参考，不适用于生成任务的开放式输出；<strong>无参考指标</strong>依赖自然图像统计先验（如梯度分布、块效应、噪声水平）。后者在生成内容上应用广泛，但其先验假设（"自然图像具有某种统计规律"）与生成模型的输出分布并不必然吻合。</p>
-<p>在视频场景中，问题被进一步放大：时间维度的"稳定性"常被简化为"帧间差异小"，而这一简化会与"内容持续运动"这一正常现象冲突。</p>
-<p>本文不提出新的质量指标，而是针对上述简化带来的具体失效，给出可测量的修正。</p>
+<p>图像/视频质量评估长期存在两类路线：<strong>全参考指标</strong>（PSNR、SSIM）需要原始参考，不适用于生成任务的开放式输出；<strong>无参考指标</strong>依赖自然图像统计先验（梯度分布、块效应、噪声水平）。后者在生成内容上应用广泛，但其先验假设（"自然图像具有某种统计规律"）与生成模型的输出分布并不必然吻合。</p>
+<p>在视频场景中问题被进一步放大：时间维度的"稳定性"常被简化为"帧间差异小"，而这一简化与"内容持续运动"这一正常现象直接冲突。</p>
+<p>本文不提出新的质量指标，而针对上述简化带来的具体失效给出可测量的修正，并说明修正结论如何约束系统设计。</p>
 <hr>
 <h2>3 失效机制分析</h2>
 <p>原评分器为四维加权线性组合：</p>
 <pre><code>F = w_f·Sface + w_s·Ssharp + w_y·Sstyle + w_c·Scomp − w_b·Sbad</code></pre>
-<p>其中 <code>w = (0.20, 0.30, 0.25, 0.15, 0.10)</code>，各分量定义如下：</p>
+<p>其中 <code>w = (0.20, 0.30, 0.25, 0.15, 0.10)</code>：</p>
 <table><thead><tr><th>分量</th><th>定义</th><th>代理目标</th></tr></thead><tbody><tr><td>Sface</td><td>主体区域帧间位移估计的反向归一化</td><td>时间稳定性</td></tr><tr><td>Ssharp</td><td>Sobel 梯度幅值均值归一化</td><td>细节锐度</td></tr><tr><td>Sstyle</td><td>提示词颜色词与画面 HSL 分布的匹配度</td><td>风格一致性</td></tr><tr><td>Scomp</td><td>3×3 网格主体能量分布的均匀性</td><td>构图质量</td></tr></tbody></table>
-<p>分析定位到两项结构性缺陷：</p>
-<p><strong>缺陷 A：时间稳定性的代理错位。</strong> Sface 以"帧间位移小"作为稳定性的度量。但视频稳定性的语义是"同一内容在时间上连续"，而非"像素变化幅度小"。静止画面天然满足后者；同时，随机噪声在小尺度上的帧间差异可被平均化，从而在该度量上表现良好。</p>
-<p><strong>缺陷 B：高频信息在采样阶段丢失。</strong> Ssharp 依赖梯度统计，而噪声的梯度幅值普遍高于干净画面。更关键的是，原实现按 160×90 采样，降采样过程本身就是低通滤波，会抹平噪声的高频特征，使"噪声"与"细节"在该尺度上不可区分。</p>
-<blockquote><p>需要强调：缺陷 B 不是实现错误。即使采样分辨率提高，梯度均值仍会偏好噪声——这是代理目标（梯度强度）与感知目标（视觉清晰度）不对齐的必然结果。提高采样分辨率只能让"退化检测"这一独立判据变得可行，不能修正 Ssharp 本身。</p></blockquote>
+<p><strong>缺陷 A：时间稳定性的代理错位。</strong> Sface 以"帧间位移小"度量稳定性。但视频稳定性的语义是"同一内容在时间上连续"，而非"像素变化幅度小"。静止画面天然满足后者；噪声的帧间差异在小尺度上被平均化，亦可在该度量上表现良好。</p>
+<p><strong>缺陷 B：高频信息在采样阶段丢失。</strong> Ssharp 依赖梯度统计，噪声的梯度幅值普遍高于干净画面。更关键的是，原实现按 160×90 采样，降采样本身即低通滤波，抹平了噪声的高频特征，使"噪声"与"细节"在该尺度上不可区分。</p>
+<blockquote><p>需强调：缺陷 B 不是实现错误。即使提高采样分辨率，梯度均值仍会偏好噪声——这是代理目标（梯度强度）与感知目标（视觉清晰度）不对齐的必然结果。提高采样分辨率只能让独立退化判据变得可行，不能修正 Ssharp 本身。</p></blockquote>
 <hr>
 <h2>4 修正方法</h2>
 <h3>4.1 设计原则</h3>
-<p>不修改原有四维口径（保持与既有结果的可比性），而是<strong>叠加一层独立的退化判定</strong>，命中即对总分施加确定性惩罚。</p>
-<p>选择"独立判据 + 硬惩罚"而非"调整权重"的理由：权重调整只改变排序的相对位置，无法保证退化样本沉底；而硬惩罚（将 F 压至 0.15 以下）使退化样本的排序位置与阈值无关地确定。</p>
+<p>不修改原有四维口径（保持与既有结果可比），而是<strong>叠加一层独立退化判定</strong>，命中即施加确定性惩罚。</p>
+<p>选择"独立判据 + 硬惩罚"而非"调整权重"的理由：权重调整只改变排序的相对位置，无法保证退化样本沉底；硬惩罚（将 F 压至 0.15 以下）使退化样本的排序位置与阈值无关地确定。</p>
 <h3>4.2 三判据</h3>
-<p>采样分辨率提升至 320×180（不做降采样），计算：</p>
+<p>采样分辨率提升至 320×180，计算：</p>
 <table><thead><tr><th>判据</th><th>定义</th><th>阈值</th><th>目标退化类型</th></tr></thead><tbody><tr><td><code>noise_ratio_hd</code></td><td>相邻像素平均绝对差 ÷ 8×8 块均值标准差</td><td>&gt; 1.15</td><td>高频随机噪声</td></tr><tr><td><code>edge_density_hd</code></td><td>Sobel 幅值二值化（阈值 120）后的边缘占比</td><td>&lt; 0.10</td><td>模糊（高频缺失）</td></tr><tr><td><code>block_std_hd</code></td><td>8×8 块均值标准差</td><td>&lt; 6</td><td>近乎纯色</td></tr></tbody></table>
-<p>任一命中则置 <code>degenerate = true</code>，并将 <code>Sbad</code> 置为 0.95（原口径中 Sbad 的最大值），使总分被压缩至 0.15 量级。</p>
-<h3>4.3 阈值标定依据</h3>
-<p>阈值来自实测分布，非经验取值：</p>
+<p>任一命中则置 <code>degenerate = true</code>，<code>Sbad</code> 置为 0.95，总分压缩至 0.15 量级。</p>
+<h3>4.3 阈值标定</h3>
+<p>阈值取自实测分布：</p>
 <table><thead><tr><th>样本类型</th><th><code>edge_density_hd</code></th><th><code>block_std_hd</code></th><th><code>noise_ratio_hd</code></th></tr></thead><tbody><tr><td>好片（n=8）</td><td>≈ 0.34</td><td>≈ 43.6</td><td>≈ 0.21</td></tr><tr><td>重度模糊</td><td>≈ 0.046</td><td>≈ 38.8</td><td>≈ 0.069</td></tr><tr><td>近乎纯色</td><td>≈ 0.002</td><td>≈ 6.7</td><td>≈ 0.201</td></tr></tbody></table>
-<p>阈值设定在两类分布之间，取保守侧（宁可漏检，不误报）。</p>
+<p>阈值取两类分布之间的保守侧（宁可漏检，不误报）。</p>
 <hr>
 <h2>5 实验</h2>
 <h3>5.1 样本构成</h3>
-<table><thead><tr><th>类别</th><th>数量</th><th>构造方式</th></tr></thead><tbody><tr><td>好样本</td><td>8</td><td>实际生成任务中经人工确认可用的成片（640×384，5 秒）</td></tr><tr><td>坏样本</td><td>13</td><td>4 类退化 × 3 个源片（12 条）+ 1 条真实采样器错配产物</td></tr></tbody></table>
-<p>退化由 ffmpeg 确定性滤镜生成（<code>noise</code>、<code>gblur</code>、<code>hue+eq</code>、<code>scale</code> 降采样回放），保证同参数可复现。</p>
+<table><thead><tr><th>类别</th><th>数量</th><th>构造方式</th></tr></thead><tbody><tr><td>好样本</td><td>8</td><td>实际生成任务中经人工确认可用的成片（640×384，5 秒）</td></tr><tr><td>坏样本</td><td>13</td><td>4 类退化 × 3 个源片（12）+ 1 条真实采样器错配产物</td></tr></tbody></table>
+<p>退化由 ffmpeg 确定性滤镜生成（<code>noise</code> / <code>gblur</code> / <code>hue+eq</code> / 降采样回放），同参数可复现。</p>
 <h3>5.2 评价指标</h3>
-<ul><li><strong>排序准确率</strong>：所有样本对（好, 坏）中，好样本得分更高的比例</li><li><strong>AUC</strong>：等价于上述比例的全样本平均，0.5 为随机</li><li><strong>Cohen's d</strong>：组间均值差除以合并标准差，衡量分布分离度</li></ul>
+<ul><li><strong>排序准确率</strong>：所有（好, 坏）样本对中好样本得分更高的比例</li><li><strong>AUC</strong>：该比例的样本对平均，0.5 为随机</li><li><strong>Cohen's d</strong>：组间均值差 ÷ 合并标准差</li></ul>
 <h3>5.3 主结果</h3>
 <table><thead><tr><th>口径</th><th>好片均分</th><th>坏片均分</th><th>坏片压过好片</th><th>排序准确率</th><th>AUC</th><th>Cohen's d</th></tr></thead><tbody><tr><td>原（四维）</td><td>0.5162</td><td>0.4285</td><td>11/13</td><td>47.6%</td><td>0.625</td><td>0.557</td></tr><tr><td><strong>修正（+退化检测）</strong></td><td>0.4769</td><td>0.2714</td><td>8/13</td><td><strong>61.9%</strong></td><td><strong>0.755</strong></td><td><strong>1.22</strong></td></tr></tbody></table>
-<p><strong>解读</strong>：</p>
-<ul><li>原口径准确率 47.6% 低于随机基线（50%），表明该评分器在"区分好坏"上不含有效信息；</li><li>修正后 61.9%，提升 14.3 个百分点，但仍显著低于 1.0，说明判别能力"存在但有限"；</li><li>AUC 0.755 属中等偏强区间（0.7–0.8），Cohen's d 1.22 属大效应；</li><li>8 条好样本中仍有 3 条被至少一条坏样本压过——<strong>未达到可用于质量保证的水平</strong>。</li></ul>
+<p>解读：</p>
+<ul><li>原口径 47.6% 低于随机基线（50%），表明该评分器在"区分好坏"上不含有效信息；</li><li>修正后 61.9%，提升 14.3 个百分点，但仍显著低于 1.0；</li><li>AUC 0.755 属中等偏强（0.7–0.8），Cohen's d 1.22 属大效应；</li><li>8 条好样本中仍有 3 条被至少一条坏样本压过——<strong>未达到可用于质量保证的水平</strong>。</li></ul>
 <h3>5.4 分类型检出率</h3>
-<table><thead><tr><th>退化类型</th><th>检出率</th><th>说明</th></tr></thead><tbody><tr><td>真实噪声（采样器错配）</td><td>100%</td><td>最关键的目标类型</td></tr><tr><td>去色 + 低对比</td><td>100%</td><td></td></tr><tr><td>重度模糊</td><td>33%</td><td>仅捕获 <code>gblur σ=8</code> 级别</td></tr><tr><td>人工柔和噪声（<code>noise=alls=90</code>）</td><td>0%</td><td><strong>见 5.5</strong></td></tr><tr><td>降采样回放大</td><td>0%</td><td>需块边界规律性检测，未实现</td></tr></tbody></table>
+<table><thead><tr><th>退化类型</th><th>检出率</th><th>说明</th></tr></thead><tbody><tr><td>真实噪声（采样器错配）</td><td>100%</td><td>最关键目标类型</td></tr><tr><td>去色 + 低对比</td><td>100%</td><td></td></tr><tr><td>重度模糊</td><td>33%</td><td>仅捕获 <code>gblur σ=8</code> 级别</td></tr><tr><td>人工柔和噪声（<code>noise=alls=90</code>）</td><td>0%</td><td>见 5.5</td></tr><tr><td>降采样回放大</td><td>0%</td><td>需块边界规律性检测，未实现</td></tr></tbody></table>
 <h3>5.5 一项负结果及其判定</h3>
-<p>对人工柔和噪声（<code>noise=alls=90</code>）检出率为 0%。初判为实现缺陷，逐样本目视复核后确认：该类噪声在视觉上本不显著，检测器无响应属正确行为。</p>
-<p>若强行降低阈值使其检出，将以误报为代价（好样本的 <code>noise_ratio_hd</code> 分布于 0.21 附近，而该噪声样本为 0.374，二者区间重叠）。</p>
+<p>对人工柔和噪声检出率为 0%。初判为实现缺陷，逐样本目视复核后确认：该类噪声视觉上本不显著，无响应属正确行为。若强行降低阈值使其检出，将以误报为代价（好样本 <code>noise_ratio_hd</code> 分布于 0.21 附近，该噪声样本为 0.374，区间重叠）。</p>
 <p><strong>该负结果予以保留</strong>，并在系统输出中如实标注未覆盖类型。</p>
 <h3>5.6 增强操作的独立验证</h3>
-<p>对同一任务的原生产物与后处理产物分别测量，用以界定后处理的作用范围：</p>
 <table><thead><tr><th>指标</th><th>原始</th><th>后处理</th><th>变化</th></tr></thead><tbody><tr><td>分辨率</td><td>1920×1080</td><td>1920×1080</td><td>不变</td></tr><tr><td>帧率</td><td>30 fps</td><td>60 fps</td><td>×2</td></tr><tr><td>总帧数</td><td>150</td><td>297</td><td>+147</td></tr><tr><td>时长</td><td>5.007 s</td><td>5.007 s</td><td>不变</td></tr><tr><td>文件大小</td><td>6.86 MB</td><td>6.36 MB</td><td>−7%</td></tr><tr><td>F</td><td>0.3397</td><td>0.3440</td><td>+0.0043</td></tr><tr><td>处理耗时</td><td>—</td><td>67 s</td><td>帧间插值</td></tr></tbody></table>
-<p>F 的增量（0.0043）在测量噪声范围内。<strong>结论：插帧只改变时间采样密度，不改变内容质量评分。</strong> 该结论用于防止"增强"被误当作"提质"。</p>
+<p>F 的增量（0.0043）在测量噪声范围内。<strong>插帧只改变时间采样密度，不改变内容质量评分</strong>——该结论用于防止"增强"被误当作"提质"。</p>
 <hr>
-<h2>6 系统实现</h2>
-<p>上述方法在一个完整系统中实现，下文仅说明与评估直接相关的模块；其余模块的设计动机均源自"评估结果不可靠时需额外保障"这一前提。</p>
-<h3>6.1 候选生成与选优</h3>
-<p>单元测试式单点生成无法提供比较对象。系统对每次请求生成 3–6 张关键帧候选，逐张计算四维得分并排序，Top1 作为图生视频首帧。用户可覆盖自动选择，记录中区分 <code>selected_by: auto | user</code>。</p>
-<p><strong>设计约束</strong>：首帧须与目标视频档位比例一致，否则在提交前返回 <code>KF_ASPECT_MISMATCH</code>（含偏差百分比）。该约束将一类必然失败的 25 分钟任务提前为秒级拒绝。</p>
-<h3>6.2 任务状态机</h3>
-<p>任务状态定义为 <code>queued → submitting → running → postprocessing → succeeded</code>，异常分支 <code>failed / expired / cancelled</code>，其中三类异常允许回到 <code>queued</code> 重试。</p>
-<p>实现为显式转移表，并对 8×8 共 64 对状态组合执行穷举校验，确认非法转移全部被拒绝（返回 <code>STATE_INVALID</code>）。</p>
-<h3>6.3 错误处理与审计</h3>
-<p>统一错误码 12 项，覆盖参数、鉴权、配额、上游失败与状态冲突。</p>
-<p>配套审计脚本执行 54 项检查，其中 14 项为负面用例（非法 JSON、未知路由、缺参、超大请求体、路径穿越、无令牌写接口）。审计过程发现并修复 12 项缺陷，含一项对象存储路径穿越（<code>/files/../../etc/passwd</code> 可越出对象根目录）与一项将相对 URL 直接传入 <code>fetch</code> 导致的资源不可加载问题。</p>
-<h3>6.4 双版本产物</h3>
-<p>后处理产物与原生产物分别存储（<code>native</code> / <code>enhanced</code>），避免增强操作不可逆。后处理引擎支持 RIFE（GPU 权重）与 ffmpeg <code>minterpolate</code>（CPU 兜底），降级时在返回值中标注 <code>engine</code> 与 <code>substitution</code> 字段。</p>
-<h3>6.5 断点恢复</h3>
-<p>任务在创建时即原子落盘；进程重启后依持久化状态续接；后端退出期间由上游完成的任务在重启时取回入库。</p>
+<h2>6 系统架构</h2>
+<h3>6.1 总体设计原则</h3>
+<p>系统的形态由第 3–5 节的结论直接约束：</p>
+<table><thead><tr><th>结论</th><th>对架构的约束</th></tr></thead><tbody><tr><td>评分器只有中等判别力（AUC 0.755）</td><td>不能单点生成后直接采信，必须<strong>多候选 + 显式排序</strong></td></tr><tr><td>退化检测有明确覆盖盲区</td><td>必须<strong>如实报告未覆盖类型</strong>，不宣称"全自动质检"</td></tr><tr><td>增强不改变内容质量</td><td>必须<strong>双版本分存</strong>，避免增强替代原件</td></tr><tr><td>上游 API 异步且可能失败</td><td>必须<strong>状态机 + 持久化 + 可恢复</strong></td></tr></tbody></table>
+<p>即：架构不是功能堆叠，而是<strong>对"评估不可全信"这一前提的工程回应</strong>。</p>
+<h3>6.2 五层结构</h3>
+<pre><code>┌──────────────────────────────────────────────────────────┐
+│  接入层   HTTP API（15 端点）· 状态机（8 态）· 错误码（12 项）│
+├──────────────────────────────────────────────────────────┤
+│  生成层   Provider 抽象：submitTask / pollTask / fetchResult │
+│           ├ 通义万相（wan2.6-t2v / wan2.2-t2v-plus）        │
+│           ├ 火山方舟（Seedance / Seedream）                 │
+│           └ Qwen-VL（语义打分，可选）                       │
+├──────────────────────────────────────────────────────────┤
+│  评估层   四维打分 + 三判据退化检测 + 分类型覆盖报告         │
+├──────────────────────────────────────────────────────────┤
+│  增强层   插帧（RIFE 权重 / ffmpeg minterpolate 双后端）     │
+│           双版本分存：native（评分用）/ enhanced（展示用）    │
+├──────────────────────────────────────────────────────────┤
+│  存储层   SQLite（任务/分数/实验/作品库）+ 对象存储          │
+│           对象存储支持本地卷与 S3 兼容（R2/B2/MinIO）两种   │
+└──────────────────────────────────────────────────────────┘</code></pre>
+<h3>6.3 一次请求的完整数据流</h3>
+<pre><code>POST /api/video
+     │
+     ▼
+ 状态机校验 ──非法──► 409 STATE_INVALID
+     │合法
+     ▼
+ 建任务记录（原子落盘，state=submitting）
+     │
+     ▼
+ provider.submitTask ──失败──► 502 + 错误码（KEY_INVALID / FORBIDDEN / BAD_PARAM）
+     │成功（返回上游 task_id）
+     ▼
+ state=running → 进入轮询驱动（默认 6s 间隔，上限 30 分钟）
+     │
+     ├─ 上游 running ──► 继续轮询
+     ├─ 上游 failed  ──► state=failed（记录上游 error.code/message）
+     ├─ 超时         ──► state=expired（可用 task_id 重查）
+     └─ 上游 succeeded
+              │
+              ▼
+       下载成片 → 写对象存储（native 版本）
+              │
+              ▼
+       state=succeeded → 作品库入库（含 provider / model / 参数快照）
+              │
+              ▼
+       可选：POST /api/postprocess → 插帧 → 写 enhanced → 再入库一条</code></pre>
+<p>关键点：<strong>任何一步失败都落在明确的状态与错误码上</strong>，不存在"卡在中间"。</p>
+<h3>6.4 生成层：Provider 抽象</h3>
+<p>三家上游的 API 形态不同（同步/异步、不同的轮询端点、不同的返回结构），但对外暴露统一的三个方法：</p>
+<table><thead><tr><th>方法</th><th>职责</th><th>差异处理</th></tr></thead><tbody><tr><td><code>submitTask</code></td><td>提交任务，返回上游 ID</td><td>万相返回 <code>task_id</code>，方舟返回 <code>id</code></td></tr><tr><td><code>pollTask</code></td><td>查询状态，映射为内部 8 态</td><td><code>PENDING/RUNNING/SUCCEEDED/FAILED/CANCELED/UNKNOWN</code> → <code>queued/running/succeeded/failed/cancelled/expired</code></td></tr><tr><td><code>fetchResult</code></td><td>取产物 URL</td><td>万相 <code>output.video_url</code>，方舟 <code>content.video_url.url</code>，生图 <code>output.results[].url</code></td></tr></tbody></table>
+<p><strong>选择顺序</strong>：<code>AVP_VIDEO_PROVIDER=wanx,seedance</code> —— 逗号分隔，先就绪者优先。这样换供应商只改环境变量，不动代码。</p>
+<h3>6.5 评估层：两阶段设计</h3>
+<p>评估分两阶段，职责分离：</p>
+<p><strong>阶段一 · 候选筛选</strong>（生成时）</p>
+<ul><li>生成 3–6 张候选关键帧</li><li>逐张计算四维得分 + 退化判定</li><li>Top1 作为图生视频首帧，允许人工覆盖（记录 <code>selected_by: auto | user</code>）</li><li>首帧与目标档位比例不符时，提交前拒绝（返回 <code>KF_ASPECT_MISMATCH</code> 与偏差百分比）</li></ul>
+<p><strong>阶段二 · 产物诊断</strong>（事后）</p>
+<ul><li>对任意视频计算同一套分数</li><li>输出分类型覆盖报告（哪类退化能检出、哪类不能）</li><li>用于横向比较与基准维护</li></ul>
+<p><strong>为什么分阶段</strong>：阶段一要求快（用户等待），阶段二要求全（可复跑）。混在一起会导致要么慢，要么略。</p>
+<h3>6.6 增强层：可逆与可标注</h3>
+<table><thead><tr><th>设计</th><th>理由</th></tr></thead><tbody><tr><td>双后端（RIFE / ffmpeg）</td><td>GPU 权重缺失时仍可用，但必须标注 <code>engine</code> 与 <code>substitution</code></td></tr><tr><td>双版本分存</td><td>增强不可逆，原件必须保留</td></tr><tr><td>时长不变校验</td><td>插帧只增帧，不拉长时间轴；处理前后时长差 &gt; 1 帧即判失败</td></tr><tr><td>帧率回读校验</td><td>处理后重新探测帧率，与目标不符即失败（不信任命令返回码）</td></tr></tbody></table>
+<h3>6.7 接入层：状态机与错误码</h3>
+<p><strong>状态机</strong>（8 态，64 对转移穷举验证）：</p>
+<pre><code>queued → submitting|cancelled|failed
+submitting → running|failed|expired
+running → postprocessing|succeeded|failed|expired|cancelled
+postprocessing → succeeded|failed
+succeeded → （终态）
+failed|expired|cancelled → queued（仅重试路径）</code></pre>
+<p>非法转移返回 <code>STATE_INVALID</code>，不做静默修正。</p>
+<p><strong>错误码</strong>（12 项，按来源分三类）：</p>
+<table><thead><tr><th>类别</th><th>错误码</th></tr></thead><tbody><tr><td>客户端</td><td><code>BAD_REQUEST</code> <code>UNAUTHORIZED</code> <code>NOT_FOUND</code> <code>RATE_LIMIT</code> <code>QUOTA</code></td></tr><tr><td>上游</td><td><code>UPSTREAM_KEY_INVALID</code> <code>UPSTREAM_FORBIDDEN</code> <code>UPSTREAM_BAD_PARAM</code> <code>UPSTREAM_TIMEOUT</code> <code>UPSTREAM_FAILED</code></td></tr><tr><td>系统</td><td><code>PROVIDER_MISSING</code> <code>STATE_INVALID</code></td></tr></tbody></table>
+<p>分类的意义：<strong>前端可以据此给出可操作的提示</strong>（换 Key / 查额度 / 改参数 / 稍后重试），而不是笼统的"失败了"。</p>
+<h3>6.8 存储层：单文件与可迁移</h3>
+<table><thead><tr><th>项</th><th>实现</th><th>选择理由</th></tr></thead><tbody><tr><td>元数据</td><td>SQLite（Node 内置 <code>node:sqlite</code>）</td><td>单文件、零依赖、可随进程迁移</td></tr><tr><td>对象</td><td>本地卷 或 S3 兼容</td><td>小规模用本地卷；需要跨机器时切 R2/B2</td></tr><tr><td>一致性</td><td>任务记录原子写（临时文件 + rename）</td><td>进程被杀不会产生半截记录</td></tr></tbody></table>
+<h3>6.9 部署形态</h3>
+<p>系统支持三种形态，共用同一份代码：</p>
+<table><thead><tr><th>形态</th><th>依赖</th><th>适用</th></tr></thead><tbody><tr><td>本机直跑</td><td>Node ≥22 + ffmpeg</td><td>开发与自测</td></tr><tr><td>容器</td><td>Docker（镜像含 ffmpeg）</td><td>云主机 / PaaS</td></tr><tr><td>Serverless</td><td>需替换 SQLite 与子进程调用</td><td>未实现（见 7.2）</td></tr></tbody></table>
+<p><strong>无 npm 依赖</strong>：全部使用 Node 内置模块，<code>node cloud/server.mjs</code> 即可启动，不经过安装步骤。</p>
+<h3>6.10 能力清单</h3>
+<p>系统共 21 项能力，按可验证方式分三类：</p>
+<table><thead><tr><th>类别</th><th>数量</th><th>说明</th></tr></thead><tbody><tr><td>已实测</td><td>18</td><td>可在公开站点点开对应区块，或跑脚本复现</td></tr><tr><td>需外部密钥</td><td>1</td><td>Qwen-VL 语义打分（代码就绪，未用真实密钥验证）</td></tr><tr><td>工程内部可复跑</td><td>2</td><td>状态机穷举、错误码审计（跑脚本验证）</td></tr></tbody></table>
+<p>对应关系：</p>
+<table><thead><tr><th>层</th><th>能力</th></tr></thead><tbody><tr><td>生成（4）</td><td>文生视频 / 图生视频 / 文生关键帧 / 双引擎切换</td></tr><tr><td>评估（4）</td><td>四维打分 / 退化检测 / 基准校准 / 语义打分</td></tr><tr><td>选优（3）</td><td>自动选优 / 手动改选 / 比例前置校验</td></tr><tr><td>增强（3）</td><td>插帧 30→60fps / 双后端降级 / 双版本分存</td></tr><tr><td>工程（3）</td><td>状态机 / 错误码审计 / 断点恢复</td></tr><tr><td>实验（2）</td><td>贝叶斯寻优与对照 / 参数体系（258 项）</td></tr><tr><td>接入（2）</td><td>BYOK 自带密钥 / 生成参数开关</td></tr></tbody></table>
 <hr>
 <h2>7 讨论</h2>
 <h3>7.1 结论强度</h3>
-<table><thead><tr><th>方面</th><th>强度评估</th></tr></thead><tbody><tr><td>失效现象的存在性</td><td><strong>较强</strong>：n=21，效应量大，机制分析可解释</td></tr><tr><td>修正方案的有效性</td><td><strong>中等</strong>：AUC 0.755，仍有 3/8 好样本被压</td></tr><tr><td>结论的可迁移性</td><td><strong>未验证</strong>：仅在 H3/Wan2.2/万相产物上测试</td></tr><tr><td>统计显著性</td><td><strong>未检验</strong>：未计算 p 值与置信区间</td></tr></tbody></table>
+<table><thead><tr><th>方面</th><th>强度评估</th></tr></thead><tbody><tr><td>失效现象的存在性</td><td><strong>较强</strong>：n=21，效应量大，机制可解释</td></tr><tr><td>修正方案的有效性</td><td><strong>中等</strong>：AUC 0.755，仍有 3/8 好样本被压</td></tr><tr><td>结论的可迁移性</td><td><strong>未验证</strong>：仅在 H3 / Wan2.2 / 万相产物上测试</td></tr><tr><td>统计显著性</td><td><strong>未检验</strong>：未计算 p 值与置信区间</td></tr><tr><td>架构的通用性</td><td><strong>部分</strong>：五层划分与 provider 抽象可迁移，SQLite/子进程绑定运行时</td></tr></tbody></table>
 <h3>7.2 局限</h3>
-<ol><li><strong>样本规模不足</strong>：21 条，其中好样本仅 8 条，无法支撑"标准"级结论。</li><li><strong>未做显著性检验</strong>：仅报告效应量，未给 bootstrap 区间。</li><li><strong>语义维度缺失</strong>：Sstyle 为颜色词规则匹配，非语义理解；语义打分模块代码就绪但未用真实密钥验证。</li><li><strong>退化覆盖不全</strong>：模糊 33%、块状 0%。</li><li><strong>硬件约束</strong>：本机 8GB 显存，分辨率上限 640×384；1080p 依赖云端 API。</li></ol>
+<ol><li><strong>样本规模不足</strong>：21 条，好样本仅 8 条，无法支撑"标准"级结论。</li><li><strong>未做显著性检验</strong>：仅报告效应量，未给 bootstrap 区间。</li><li><strong>语义维度缺失</strong>：Sstyle 为颜色词规则匹配，非语义理解；语义打分模块未用真实密钥验证。</li><li><strong>退化覆盖不全</strong>：模糊 33%、块状 0%。</li><li><strong>硬件约束</strong>：本机 8GB 显存，分辨率上限 640×384；1080p 依赖云端 API。</li><li><strong>Serverless 不适配</strong>：SQLite 与子进程（ffmpeg）调用使其难以直接运行在边缘运行时。</li></ol>
 <h3>7.3 适用边界</h3>
-<p>本方法适用于<strong>同一模型、同一题材族内</strong>的相对排序。不适用于跨模型比较，也不构成对绝对质量的保证。</p>
+<p>本方法适用于<strong>同一模型、同一题材族内</strong>的相对排序。不适用于跨模型比较，也不构成绝对质量保证。</p>
 <hr>
 <h2>8 可复现性</h2>
-<p>以下命令可独立验证第 5 节全部数值。除第 4 条需 ffmpeg 外，无第三方依赖，仅需 Node ≥22。</p>
+<p>以下命令可独立验证第 5 节全部数值。除第 4 条需 ffmpeg 外无第三方依赖，仅需 Node ≥22。</p>
 <pre><code>git clone https://github.com/handong200803/visinter-agent
 cd visinter-agent
 
@@ -129,16 +197,20 @@ node tools/scorer_bench.mjs
 # 2. 平台门禁（18 模块）
 node tools/selftest_all.mjs
 
-# 3. 云端后端审计（54 项）
+# 3. 云端后端审计（54 项，含 14 项负面用例）
 node cloud/audit.mjs --base http://127.0.0.1:8787 --admin &lt;TOKEN&gt;
 
 # 4. 全链路自测（15 项，不需密钥，使用本地 mock 上游）
-node cloud/selftest.mjs --src &lt;任意 mp4&gt;</code></pre>
-<p><strong>验证判据</strong>：第 1 条命令输出的排序准确率应为 61.9%，AUC 应为 0.755。若不一致，本文结论在本环境不成立。</p>
+node cloud/selftest.mjs --src &lt;任意 mp4&gt;
+
+# 5. 部署后连通性（12 项）
+node cloud/smoke.mjs http://&lt;后端地址&gt; --admin &lt;TOKEN&gt;</code></pre>
+<p><strong>验证判据</strong>：第 1 条输出排序准确率应为 61.9%、AUC 应为 0.755；第 2 条应 PASS 18 · FAIL 0；第 3 条应 PASS 53 · FAIL 0。若不一致，本文结论在本环境不成立。</p>
 <hr>
 <h2>9 结论</h2>
-<p>本文报告并修正了 AI 视频生成中一个可测量的评估失效：以四维图像统计量构建的质量评分器，在 21 条样本上的排序准确率为 47.6%，低于随机基线。其成因是时间稳定性与细节锐度两项代理目标与感知目标的结构性错位。</p>
-<p>叠加独立退化判据后，排序准确率提升至 61.9%（AUC 0.625 → 0.755，Cohen's d 0.557 → 1.22）。该提升是真实但有限的：修正后的评分器可以用于同批次内的相对排序，不足以承担质量保证职责。</p>
-<p>本文的主要价值不在于提出新指标，而在于<strong>把"评估工具本身是否可信"做成了一个可测量、可复现、可被证伪的问题</strong>，并给出了一个可迁移的检验范式（独立判据 + 硬惩罚 + 分类型覆盖报告）。</p>
+<p>本文报告并修正了 AI 视频生成中一个可测量的评估失效：以四维图像统计量构建的质量评分器，在 21 条样本上的排序准确率为 47.6%，低于随机基线。成因是时间稳定性与细节锐度两项代理目标与感知目标的结构性错位。</p>
+<p>叠加独立退化判据后，排序准确率提升至 61.9%（AUC 0.625 → 0.755，Cohen's d 0.557 → 1.22）。该提升真实但有限：修正后的评分器可用于同批次内相对排序，不足以承担质量保证职责。</p>
+<p>在此基础上实现的五层系统架构，其设计动机均可回溯至"评估结论只有中等可信度"这一前提：多候选而非单点、双版本而非覆盖、状态机而非隐式流程、错误码分类而非笼统失败。</p>
+<p>本文的主要价值不在于提出新指标，而在于<strong>把"评估工具本身是否可信"做成了一个可测量、可复现、可被证伪的问题</strong>，并给出由此约束出的系统形态。</p>
 <hr>
 <p><em>文中数值均来自本机与云端实际运行；脚本与原始数据随仓库发布。哪些为实测、哪些未验证，正文已逐项标注。</em></p></body></html>
